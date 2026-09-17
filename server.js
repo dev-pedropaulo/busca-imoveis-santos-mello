@@ -158,7 +158,7 @@ app.get('/api/imovel/:id', (req, res) => {
 
 function normalizeString(str) {
   if (!str) return '';
-  return str
+  return String(str)
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -206,50 +206,76 @@ app.get('/api/search', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 40, 100);
   const offset = parseInt(req.query.offset) || 0;
 
+  // Limpa o termo de busca (remove # se presente)
+  const cleanQueryStr = rawQuery.replace(/#/g, '').trim();
+
   // Se o termo de busca for exatamente um código conhecido e nenhum outro filtro complexo foi aplicado, retorna direto
-  if (rawQuery && !transactionType && !propertyType && !neighborhood && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minGarage === 0) {
-    const cleanId = rawQuery.replace('#', '').toLowerCase();
+  if (cleanQueryStr && !transactionType && (!propertyType || propertyType === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minGarage === 0) {
+    const cleanId = cleanQueryStr.toLowerCase();
     const exact = listingsMap.get(cleanId);
     if (exact) {
       return res.json({ success: true, results: [exact], total: 1, isExactId: true });
     }
   }
 
-  const queryNorm = normalizeString(rawQuery);
+  const queryNorm = normalizeString(cleanQueryStr);
   const neighborhoodNorm = normalizeString(neighborhood);
   const propertyTypeNorm = normalizeString(propertyType);
 
   let filtered = listingsList.filter(item => {
-    // Filtro por termo livre (ID, título, bairro, cidade ou descrição)
+    // Filtro por termo livre (ID, título, bairro, cidade, endereço ou descrição)
     if (queryNorm) {
       const idNorm = normalizeString(item.id);
       const titleNorm = normalizeString(item.title);
       const itemNeighNorm = normalizeString(item.location.neighborhood);
       const itemPropNorm = normalizeString(item.propertyType);
       const itemCityNorm = normalizeString(item.location.city);
+      const itemAddressNorm = normalizeString(item.location.address);
+      const itemDescNorm = normalizeString(item.description);
 
-      const matchesText = idNorm.includes(queryNorm) ||
+      const matchesText = idNorm === queryNorm ||
+        idNorm.includes(queryNorm) ||
         titleNorm.includes(queryNorm) ||
         itemNeighNorm.includes(queryNorm) ||
         itemPropNorm.includes(queryNorm) ||
-        itemCityNorm.includes(queryNorm);
+        itemCityNorm.includes(queryNorm) ||
+        itemAddressNorm.includes(queryNorm) ||
+        itemDescNorm.includes(queryNorm);
 
       if (!matchesText) return false;
     }
 
     // Filtro por Tipo de Transação (Venda / Locação)
     if (transactionType && transactionType !== 'all') {
-      if (!item.transactionType.toLowerCase().includes(transactionType.toLowerCase())) {
+      const transNorm = normalizeString(transactionType);
+      const itemTransNorm = normalizeString(item.transactionType);
+      if (!itemTransNorm.includes(transNorm)) {
         return false;
       }
     }
 
-    // Filtro por Tipo de Imóvel
+    // Filtro por Tipo de Imóvel com suporte a sinônimos
     if (propertyTypeNorm && propertyType !== 'all') {
       const itemTypeNorm = normalizeString(item.propertyType);
-      if (!itemTypeNorm.includes(propertyTypeNorm)) {
-        return false;
+      let matchesType = itemTypeNorm.includes(propertyTypeNorm);
+
+      if (!matchesType) {
+        if (propertyTypeNorm === 'apartment' || propertyTypeNorm === 'apartamento') {
+          matchesType = itemTypeNorm.includes('apartment') || itemTypeNorm.includes('apartamento') || itemTypeNorm.includes('flat') || itemTypeNorm.includes('studio');
+        } else if (propertyTypeNorm === 'home' || propertyTypeNorm === 'casa') {
+          matchesType = itemTypeNorm.includes('home') || itemTypeNorm.includes('casa') || itemTypeNorm.includes('sobrado');
+        } else if (propertyTypeNorm === 'commercial' || propertyTypeNorm === 'comercial') {
+          matchesType = itemTypeNorm.includes('commercial') || itemTypeNorm.includes('comercial') || itemTypeNorm.includes('business') || itemTypeNorm.includes('office') || itemTypeNorm.includes('edificio') || itemTypeNorm.includes('floor');
+        } else if (propertyTypeNorm === 'land lot' || propertyTypeNorm === 'terreno') {
+          matchesType = itemTypeNorm.includes('land') || itemTypeNorm.includes('terreno') || itemTypeNorm.includes('lote');
+        } else if (propertyTypeNorm === 'penthouse' || propertyTypeNorm === 'cobertura') {
+          matchesType = itemTypeNorm.includes('penthouse') || itemTypeNorm.includes('cobertura');
+        } else if (propertyTypeNorm === 'industrial' || propertyTypeNorm === 'galpao') {
+          matchesType = itemTypeNorm.includes('industrial') || itemTypeNorm.includes('galpao');
+        }
       }
+
+      if (!matchesType) return false;
     }
 
     // Filtro por Bairro
@@ -261,9 +287,22 @@ app.get('/api/search', (req, res) => {
     }
 
     // Filtro por Preço
-    const priceToCheck = item.transactionType.toLowerCase().includes('locação') ? (item.rentalPrice || item.price) : (item.price || item.rentalPrice);
-    if (priceToCheck > 0) {
-      if (priceToCheck < minPrice || priceToCheck > maxPrice) return false;
+    let priceToCheck = 0;
+    const filterTransNorm = normalizeString(transactionType);
+    if (filterTransNorm.includes('locacao') || filterTransNorm.includes('rent')) {
+      priceToCheck = item.rentalPrice || item.price || 0;
+    } else if (filterTransNorm.includes('venda') || filterTransNorm.includes('sale')) {
+      priceToCheck = item.price || item.rentalPrice || 0;
+    } else {
+      priceToCheck = item.transactionType.toLowerCase().includes('locação') ? (item.rentalPrice || item.price) : (item.price || item.rentalPrice);
+    }
+
+    if (minPrice > 0) {
+      if (priceToCheck < minPrice) return false;
+    }
+
+    if (maxPrice < Infinity) {
+      if (priceToCheck === 0 || priceToCheck > maxPrice) return false;
     }
 
     // Filtro por Quartos
@@ -324,12 +363,25 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
+// Configuração de sincronização periódica automática a cada 6 horas
+const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
+setInterval(async () => {
+  console.log('⏰ [Cron] Executando sincronização periódica do feed XML...');
+  try {
+    await syncFeed();
+  } catch (err) {
+    console.error('⚠️ [Cron] Falha na sincronização periódica:', err.message);
+  }
+}, SYNC_INTERVAL_MS);
+
 // Inicialização
 app.listen(PORT, async () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+  console.log(`⏱️ Sincronização periódica configurada a cada 6 horas.`);
   try {
     await syncFeed();
   } catch (err) {
     console.error('Falha ao iniciar sync inicial:', err.message);
   }
 });
+

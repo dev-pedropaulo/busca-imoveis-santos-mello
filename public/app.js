@@ -39,6 +39,10 @@
   const propertiesGrid = document.getElementById('propertiesGrid');
   const propertyResult = document.getElementById('propertyResult');
   const backToGridBtn = document.getElementById('backToGridBtn');
+  const loadMoreWrapper = document.getElementById('loadMoreWrapper');
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  const loadMoreCount = document.getElementById('loadMoreCount');
+  const activeFilterTags = document.getElementById('activeFilterTags');
 
   // Elementos da Ficha Única do Imóvel
   const propCode = document.getElementById('propCode');
@@ -91,6 +95,13 @@
   let lastSearchResults = [];
   let isFiltersOpen = false;
 
+  // Estado de Paginação
+  const PAGE_SIZE = 40;
+  let currentOffset = 0;
+  let totalAvailable = 0;
+  let loadedPropertiesList = [];
+  let isLoadingMore = false;
+
   // --- Formatadores ---
   const currencyFormatter = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -128,7 +139,7 @@
   }
 
   // Determina base da API caso a página seja acessada via file:// ou outra porta
-  const API_BASE = (window.location.protocol === 'file:' || (!window.location.host.includes(':3333') && !window.location.host.includes('localhost:3333')))
+  const API_BASE = (window.location.protocol === 'file:' || (window.location.port !== '3333' && !window.location.host.includes(':3333')))
     ? 'http://localhost:3333'
     : '';
 
@@ -226,10 +237,50 @@
     el.addEventListener('change', countActiveFilters);
   });
 
-  // --- Busca Principal com Filtros ---
-  async function searchProperties() {
+  // --- Tags de Filtros Ativos ---
+  function updateActiveFilterTags() {
+    if (!activeFilterTags) return;
+    activeFilterTags.innerHTML = '';
+    const tags = [];
+    if (filterType.value !== 'all') tags.push(filterType.value);
+    if (filterPropertyType.value !== 'all') {
+      const optText = filterPropertyType.options[filterPropertyType.selectedIndex]?.text || filterPropertyType.value;
+      tags.push(optText);
+    }
+    if (filterNeighborhood.value !== 'all') tags.push(filterNeighborhood.value);
+    if (filterMaxPrice.value !== 'all') {
+      const optText = filterMaxPrice.options[filterMaxPrice.selectedIndex]?.text || filterMaxPrice.value;
+      tags.push(optText);
+    }
+    if (filterBeds.value !== '0') tags.push(`${filterBeds.value}+ quartos`);
+    if (filterGarage.value !== '0') tags.push(`${filterGarage.value}+ vagas`);
+
+    tags.forEach(tag => {
+      const span = document.createElement('span');
+      span.className = 'active-filter-tag';
+      span.textContent = tag;
+      activeFilterTags.appendChild(span);
+    });
+  }
+
+  // --- Busca Principal com Filtros e Paginação ---
+  async function searchProperties(isLoadMore = false) {
+    if (isLoadMore && isLoadingMore) return;
+
     const rawQuery = searchInput.value.trim();
     countActiveFilters();
+    updateActiveFilterTags();
+
+    if (!isLoadMore) {
+      currentOffset = 0;
+      loadedPropertiesList = [];
+      showState('loading');
+      loadMoreWrapper.style.display = 'none';
+    } else {
+      isLoadingMore = true;
+      loadMoreBtn.classList.add('loading');
+      loadMoreBtn.querySelector('.load-more-text').textContent = 'Carregando mais...';
+    }
 
     // Monta Query Params
     const params = new URLSearchParams();
@@ -241,9 +292,10 @@
     if (filterBeds.value !== '0') params.append('minBedrooms', filterBeds.value);
     if (filterGarage.value !== '0') params.append('minGarage', filterGarage.value);
     if (filterSortBy.value !== 'relevance') params.append('sortBy', filterSortBy.value);
+    params.append('offset', currentOffset);
+    params.append('limit', PAGE_SIZE);
 
     clearBtn.style.display = rawQuery ? 'flex' : 'none';
-    showState('loading');
 
     try {
       const res = await fetch(`${API_BASE}/api/search?${params.toString()}`);
@@ -251,47 +303,69 @@
 
       const data = await res.json();
       const results = data.results || [];
-      lastSearchResults = results;
+      totalAvailable = data.total || 0;
 
-      if (results.length === 0) {
-        notFoundTitle.textContent = 'Nenhum imóvel encontrado';
-        notFoundMsg.textContent = 'Tente ajustar o termo de busca ou remover alguns filtros aplicados.';
-        showState('notFound');
-        return;
+      if (!isLoadMore) {
+        if (results.length === 0) {
+          notFoundTitle.textContent = 'Nenhum imóvel encontrado';
+          notFoundMsg.textContent = 'Tente ajustar o termo de busca ou remover alguns filtros aplicados.';
+          showState('notFound');
+          return;
+        }
+
+        // Se for apenas 1 resultado retornado da busca inicial
+        if (results.length === 1 && totalAvailable === 1) {
+          backToGridBtn.style.display = 'inline-flex';
+          renderSingleProperty(results[0]);
+          showState('single');
+          return;
+        }
+
+        loadedPropertiesList = results;
+        lastSearchResults = loadedPropertiesList;
+        renderGrid(results, totalAvailable, false);
+        showState('grid');
+      } else {
+        loadedPropertiesList = loadedPropertiesList.concat(results);
+        lastSearchResults = loadedPropertiesList;
+        renderGrid(results, totalAvailable, true);
       }
 
-      // Se for busca exata de código direto (1 resultado exato sem filtros complexos)
-      if (data.isExactId && results.length === 1) {
-        backToGridBtn.style.display = 'none';
-        renderSingleProperty(results[0]);
-        showState('single');
-        return;
-      }
+      // Atualiza contador no topo da grade
+      resultsCountText.textContent = `Exibindo ${loadedPropertiesList.length} de ${totalAvailable} imóvel${totalAvailable > 1 ? 'is' : ''} encontrado${totalAvailable > 1 ? 's' : ''}`;
 
-      // Se for apenas 1 resultado mas originado de filtros
-      if (results.length === 1) {
-        backToGridBtn.style.display = 'none';
-        renderSingleProperty(results[0]);
-        showState('single');
-        return;
+      // Gerencia botão Carregar Mais
+      const remaining = totalAvailable - loadedPropertiesList.length;
+      if (remaining > 0) {
+        loadMoreWrapper.style.display = 'flex';
+        loadMoreCount.textContent = `+${Math.min(remaining, PAGE_SIZE)} (${remaining} restantes)`;
+        loadMoreBtn.querySelector('.load-more-text').textContent = 'Carregando mais imóveis';
+      } else {
+        loadMoreWrapper.style.display = 'none';
       }
-
-      // Múltiplos resultados -> Renderiza Grade de Imóveis
-      renderGrid(results, data.total);
-      showState('grid');
 
     } catch (err) {
       console.error('Erro na pesquisa:', err);
-      notFoundTitle.textContent = 'Erro ao realizar a consulta';
-      notFoundMsg.textContent = 'Não foi possível carregar os dados no momento. Tente novamente.';
-      showState('notFound');
+      if (!isLoadMore) {
+        notFoundTitle.textContent = 'Erro ao realizar a consulta';
+        notFoundMsg.textContent = 'Não foi possível carregar os dados no momento. Tente novamente.';
+        showState('notFound');
+      } else {
+        showToast('Não foi possível carregar mais imóveis.');
+      }
+    } finally {
+      if (isLoadMore) {
+        isLoadingMore = false;
+        loadMoreBtn.classList.remove('loading');
+      }
     }
   }
 
   // --- Renderização da Grade de Resultados (Múltiplos Imóveis) ---
-  function renderGrid(properties, total) {
-    resultsCountText.textContent = `${total} imóvel${total > 1 ? 'is' : ''} encontrado${total > 1 ? 's' : ''}`;
-    propertiesGrid.innerHTML = '';
+  function renderGrid(properties, total, append = false) {
+    if (!append) {
+      propertiesGrid.innerHTML = '';
+    }
 
     properties.forEach(prop => {
       const card = document.createElement('div');
@@ -343,9 +417,19 @@
     });
   }
 
+  // Evento do Botão Carregar Mais
+  loadMoreBtn.addEventListener('click', () => {
+    currentOffset += PAGE_SIZE;
+    searchProperties(true);
+  });
+
   // Botão Voltar para Resultados
   backToGridBtn.addEventListener('click', () => {
-    showState('grid');
+    if (lastSearchResults && lastSearchResults.length > 1) {
+      showState('grid');
+    } else {
+      showState('initial');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
