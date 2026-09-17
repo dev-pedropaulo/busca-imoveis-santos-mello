@@ -144,6 +144,24 @@ async function syncFeed() {
   }
 }
 
+// Middleware para garantir que o feed esteja carregado (essencial para Vercel Serverless)
+let syncPromise = null;
+async function ensureDataLoaded(req, res, next) {
+  if (listingsList.length > 0) return next();
+  try {
+    if (!syncPromise) {
+      syncPromise = syncFeed().finally(() => { syncPromise = null; });
+    }
+    await syncPromise;
+    next();
+  } catch (err) {
+    console.error('Erro ao carregar dados sob demanda:', err.message);
+    res.status(500).json({ error: 'Falha ao carregar o catálogo de imóveis.' });
+  }
+}
+
+app.use('/api', ensureDataLoaded);
+
 // Rotas da API
 app.get('/api/imovel/:id', (req, res) => {
   const code = (req.params.id || '').trim().toLowerCase();
@@ -375,13 +393,18 @@ setInterval(async () => {
 }, SYNC_INTERVAL_MS);
 
 // Inicialização
-app.listen(PORT, async () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-  console.log(`⏱️ Sincronização periódica configurada a cada 6 horas.`);
-  try {
-    await syncFeed();
-  } catch (err) {
-    console.error('Falha ao iniciar sync inicial:', err.message);
-  }
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, async () => {
+    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+    console.log(`⏱️ Sincronização periódica configurada a cada 6 horas.`);
+    try {
+      await syncFeed();
+    } catch (err) {
+      console.error('Falha ao iniciar sync inicial:', err.message);
+    }
+  });
+}
+
+module.exports = app;
+
 
