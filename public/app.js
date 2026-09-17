@@ -138,10 +138,8 @@
     }, 3000);
   }
 
-  // Determina base da API caso a página seja acessada via file:// ou outra porta
-  const API_BASE = (window.location.protocol === 'file:' || (window.location.port !== '3333' && !window.location.host.includes(':3333')))
-    ? 'http://localhost:3333'
-    : '';
+  // Determina base da API: se aberto via file:// aponta para localhost:3333; na web (Vercel ou servidor próprio), usa rota relativa
+  const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3333' : '';
 
   // --- Gerenciador de Estados da UI ---
   function showState(state) {
@@ -156,7 +154,7 @@
   async function loadFilterOptions() {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
 
       const [statsRes, optionsRes] = await Promise.all([
         fetch(`${API_BASE}/api/stats`, { signal: controller.signal }),

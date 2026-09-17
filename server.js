@@ -11,6 +11,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Estado em memória dos imóveis
 let listingsMap = new Map();
 let listingsList = [];
