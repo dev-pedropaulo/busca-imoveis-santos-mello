@@ -117,6 +117,14 @@
   let loadedPropertiesList = [];
   let isLoadingMore = false;
 
+  function formatTitle(str) {
+    if (!str) return '';
+    if (str === str.toUpperCase()) {
+      return str.toLowerCase().replace(/(?:^|\s|-|\/)\S/g, (a) => a.toUpperCase());
+    }
+    return str;
+  }
+
   // --- Formatadores ---
   const currencyFormatter = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -421,7 +429,7 @@
       }
 
       // Atualiza contador no topo da grade
-      resultsCountText.textContent = `Exibindo ${loadedPropertiesList.length} de ${totalAvailable} imóvel${totalAvailable > 1 ? 'is' : ''} encontrado${totalAvailable > 1 ? 's' : ''}`;
+      resultsCountText.textContent = `Exibindo ${loadedPropertiesList.length} de ${totalAvailable} imóvel${totalAvailable > 1 ? 'is' : ''} encontrado${totalAvailable > 1 ? 's' : ''}`.replace('imóvelis', 'imóveis');
 
       // Gerencia botão Carregar Mais
       const remaining = totalAvailable - loadedPropertiesList.length;
@@ -469,13 +477,13 @@
       const cleanType = prop.propertyType.replace('Residential / ', '').replace('Commercial / ', '');
 
       // Medida única mais confiável (Área Útil > Construída > Lote)
-      let primaryAreaText = '';
+      let areaVal = '';
       if (prop.livingArea > 0) {
-        primaryAreaText = `📐 ${prop.livingArea}m²`;
+        areaVal = `${prop.livingArea} m²`;
       } else if (prop.constructedArea > 0) {
-        primaryAreaText = `🏗️ ${prop.constructedArea}m² const.`;
+        areaVal = `${prop.constructedArea} m² const.`;
       } else if (prop.lotArea > 0) {
-        primaryAreaText = `🌱 ${prop.lotArea}m² lote`;
+        areaVal = `${prop.lotArea} m² lote`;
       }
 
       card.innerHTML = `
@@ -487,30 +495,59 @@
             <span class="badge badge-category">${cleanType}</span>
             ${hasTour ? '<span class="badge badge-tour">🎥 Tour</span>' : ''}
           </div>
-          <a href="?codigo=${prop.id}" target="_blank" rel="noopener noreferrer" class="mini-card-newtab-btn" title="Abrir imóvel em nova guia" onclick="event.stopPropagation();">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <a href="?codigo=${prop.id}" target="_blank" rel="noopener noreferrer" class="mini-card-newtab-btn" title="Abrir imóvel em nova aba" onclick="event.stopPropagation();">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
             </svg>
-            <span>Nova aba</span>
           </a>
         </div>
         <div class="mini-card-content">
           <div class="mini-card-price-row">
             <span class="mini-card-price">${priceText}</span>
+            <span class="mini-card-code-text">#${prop.id}</span>
           </div>
-          <h4 class="mini-card-title">${prop.title}</h4>
+          <h4 class="mini-card-title">${formatTitle(prop.title)}</h4>
           <div class="mini-card-location">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
               <circle cx="12" cy="10" r="3"/>
             </svg>
-            <span>${[prop.location.neighborhood, prop.location.city].filter(Boolean).join(' • ') || 'Santo André'}</span>
+            <span>${[prop.location.neighborhood, prop.location.city].filter(Boolean).join(', ') || 'Santo André'}</span>
           </div>
           <div class="mini-card-specs">
-            ${primaryAreaText ? `<span class="mini-spec-item">${primaryAreaText}</span>` : ''}
-            ${prop.bedrooms > 0 ? `<span class="mini-spec-item">🛏️ ${prop.bedrooms} dorms</span>` : ''}
-            ${prop.suites > 0 ? `<span class="mini-spec-item">🚿 ${prop.suites} suíte${prop.suites > 1 ? 's' : ''}</span>` : ''}
-            ${prop.garage > 0 ? `<span class="mini-spec-item">🚗 ${prop.garage} vagas</span>` : ''}
+            ${areaVal ? `
+              <span class="mini-spec-item" title="Área">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3h18v18H3zM3 9h18M9 21V9"/>
+                </svg>
+                <span>${areaVal}</span>
+              </span>
+            ` : ''}
+            ${prop.bedrooms > 0 ? `
+              <span class="mini-spec-item" title="Dormitórios">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9M10 8v9"/>
+                </svg>
+                <span>${prop.bedrooms} dorms</span>
+              </span>
+            ` : ''}
+            ${prop.suites > 0 ? `
+              <span class="mini-spec-item" title="Suítes">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-2.12 0 1.5 1.5 0 0 0 0 2.12L6.88 8M4 14h16M4 14v6M20 14v6"/>
+                </svg>
+                <span>${prop.suites} suíte${prop.suites > 1 ? 's' : ''}</span>
+              </span>
+            ` : ''}
+            ${prop.garage > 0 ? `
+              <span class="mini-spec-item" title="Vagas">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="8" rx="2"/>
+                  <path d="M5 11l2-5h10l2 5M7 15h.01M17 15h.01"/>
+                </svg>
+                <span>${prop.garage} vagas</span>
+              </span>
+            ` : ''}
           </div>
         </div>
       `;
