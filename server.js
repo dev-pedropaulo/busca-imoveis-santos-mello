@@ -323,7 +323,7 @@ app.get('/api/search', (req, res) => {
   const cleanQueryStr = rawQuery.replace(/#/g, '').trim();
 
   // Se o termo de busca for exatamente um código conhecido e nenhum outro filtro complexo foi aplicado, retorna direto
-  if (cleanQueryStr && !transactionType && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!city || city === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minSuites === 0 && minBathrooms === 0 && minGarage === 0 && minArea === 0 && !hasTour && !featuresQuery) {
+  if (cleanQueryStr && (!transactionType || transactionType === 'all') && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!city || city === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minSuites === 0 && minBathrooms === 0 && minGarage === 0 && minArea === 0 && !hasTour && !featuresQuery) {
     const cleanId = cleanQueryStr.toLowerCase();
     const exact = listingsMap.get(cleanId);
     if (exact) {

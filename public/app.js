@@ -815,17 +815,20 @@
 
   // --- Inicialização ao Carregar a Página ---
   initTheme();
-  loadFilterOptions().then(() => {
-    // Parâmetro ?codigo=8797 na URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const paramCode = urlParams.get('codigo') || urlParams.get('c') || urlParams.get('id');
-    if (paramCode) {
-      searchInput.value = paramCode;
-      searchProperties();
-    } else {
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const paramCode = urlParams.get('codigo') || urlParams.get('c') || urlParams.get('id');
+
+  if (paramCode) {
+    searchInput.value = paramCode;
+    // Executa a busca por código imediatamente em paralelo para abertura instantânea
+    searchProperties();
+    loadFilterOptions();
+  } else {
+    loadFilterOptions().then(() => {
       // Carrega catálogo inicial automaticamente
       searchProperties();
-    }
-  });
+    });
+  }
 
 })();
