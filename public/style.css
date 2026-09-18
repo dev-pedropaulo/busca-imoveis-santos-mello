@@ -745,52 +745,36 @@ body {
   flex-wrap: wrap;
   gap: 6px;
   z-index: 2;
+  max-width: 80%;
 }
 
-.mini-card-badges .badge {
-  font-size: 0.76rem;
-  font-weight: 700;
+.mini-card-newtab-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: all var(--transition-fast);
 }
 
-.mini-card-badges .badge-sale {
-  background: #4f46e5;
+.mini-card-newtab-btn:hover {
+  background: var(--accent-primary);
   color: #ffffff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.mini-card-badges .badge-rent {
-  background: #059669;
-  color: #ffffff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.mini-card-badges .badge-category {
-  background: rgba(10, 15, 29, 0.88);
-  backdrop-filter: blur(8px);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.mini-card-code {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(10, 15, 29, 0.92);
-  backdrop-filter: blur(8px);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.4);
-  font-family: monospace;
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-sm);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px var(--accent-glow);
 }
 
 .mini-card-content {
@@ -984,59 +968,89 @@ body {
   padding: 4px 12px;
   border-radius: var(--radius-full);
   letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .badge-code {
-  background: var(--bg-secondary);
-  border: 1.5px solid var(--border-subtle);
+  background: #0f172a;
+  border: 1.5px solid #d97706;
   color: #fbbf24;
   font-family: monospace;
   font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .badge-code {
+  background: #fffbeb;
+  border: 1.5px solid #f59e0b;
+  color: #b45309;
 }
 
 .badge-type.badge-sale, .badge-sale {
-  background: #4f46e5;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
 }
 
 .badge-type.badge-rent, .badge-rent {
-  background: #059669;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.35);
+  background: #059669 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.4);
 }
 
 .badge-category {
-  background: var(--bg-secondary);
-  border: 1.5px solid var(--border-subtle);
-  color: var(--text-primary);
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .badge-category {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 .badge-usage {
-  background: rgba(139, 92, 246, 0.18);
-  border: 1.5px solid rgba(139, 92, 246, 0.3);
-  color: #c4b5fd;
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
 }
 
 .badge-usage.commercial {
-  background: rgba(245, 158, 11, 0.18);
-  border-color: rgba(245, 158, 11, 0.35);
-  color: #fbbf24;
+  background: #d97706 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
 }
 
 .badge-tour {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1.5px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.4);
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
 .badge-status {
-  background: rgba(16, 185, 129, 0.18);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #10b981;
+  background: #065f46 !important;
+  color: #a7f3d0 !important;
+  border: 1px solid #047857 !important;
+}
+
+[data-theme="light"] .badge-status {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border: 1px solid #86efac !important;
 }
 
 .link-btn {

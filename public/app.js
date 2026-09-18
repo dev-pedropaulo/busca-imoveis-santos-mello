@@ -108,6 +108,7 @@
   let currentPhotoIndex = 0;
   let lastSearchResults = [];
   let isFiltersOpen = false;
+  let savedScrollPosition = 0;
 
   // Estado de Paginação
   const PAGE_SIZE = 40;
@@ -467,6 +468,16 @@
       const photo = prop.primaryImage || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
       const cleanType = prop.propertyType.replace('Residential / ', '').replace('Commercial / ', '');
 
+      // Medida única mais confiável (Área Útil > Construída > Lote)
+      let primaryAreaText = '';
+      if (prop.livingArea > 0) {
+        primaryAreaText = `📐 ${prop.livingArea}m²`;
+      } else if (prop.constructedArea > 0) {
+        primaryAreaText = `🏗️ ${prop.constructedArea}m² const.`;
+      } else if (prop.lotArea > 0) {
+        primaryAreaText = `🌱 ${prop.lotArea}m² lote`;
+      }
+
       card.innerHTML = `
         <div class="mini-card-thumb">
           <img src="${photo}" alt="${prop.title}" loading="lazy" />
@@ -476,7 +487,12 @@
             <span class="badge badge-category">${cleanType}</span>
             ${hasTour ? '<span class="badge badge-tour">🎥 Tour</span>' : ''}
           </div>
-          <span class="mini-card-code">#${prop.id}</span>
+          <a href="?codigo=${prop.id}" target="_blank" rel="noopener noreferrer" class="mini-card-newtab-btn" title="Abrir imóvel em nova guia" onclick="event.stopPropagation();">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
+            </svg>
+            <span>Nova aba</span>
+          </a>
         </div>
         <div class="mini-card-content">
           <div class="mini-card-price-row">
@@ -491,8 +507,7 @@
             <span>${[prop.location.neighborhood, prop.location.city].filter(Boolean).join(' • ') || 'Santo André'}</span>
           </div>
           <div class="mini-card-specs">
-            ${prop.livingArea > 0 ? `<span class="mini-spec-item">📐 ${prop.livingArea}m²</span>` : ''}
-            ${prop.lotArea > 0 ? `<span class="mini-spec-item">🌱 ${prop.lotArea}m² lote</span>` : ''}
+            ${primaryAreaText ? `<span class="mini-spec-item">${primaryAreaText}</span>` : ''}
             ${prop.bedrooms > 0 ? `<span class="mini-spec-item">🛏️ ${prop.bedrooms} dorms</span>` : ''}
             ${prop.suites > 0 ? `<span class="mini-spec-item">🚿 ${prop.suites} suíte${prop.suites > 1 ? 's' : ''}</span>` : ''}
             ${prop.garage > 0 ? `<span class="mini-spec-item">🚗 ${prop.garage} vagas</span>` : ''}
@@ -500,11 +515,14 @@
         </div>
       `;
 
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.mini-card-newtab-btn')) return;
+
+        savedScrollPosition = window.scrollY || document.documentElement.scrollTop || 0;
         backToGridBtn.style.display = 'inline-flex';
         renderSingleProperty(prop);
         showState('single');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'instant' });
       });
 
       propertiesGrid.appendChild(card);
@@ -517,14 +535,15 @@
     searchProperties(true);
   });
 
-  // Botão Voltar para Resultados
+  // Botão Voltar para Resultados (Restaura a Posição de Scroll Exata)
   backToGridBtn.addEventListener('click', () => {
-    if (lastSearchResults && lastSearchResults.length > 1) {
+    if (lastSearchResults && lastSearchResults.length > 0) {
       showState('grid');
+      window.scrollTo({ top: savedScrollPosition, behavior: 'instant' });
     } else {
       showState('initial');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   // --- Renderização da Ficha Completa Única ---
