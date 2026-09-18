@@ -66,18 +66,29 @@ function normalizeListing(raw) {
   const rawFeatures = details.Features ? (Array.isArray(details.Features.Feature) ? details.Features.Feature : [details.Features.Feature]) : [];
   const features = rawFeatures.map(f => cleanText(f)).filter(Boolean);
 
+  const usageTypeRaw = cleanText(details.UsageType);
+  let usageType = 'Residencial';
+  if (usageTypeRaw.toLowerCase().includes('commercial') || usageTypeRaw.toLowerCase().includes('comercial')) {
+    usageType = 'Comercial';
+  }
+
+  const livingArea = parseFloat(cleanText(details.LivingArea)) || 0;
+  const constructedArea = parseFloat(cleanText(details.ConstructedArea)) || 0;
+  const lotArea = parseFloat(cleanText(details.LotArea)) || 0;
+
   return {
     id: listingId,
     title: cleanText(raw.Title) || `Imóvel #${listingId}`,
     transactionType,
     propertyType: cleanText(details.PropertyType) || 'Imóvel',
-    usageType: cleanText(details.UsageType) || 'Residencial',
+    usageType,
     price: parseFloat(cleanText(details.ListPrice)) || 0,
     rentalPrice: parseFloat(cleanText(details.RentalPrice)) || 0,
     iptu: parseFloat(cleanText(details.Iptu)) || 0,
     condo: parseFloat(cleanText(details.PropertyAdministrationFee)) || 0,
-    livingArea: parseFloat(cleanText(details.LivingArea)) || parseFloat(cleanText(details.ConstructedArea)) || 0,
-    lotArea: parseFloat(cleanText(details.LotArea)) || 0,
+    livingArea: livingArea || constructedArea,
+    constructedArea,
+    lotArea,
     bedrooms: parseInt(cleanText(details.Bedrooms)) || 0,
     bathrooms: parseInt(cleanText(details.Bathrooms)) || 0,
     suites: parseInt(cleanText(details.Suites)) || 0,
@@ -98,6 +109,7 @@ function normalizeListing(raw) {
     images,
     primaryImage: images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80',
     websiteUrl: `https://www.santosemello.com.br/imovel/${listingId}`,
+    virtualTourLink: cleanText(raw.VirtualTourLink),
     status: cleanText(raw.Status?.PropertyStatus) || 'Disponível'
   };
 }
@@ -209,7 +221,8 @@ app.get('/api/filter-options', (req, res) => {
     data: {
       neighborhoods,
       propertyTypes,
-      transactionTypes: ['Venda', 'Locação']
+      transactionTypes: ['Venda', 'Locação'],
+      usageTypes: ['Residencial', 'Comercial']
     }
   });
 });
@@ -217,6 +230,7 @@ app.get('/api/filter-options', (req, res) => {
 app.get('/api/search', (req, res) => {
   const rawQuery = (req.query.q || '').trim();
   const transactionType = (req.query.type || '').trim();
+  const usageType = (req.query.usageType || '').trim();
   const propertyType = (req.query.propertyType || '').trim();
   const neighborhood = (req.query.neighborhood || '').trim();
   const minPrice = parseFloat(req.query.minPrice) || 0;
@@ -232,7 +246,7 @@ app.get('/api/search', (req, res) => {
   const cleanQueryStr = rawQuery.replace(/#/g, '').trim();
 
   // Se o termo de busca for exatamente um código conhecido e nenhum outro filtro complexo foi aplicado, retorna direto
-  if (cleanQueryStr && !transactionType && (!propertyType || propertyType === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minGarage === 0) {
+  if (cleanQueryStr && !transactionType && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minGarage === 0) {
     const cleanId = cleanQueryStr.toLowerCase();
     const exact = listingsMap.get(cleanId);
     if (exact) {
@@ -272,6 +286,15 @@ app.get('/api/search', (req, res) => {
       const transNorm = normalizeString(transactionType);
       const itemTransNorm = normalizeString(item.transactionType);
       if (!itemTransNorm.includes(transNorm)) {
+        return false;
+      }
+    }
+
+    // Filtro por Uso do Imóvel (Residencial / Comercial)
+    if (usageType && usageType !== 'all') {
+      const usageNorm = normalizeString(usageType);
+      const itemUsageNorm = normalizeString(item.usageType);
+      if (!itemUsageNorm.includes(usageNorm)) {
         return false;
       }
     }

@@ -899,6 +899,27 @@ body {
   color: var(--text-primary);
 }
 
+.badge-usage {
+  background: rgba(139, 92, 246, 0.18);
+  border: 1.5px solid rgba(139, 92, 246, 0.3);
+  color: #c4b5fd;
+}
+
+.badge-usage.commercial {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.badge-tour {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1.5px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .badge-status {
   background: rgba(16, 185, 129, 0.18);
   border: 1px solid rgba(16, 185, 129, 0.4);
@@ -1134,7 +1155,7 @@ body {
 
 .specs-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
 }
 
@@ -1197,7 +1218,7 @@ body {
 
 .action-buttons-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 
@@ -1213,6 +1234,7 @@ body {
   gap: 8px;
   cursor: pointer;
   border: none;
+  text-decoration: none;
   transition: all var(--transition-fast);
 }
 
@@ -1225,6 +1247,18 @@ body {
 .action-btn.btn-primary:hover {
   background: var(--accent-primary-hover);
   transform: translateY(-1px);
+}
+
+.action-btn.btn-tour {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.action-btn.btn-tour:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.5);
 }
 
 .action-btn.btn-whatsapp {

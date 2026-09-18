@@ -19,6 +19,7 @@
   const filtersPanel = document.getElementById('filtersPanel');
   const filterCountBadge = document.getElementById('filterCountBadge');
   const filterType = document.getElementById('filterType');
+  const filterUsageType = document.getElementById('filterUsageType');
   const filterPropertyType = document.getElementById('filterPropertyType');
   const filterNeighborhood = document.getElementById('filterNeighborhood');
   const filterMaxPrice = document.getElementById('filterMaxPrice');
@@ -47,6 +48,7 @@
   // Elementos da Ficha Única do Imóvel
   const propCode = document.getElementById('propCode');
   const propTransType = document.getElementById('propTransType');
+  const propUsage = document.getElementById('propUsage');
   const propCategory = document.getElementById('propCategory');
   const propStatus = document.getElementById('propStatus');
   const propTitle = document.getElementById('propTitle');
@@ -67,12 +69,17 @@
   const condoPrice = document.getElementById('condoPrice');
   const iptuPrice = document.getElementById('iptuPrice');
   const specArea = document.getElementById('specArea');
+  const specLotAreaItem = document.getElementById('specLotAreaItem');
+  const specLotArea = document.getElementById('specLotArea');
+  const specConstAreaItem = document.getElementById('specConstAreaItem');
+  const specConstArea = document.getElementById('specConstArea');
   const specBeds = document.getElementById('specBeds');
   const specBaths = document.getElementById('specBaths');
   const specGarage = document.getElementById('specGarage');
 
   // Ações
   const copyLinkBtn = document.getElementById('copyLinkBtn');
+  const viewTourBtn = document.getElementById('viewTourBtn');
   const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
   const copySummaryBtn = document.getElementById('copySummaryBtn');
 
@@ -192,6 +199,7 @@
   function countActiveFilters() {
     let count = 0;
     if (filterType.value !== 'all') count++;
+    if (filterUsageType && filterUsageType.value !== 'all') count++;
     if (filterPropertyType.value !== 'all') count++;
     if (filterNeighborhood.value !== 'all') count++;
     if (filterMaxPrice.value !== 'all') count++;
@@ -217,6 +225,7 @@
 
   resetFiltersBtn.addEventListener('click', () => {
     filterType.value = 'all';
+    if (filterUsageType) filterUsageType.value = 'all';
     filterPropertyType.value = 'all';
     filterNeighborhood.value = 'all';
     filterMaxPrice.value = 'all';
@@ -231,7 +240,7 @@
     searchProperties();
   });
 
-  [filterType, filterPropertyType, filterNeighborhood, filterMaxPrice, filterBeds, filterGarage, filterSortBy].forEach(el => {
+  [filterType, filterUsageType, filterPropertyType, filterNeighborhood, filterMaxPrice, filterBeds, filterGarage, filterSortBy].filter(Boolean).forEach(el => {
     el.addEventListener('change', countActiveFilters);
   });
 
@@ -241,6 +250,7 @@
     activeFilterTags.innerHTML = '';
     const tags = [];
     if (filterType.value !== 'all') tags.push(filterType.value);
+    if (filterUsageType && filterUsageType.value !== 'all') tags.push(`Uso: ${filterUsageType.value}`);
     if (filterPropertyType.value !== 'all') {
       const optText = filterPropertyType.options[filterPropertyType.selectedIndex]?.text || filterPropertyType.value;
       tags.push(optText);
@@ -284,6 +294,7 @@
     const params = new URLSearchParams();
     if (rawQuery) params.append('q', rawQuery);
     if (filterType.value !== 'all') params.append('type', filterType.value);
+    if (filterUsageType && filterUsageType.value !== 'all') params.append('usageType', filterUsageType.value);
     if (filterPropertyType.value !== 'all') params.append('propertyType', filterPropertyType.value);
     if (filterNeighborhood.value !== 'all') params.append('neighborhood', filterNeighborhood.value);
     if (filterMaxPrice.value !== 'all') params.append('maxPrice', filterMaxPrice.value);
@@ -370,6 +381,8 @@
       card.className = 'property-mini-card';
 
       const isRental = prop.transactionType.toLowerCase().includes('locação');
+      const isCommercial = prop.usageType === 'Comercial';
+      const hasTour = Boolean(prop.virtualTourLink);
       const mainPrice = isRental ? (prop.rentalPrice || prop.price) : (prop.price || prop.rentalPrice);
       const priceText = formatMoney(mainPrice) + (isRental ? '/mês' : '');
       const photo = prop.primaryImage || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
@@ -380,7 +393,9 @@
           <img src="${photo}" alt="${prop.title}" loading="lazy" />
           <div class="mini-card-badges">
             <span class="badge ${isRental ? 'badge-rent' : 'badge-sale'}">${prop.transactionType}</span>
+            <span class="badge badge-usage ${isCommercial ? 'commercial' : ''}">${prop.usageType}</span>
             <span class="badge badge-category">${cleanType}</span>
+            ${hasTour ? '<span class="badge badge-tour">🎥 Tour</span>' : ''}
           </div>
           <span class="mini-card-code">#${prop.id}</span>
         </div>
@@ -398,6 +413,7 @@
           </div>
           <div class="mini-card-specs">
             ${prop.livingArea > 0 ? `<span class="mini-spec-item">📐 ${prop.livingArea}m²</span>` : ''}
+            ${prop.lotArea > 0 ? `<span class="mini-spec-item">🌱 ${prop.lotArea}m² lote</span>` : ''}
             ${prop.bedrooms > 0 ? `<span class="mini-spec-item">🛏️ ${prop.bedrooms} dorms</span>` : ''}
             ${prop.garage > 0 ? `<span class="mini-spec-item">🚗 ${prop.garage} vagas</span>` : ''}
           </div>
@@ -438,9 +454,12 @@
 
     // Badges & Cabeçalho
     const isRental = prop.transactionType.toLowerCase().includes('locação');
+    const isCommercial = prop.usageType === 'Comercial';
     propCode.textContent = `#${prop.id}`;
     propTransType.textContent = prop.transactionType;
     propTransType.className = `badge ${isRental ? 'badge-rent' : 'badge-sale'}`;
+    propUsage.textContent = prop.usageType || 'Residencial';
+    propUsage.className = `badge badge-usage ${isCommercial ? 'commercial' : ''}`;
     propCategory.textContent = prop.propertyType.replace('Residential / ', '').replace('Commercial / ', '');
     propStatus.textContent = prop.status || 'Disponível';
 
@@ -454,6 +473,14 @@
 
     // Link oficial
     viewWebsiteBtn.href = prop.websiteUrl || `https://www.santosemello.com.br/imovel/${prop.id}`;
+
+    // Tour Virtual / Vídeo
+    if (prop.virtualTourLink) {
+      viewTourBtn.href = prop.virtualTourLink;
+      viewTourBtn.style.display = 'inline-flex';
+    } else {
+      viewTourBtn.style.display = 'none';
+    }
 
     // Galeria de Fotos
     renderGallery(prop.images);
@@ -469,6 +496,21 @@
 
     // Especificações
     specArea.textContent = prop.livingArea > 0 ? `${prop.livingArea} m²` : '--';
+
+    if (prop.lotArea > 0) {
+      specLotAreaItem.style.display = 'flex';
+      specLotArea.textContent = `${prop.lotArea} m²`;
+    } else {
+      specLotAreaItem.style.display = 'none';
+    }
+
+    if (prop.constructedArea > 0) {
+      specConstAreaItem.style.display = 'flex';
+      specConstArea.textContent = `${prop.constructedArea} m²`;
+    } else {
+      specConstAreaItem.style.display = 'none';
+    }
+
     specBeds.textContent = prop.bedrooms > 0 ? (prop.suites > 0 ? `${prop.bedrooms} (${prop.suites} suíte${prop.suites > 1 ? 's' : ''})` : prop.bedrooms) : '0';
     specBaths.textContent = prop.bathrooms > 0 ? prop.bathrooms : '0';
     specGarage.textContent = prop.garage > 0 ? prop.garage : '0';
@@ -582,12 +624,23 @@
     let msg = `🏠 *${p.title}*\n`;
     msg += `🔖 *Código:* #${p.id}\n`;
     msg += `📍 *Localização:* ${p.location.neighborhood || 'Santo André'} - ${p.location.city || 'SP'}\n`;
+    msg += `🏢 *Uso:* ${p.usageType} • *Tipo:* ${p.propertyType}\n`;
     msg += `💰 *Valor (${p.transactionType}):* ${priceText}\n`;
     
-    if (p.livingArea > 0 || p.bedrooms > 0 || p.garage > 0) {
-      msg += `📐 *Detalhes:* ${p.livingArea ? p.livingArea + 'm²' : ''} ${p.bedrooms ? '• ' + p.bedrooms + ' dorms' : ''} ${p.garage ? '• ' + p.garage + ' vagas' : ''}\n`;
+    const detailsArr = [];
+    if (p.livingArea > 0) detailsArr.push(`📐 Área: ${p.livingArea}m²`);
+    if (p.lotArea > 0) detailsArr.push(`🌱 Terreno: ${p.lotArea}m²`);
+    if (p.constructedArea > 0) detailsArr.push(`🏗️ Constr.: ${p.constructedArea}m²`);
+    if (p.bedrooms > 0) detailsArr.push(`🛏️ ${p.bedrooms} dorms`);
+    if (p.garage > 0) detailsArr.push(`🚗 ${p.garage} vagas`);
+    if (detailsArr.length > 0) {
+      msg += `📌 *Detalhes:* ${detailsArr.join(' • ')}\n`;
     }
     
+    if (p.virtualTourLink) {
+      msg += `🎥 *Tour Virtual / Vídeo:* ${p.virtualTourLink}\n`;
+    }
+
     msg += `\n🔗 *Veja fotos e ficha completa aqui:* \n${link}`;
 
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
@@ -606,15 +659,20 @@
     let summary = `FICHA DO IMÓVEL #${p.id}\n`;
     summary += `------------------------------\n`;
     summary += `Título: ${p.title}\n`;
-    summary += `Tipo: ${p.propertyType} (${p.transactionType})\n`;
+    summary += `Finalidade: ${p.transactionType}\n`;
+    summary += `Uso: ${p.usageType}\n`;
+    summary += `Tipo: ${p.propertyType}\n`;
     summary += `Valor: ${priceText}\n`;
     if (p.condo > 0) summary += `Condomínio: ${formatMoney(p.condo)}/mês\n`;
     if (p.iptu > 0) summary += `IPTU: ${formatMoney(p.iptu)}/mês\n`;
     summary += `Área Útil: ${p.livingArea || '--'} m²\n`;
+    if (p.lotArea > 0) summary += `Área do Terreno: ${p.lotArea} m²\n`;
+    if (p.constructedArea > 0) summary += `Área Construída: ${p.constructedArea} m²\n`;
     summary += `Quartos: ${p.bedrooms} (Suítes: ${p.suites})\n`;
     summary += `Banheiros: ${p.bathrooms}\n`;
     summary += `Vagas de Garagem: ${p.garage}\n`;
     summary += `Endereço: ${p.location.address || ''}, ${p.location.streetNumber || ''} - ${p.location.neighborhood || ''}, ${p.location.city || 'Santo André'}/${p.location.state || 'SP'}\n`;
+    if (p.virtualTourLink) summary += `Tour Virtual / Vídeo: ${p.virtualTourLink}\n`;
     summary += `Link Direto: ${link}\n`;
 
     try {
