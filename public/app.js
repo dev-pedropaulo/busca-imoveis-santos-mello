@@ -21,13 +21,20 @@
   const filterType = document.getElementById('filterType');
   const filterUsageType = document.getElementById('filterUsageType');
   const filterPropertyType = document.getElementById('filterPropertyType');
+  const filterCity = document.getElementById('filterCity');
   const filterNeighborhood = document.getElementById('filterNeighborhood');
   const filterMaxPrice = document.getElementById('filterMaxPrice');
+  const filterMinArea = document.getElementById('filterMinArea');
   const filterBeds = document.getElementById('filterBeds');
+  const filterSuites = document.getElementById('filterSuites');
+  const filterBathrooms = document.getElementById('filterBathrooms');
   const filterGarage = document.getElementById('filterGarage');
   const filterSortBy = document.getElementById('filterSortBy');
+  const filterHasTour = document.getElementById('filterHasTour');
+  const featuresChipsList = document.getElementById('featuresChipsList');
   const applyFiltersBtn = document.getElementById('applyFiltersBtn');
   const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+  const selectedFeatures = new Set();
 
   // Estados de visualização
   const initialState = document.getElementById('initialState');
@@ -179,7 +186,18 @@
 
       if (optionsRes.ok) {
         const json = await optionsRes.json();
+        const cities = json.data?.cities || [];
         const neighborhoods = json.data?.neighborhoods || [];
+
+        if (filterCity) {
+          filterCity.innerHTML = '<option value="all">Todas as cidades</option>';
+          cities.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            filterCity.appendChild(opt);
+          });
+        }
 
         filterNeighborhood.innerHTML = '<option value="all">Todos os bairros</option>';
         neighborhoods.forEach(n => {
@@ -198,14 +216,20 @@
   // --- Toggle Filtros & Contador ---
   function countActiveFilters() {
     let count = 0;
-    if (filterType.value !== 'all') count++;
+    if (filterType && filterType.value !== 'all') count++;
     if (filterUsageType && filterUsageType.value !== 'all') count++;
-    if (filterPropertyType.value !== 'all') count++;
-    if (filterNeighborhood.value !== 'all') count++;
-    if (filterMaxPrice.value !== 'all') count++;
-    if (filterBeds.value !== '0') count++;
-    if (filterGarage.value !== '0') count++;
-    if (filterSortBy.value !== 'relevance') count++;
+    if (filterPropertyType && filterPropertyType.value !== 'all') count++;
+    if (filterCity && filterCity.value !== 'all') count++;
+    if (filterNeighborhood && filterNeighborhood.value !== 'all') count++;
+    if (filterMaxPrice && filterMaxPrice.value !== 'all') count++;
+    if (filterMinArea && filterMinArea.value !== '0') count++;
+    if (filterBeds && filterBeds.value !== '0') count++;
+    if (filterSuites && filterSuites.value !== '0') count++;
+    if (filterBathrooms && filterBathrooms.value !== '0') count++;
+    if (filterGarage && filterGarage.value !== '0') count++;
+    if (filterHasTour && filterHasTour.checked) count++;
+    count += selectedFeatures.size;
+    if (filterSortBy && filterSortBy.value !== 'relevance') count++;
 
     if (count > 0) {
       filterCountBadge.textContent = count;
@@ -224,14 +248,23 @@
   });
 
   resetFiltersBtn.addEventListener('click', () => {
-    filterType.value = 'all';
+    if (filterType) filterType.value = 'all';
     if (filterUsageType) filterUsageType.value = 'all';
-    filterPropertyType.value = 'all';
-    filterNeighborhood.value = 'all';
-    filterMaxPrice.value = 'all';
-    filterBeds.value = '0';
-    filterGarage.value = '0';
-    filterSortBy.value = 'relevance';
+    if (filterPropertyType) filterPropertyType.value = 'all';
+    if (filterCity) filterCity.value = 'all';
+    if (filterNeighborhood) filterNeighborhood.value = 'all';
+    if (filterMaxPrice) filterMaxPrice.value = 'all';
+    if (filterMinArea) filterMinArea.value = '0';
+    if (filterBeds) filterBeds.value = '0';
+    if (filterSuites) filterSuites.value = '0';
+    if (filterBathrooms) filterBathrooms.value = '0';
+    if (filterGarage) filterGarage.value = '0';
+    if (filterSortBy) filterSortBy.value = 'relevance';
+    if (filterHasTour) filterHasTour.checked = false;
+
+    selectedFeatures.clear();
+    document.querySelectorAll('.feature-chip.active').forEach(c => c.classList.remove('active'));
+
     countActiveFilters();
     searchProperties();
   });
@@ -240,8 +273,42 @@
     searchProperties();
   });
 
-  [filterType, filterUsageType, filterPropertyType, filterNeighborhood, filterMaxPrice, filterBeds, filterGarage, filterSortBy].filter(Boolean).forEach(el => {
-    el.addEventListener('change', countActiveFilters);
+  // Interação com Chips de Comodidades
+  if (featuresChipsList) {
+    featuresChipsList.addEventListener('click', (e) => {
+      const chip = e.target.closest('.feature-chip');
+      if (!chip) return;
+      const feat = chip.dataset.feature;
+      if (!feat) return;
+
+      if (selectedFeatures.has(feat)) {
+        selectedFeatures.delete(feat);
+        chip.classList.remove('active');
+      } else {
+        selectedFeatures.add(feat);
+        chip.classList.add('active');
+      }
+      countActiveFilters();
+      searchProperties();
+    });
+  }
+
+  if (filterHasTour) {
+    filterHasTour.addEventListener('change', () => {
+      countActiveFilters();
+      searchProperties();
+    });
+  }
+
+  [
+    filterType, filterUsageType, filterPropertyType, filterCity,
+    filterNeighborhood, filterMaxPrice, filterMinArea, filterBeds,
+    filterSuites, filterBathrooms, filterGarage, filterSortBy
+  ].filter(Boolean).forEach(el => {
+    el.addEventListener('change', () => {
+      countActiveFilters();
+      searchProperties();
+    });
   });
 
   // --- Tags de Filtros Ativos ---
@@ -249,19 +316,25 @@
     if (!activeFilterTags) return;
     activeFilterTags.innerHTML = '';
     const tags = [];
-    if (filterType.value !== 'all') tags.push(filterType.value);
+    if (filterType && filterType.value !== 'all') tags.push(filterType.value);
     if (filterUsageType && filterUsageType.value !== 'all') tags.push(`Uso: ${filterUsageType.value}`);
-    if (filterPropertyType.value !== 'all') {
+    if (filterPropertyType && filterPropertyType.value !== 'all') {
       const optText = filterPropertyType.options[filterPropertyType.selectedIndex]?.text || filterPropertyType.value;
       tags.push(optText);
     }
-    if (filterNeighborhood.value !== 'all') tags.push(filterNeighborhood.value);
-    if (filterMaxPrice.value !== 'all') {
+    if (filterCity && filterCity.value !== 'all') tags.push(`📍 ${filterCity.value}`);
+    if (filterNeighborhood && filterNeighborhood.value !== 'all') tags.push(`Bairro: ${filterNeighborhood.value}`);
+    if (filterMaxPrice && filterMaxPrice.value !== 'all') {
       const optText = filterMaxPrice.options[filterMaxPrice.selectedIndex]?.text || filterMaxPrice.value;
       tags.push(optText);
     }
-    if (filterBeds.value !== '0') tags.push(`${filterBeds.value}+ quartos`);
-    if (filterGarage.value !== '0') tags.push(`${filterGarage.value}+ vagas`);
+    if (filterMinArea && filterMinArea.value !== '0') tags.push(`📐 ${filterMinArea.value}+ m²`);
+    if (filterBeds && filterBeds.value !== '0') tags.push(`🛏️ ${filterBeds.value}+ qts`);
+    if (filterSuites && filterSuites.value !== '0') tags.push(`🚿 ${filterSuites.value}+ suíte(s)`);
+    if (filterBathrooms && filterBathrooms.value !== '0') tags.push(`🛁 ${filterBathrooms.value}+ banho(s)`);
+    if (filterGarage && filterGarage.value !== '0') tags.push(`🚗 ${filterGarage.value}+ vagas`);
+    if (filterHasTour && filterHasTour.checked) tags.push(`🎥 Com Tour`);
+    selectedFeatures.forEach(f => tags.push(`✨ ${f}`));
 
     tags.forEach(tag => {
       const span = document.createElement('span');
@@ -293,14 +366,20 @@
     // Monta Query Params
     const params = new URLSearchParams();
     if (rawQuery) params.append('q', rawQuery);
-    if (filterType.value !== 'all') params.append('type', filterType.value);
+    if (filterType && filterType.value !== 'all') params.append('type', filterType.value);
     if (filterUsageType && filterUsageType.value !== 'all') params.append('usageType', filterUsageType.value);
-    if (filterPropertyType.value !== 'all') params.append('propertyType', filterPropertyType.value);
-    if (filterNeighborhood.value !== 'all') params.append('neighborhood', filterNeighborhood.value);
-    if (filterMaxPrice.value !== 'all') params.append('maxPrice', filterMaxPrice.value);
-    if (filterBeds.value !== '0') params.append('minBedrooms', filterBeds.value);
-    if (filterGarage.value !== '0') params.append('minGarage', filterGarage.value);
-    if (filterSortBy.value !== 'relevance') params.append('sortBy', filterSortBy.value);
+    if (filterPropertyType && filterPropertyType.value !== 'all') params.append('propertyType', filterPropertyType.value);
+    if (filterCity && filterCity.value !== 'all') params.append('city', filterCity.value);
+    if (filterNeighborhood && filterNeighborhood.value !== 'all') params.append('neighborhood', filterNeighborhood.value);
+    if (filterMaxPrice && filterMaxPrice.value !== 'all') params.append('maxPrice', filterMaxPrice.value);
+    if (filterMinArea && filterMinArea.value !== '0') params.append('minArea', filterMinArea.value);
+    if (filterBeds && filterBeds.value !== '0') params.append('minBedrooms', filterBeds.value);
+    if (filterSuites && filterSuites.value !== '0') params.append('minSuites', filterSuites.value);
+    if (filterBathrooms && filterBathrooms.value !== '0') params.append('minBathrooms', filterBathrooms.value);
+    if (filterGarage && filterGarage.value !== '0') params.append('minGarage', filterGarage.value);
+    if (filterHasTour && filterHasTour.checked) params.append('hasTour', 'true');
+    if (selectedFeatures.size > 0) params.append('features', Array.from(selectedFeatures).join(','));
+    if (filterSortBy && filterSortBy.value !== 'relevance') params.append('sortBy', filterSortBy.value);
     params.append('offset', currentOffset);
     params.append('limit', PAGE_SIZE);
 
@@ -409,12 +488,13 @@
               <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
               <circle cx="12" cy="10" r="3"/>
             </svg>
-            <span>${prop.location.neighborhood || 'Santo André'}</span>
+            <span>${[prop.location.neighborhood, prop.location.city].filter(Boolean).join(' • ') || 'Santo André'}</span>
           </div>
           <div class="mini-card-specs">
             ${prop.livingArea > 0 ? `<span class="mini-spec-item">📐 ${prop.livingArea}m²</span>` : ''}
             ${prop.lotArea > 0 ? `<span class="mini-spec-item">🌱 ${prop.lotArea}m² lote</span>` : ''}
             ${prop.bedrooms > 0 ? `<span class="mini-spec-item">🛏️ ${prop.bedrooms} dorms</span>` : ''}
+            ${prop.suites > 0 ? `<span class="mini-spec-item">🚿 ${prop.suites} suíte${prop.suites > 1 ? 's' : ''}</span>` : ''}
             ${prop.garage > 0 ? `<span class="mini-spec-item">🚗 ${prop.garage} vagas</span>` : ''}
           </div>
         </div>

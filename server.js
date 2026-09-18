@@ -43,6 +43,42 @@ function cleanText(val) {
   return String(val).trim();
 }
 
+const FEATURE_TRANSLATIONS = {
+  'Pool': 'Piscina',
+  'BBQ': 'Churrasqueira',
+  'Elevator': 'Elevador',
+  'Pets Allowed': 'Aceita Pets',
+  'Balcony': 'Varanda / Sacada',
+  'Balcony/Terrace': 'Varanda / Terraço',
+  'Furnished': 'Mobiliado',
+  'Gym': 'Academia',
+  'Party Room': 'Salão de Festas',
+  'Playground': 'Playground',
+  'Veranda': 'Varanda',
+  'Sports Court': 'Quadra Poliesportiva',
+  'Security Guard on Duty': 'Segurança 24h',
+  'Doorman': 'Portaria',
+  'Backyard': 'Quintal',
+  'Fenced Yard': 'Quintal',
+  'Gourmet Area': 'Espaço Gourmet',
+  'Home Office': 'Home Office',
+  'Game room': 'Salão de Jogos',
+  'Heating': 'Aquecimento',
+  'Air Conditioning': 'Ar Condicionado',
+  'Cooling': 'Ar Condicionado',
+  'Kitchen': 'Cozinha',
+  'Laundry': 'Lavanderia',
+  'Intercom': 'Interfone',
+  "Maid's Quarters": 'Dep. Empregada',
+  'Alarm System': 'Alarme',
+  'Closet': 'Closet',
+  'Fireplace': 'Lareira',
+  'Parking Garage': 'Garagem Coberta',
+  'Cable Television': 'TV a Cabo',
+  'Garden': 'Jardim',
+  'Sauna': 'Sauna'
+};
+
 function normalizeListing(raw) {
   const details = raw.Details || {};
   const location = raw.Location || {};
@@ -64,7 +100,14 @@ function normalizeListing(raw) {
   }
 
   const rawFeatures = details.Features ? (Array.isArray(details.Features.Feature) ? details.Features.Feature : [details.Features.Feature]) : [];
-  const features = rawFeatures.map(f => cleanText(f)).filter(Boolean);
+  const features = Array.from(new Set(
+    rawFeatures
+      .map(f => {
+        const txt = cleanText(f);
+        return FEATURE_TRANSLATIONS[txt] || txt;
+      })
+      .filter(Boolean)
+  ));
 
   const usageTypeRaw = cleanText(details.UsageType);
   let usageType = 'Residencial';
@@ -202,8 +245,12 @@ function normalizeString(str) {
 app.get('/api/filter-options', (req, res) => {
   const neighborhoodsSet = new Set();
   const propertyTypesSet = new Set();
+  const citiesSet = new Set();
 
   for (const item of listingsList) {
+    if (item.location.city) {
+      citiesSet.add(item.location.city.trim());
+    }
     if (item.location.neighborhood) {
       neighborhoodsSet.add(item.location.neighborhood.trim());
     }
@@ -213,16 +260,40 @@ app.get('/api/filter-options', (req, res) => {
     }
   }
 
+  // Santo André em primeiro, depois as demais cidades em ordem alfabética
+  const cities = Array.from(citiesSet).sort((a, b) => {
+    if (a.includes('Santo André')) return -1;
+    if (b.includes('Santo André')) return 1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+
   const neighborhoods = Array.from(neighborhoodsSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const propertyTypes = Array.from(propertyTypesSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const popularFeatures = [
+    { id: 'piscina', label: 'Piscina', icon: '🏊' },
+    { id: 'churrasqueira', label: 'Churrasqueira', icon: '🍖' },
+    { id: 'elevador', label: 'Elevador', icon: '🛗' },
+    { id: 'pets', label: 'Aceita Pets', icon: '🐾' },
+    { id: 'varanda', label: 'Varanda / Sacada', icon: '🌅' },
+    { id: 'mobiliado', label: 'Mobiliado', icon: '🛋️' },
+    { id: 'academia', label: 'Academia', icon: '🏋️' },
+    { id: 'festa', label: 'Salão de Festas', icon: '🎉' },
+    { id: 'playground', label: 'Playground', icon: '🛝' },
+    { id: 'quadra', label: 'Quadra Esportiva', icon: '⚽' },
+    { id: 'quintal', label: 'Quintal', icon: '🌳' },
+    { id: 'gourmet', label: 'Espaço Gourmet', icon: '🍳' }
+  ];
 
   res.json({
     success: true,
     data: {
+      cities,
       neighborhoods,
       propertyTypes,
       transactionTypes: ['Venda', 'Locação'],
-      usageTypes: ['Residencial', 'Comercial']
+      usageTypes: ['Residencial', 'Comercial'],
+      popularFeatures
     }
   });
 });
@@ -232,12 +303,18 @@ app.get('/api/search', (req, res) => {
   const transactionType = (req.query.type || '').trim();
   const usageType = (req.query.usageType || '').trim();
   const propertyType = (req.query.propertyType || '').trim();
+  const city = (req.query.city || '').trim();
   const neighborhood = (req.query.neighborhood || '').trim();
   const minPrice = parseFloat(req.query.minPrice) || 0;
   const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
   const minBedrooms = parseInt(req.query.minBedrooms) || 0;
+  const minSuites = parseInt(req.query.minSuites) || 0;
+  const minBathrooms = parseInt(req.query.minBathrooms) || 0;
   const minGarage = parseInt(req.query.minGarage) || 0;
   const minArea = parseFloat(req.query.minArea) || 0;
+  const maxArea = parseFloat(req.query.maxArea) || Infinity;
+  const hasTour = req.query.hasTour === 'true' || req.query.hasTour === '1';
+  const featuresQuery = (req.query.features || '').trim();
   const sortBy = req.query.sortBy || 'relevance';
   const limit = Math.min(parseInt(req.query.limit) || 40, 100);
   const offset = parseInt(req.query.offset) || 0;
@@ -246,7 +323,7 @@ app.get('/api/search', (req, res) => {
   const cleanQueryStr = rawQuery.replace(/#/g, '').trim();
 
   // Se o termo de busca for exatamente um código conhecido e nenhum outro filtro complexo foi aplicado, retorna direto
-  if (cleanQueryStr && !transactionType && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minGarage === 0) {
+  if (cleanQueryStr && !transactionType && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!city || city === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minSuites === 0 && minBathrooms === 0 && minGarage === 0 && minArea === 0 && !hasTour && !featuresQuery) {
     const cleanId = cleanQueryStr.toLowerCase();
     const exact = listingsMap.get(cleanId);
     if (exact) {
@@ -255,8 +332,10 @@ app.get('/api/search', (req, res) => {
   }
 
   const queryNorm = normalizeString(cleanQueryStr);
+  const cityNorm = normalizeString(city);
   const neighborhoodNorm = normalizeString(neighborhood);
   const propertyTypeNorm = normalizeString(propertyType);
+  const requiredFeatures = featuresQuery ? featuresQuery.split(',').map(f => f.trim()).filter(Boolean) : [];
 
   let filtered = listingsList.filter(item => {
     // Filtro por termo livre (ID, título, bairro, cidade, endereço ou descrição)
@@ -295,6 +374,14 @@ app.get('/api/search', (req, res) => {
       const usageNorm = normalizeString(usageType);
       const itemUsageNorm = normalizeString(item.usageType);
       if (!itemUsageNorm.includes(usageNorm)) {
+        return false;
+      }
+    }
+
+    // Filtro por Cidade
+    if (cityNorm && city !== 'all') {
+      const itemCityNorm = normalizeString(item.location.city);
+      if (!itemCityNorm.includes(cityNorm)) {
         return false;
       }
     }
@@ -353,11 +440,31 @@ app.get('/api/search', (req, res) => {
     // Filtro por Quartos
     if (minBedrooms > 0 && item.bedrooms < minBedrooms) return false;
 
+    // Filtro por Suítes
+    if (minSuites > 0 && item.suites < minSuites) return false;
+
+    // Filtro por Banheiros
+    if (minBathrooms > 0 && item.bathrooms < minBathrooms) return false;
+
     // Filtro por Vagas
     if (minGarage > 0 && item.garage < minGarage) return false;
 
     // Filtro por Área Útil
     if (minArea > 0 && item.livingArea < minArea) return false;
+    if (maxArea < Infinity && item.livingArea > maxArea) return false;
+
+    // Filtro por Tour Virtual
+    if (hasTour && !item.virtualTourLink) return false;
+
+    // Filtro por Comodidades (Features)
+    if (requiredFeatures.length > 0) {
+      const itemFeaturesText = normalizeString((item.features || []).join(' '));
+      const matchesAllFeatures = requiredFeatures.every(f => {
+        const fNorm = normalizeString(f);
+        return itemFeaturesText.includes(fNorm);
+      });
+      if (!matchesAllFeatures) return false;
+    }
 
     return true;
   });
@@ -377,8 +484,12 @@ app.get('/api/search', (req, res) => {
     });
   } else if (sortBy === 'area_desc') {
     filtered.sort((a, b) => (b.livingArea || 0) - (a.livingArea || 0));
+  } else if (sortBy === 'area_asc') {
+    filtered.sort((a, b) => (a.livingArea || 0) - (b.livingArea || 0));
   } else if (sortBy === 'beds_desc') {
     filtered.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0));
+  } else if (sortBy === 'suites_desc') {
+    filtered.sort((a, b) => (b.suites || 0) - (a.suites || 0));
   }
 
   const paginated = filtered.slice(offset, offset + limit);

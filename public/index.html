@@ -130,8 +130,17 @@
                   <option value="Penthouse">Cobertura</option>
                   <option value="Kitnet">Kitnet / Studio</option>
                   <option value="Land Lot">Terreno</option>
-                  <option value="Commercial">Comercial</option>
+                  <option value="Office">Sala / Conjunto Comercial</option>
+                  <option value="Business">Ponto / Prédio Comercial</option>
                   <option value="Industrial">Galpão / Industrial</option>
+                </select>
+              </div>
+
+              <!-- Cidade -->
+              <div class="filter-item">
+                <label class="filter-label">Cidade</label>
+                <select id="filterCity" class="filter-select">
+                  <option value="all">Todas as cidades</option>
                 </select>
               </div>
 
@@ -150,11 +159,28 @@
                   <option value="all">Qualquer valor</option>
                   <option value="2000">Até R$ 2.000/mês (Locação)</option>
                   <option value="3500">Até R$ 3.500/mês (Locação)</option>
+                  <option value="5000">Até R$ 5.000/mês (Locação)</option>
                   <option value="300000">Até R$ 300.000</option>
                   <option value="500000">Até R$ 500.000</option>
                   <option value="800000">Até R$ 800.000</option>
                   <option value="1200000">Até R$ 1,2 Milhão</option>
                   <option value="2000000">Até R$ 2 Milhões</option>
+                  <option value="3500000">Até R$ 3,5 Milhões</option>
+                </select>
+              </div>
+
+              <!-- Área Útil Mínima -->
+              <div class="filter-item">
+                <label class="filter-label">Área Mínima</label>
+                <select id="filterMinArea" class="filter-select">
+                  <option value="0">Qualquer metragem</option>
+                  <option value="40">A partir de 40 m²</option>
+                  <option value="60">A partir de 60 m²</option>
+                  <option value="80">A partir de 80 m²</option>
+                  <option value="100">A partir de 100 m²</option>
+                  <option value="150">A partir de 150 m²</option>
+                  <option value="200">A partir de 200 m²</option>
+                  <option value="300">A partir de 300 m²</option>
                 </select>
               </div>
 
@@ -167,6 +193,28 @@
                   <option value="2">2+ quartos</option>
                   <option value="3">3+ quartos</option>
                   <option value="4">4+ quartos</option>
+                </select>
+              </div>
+
+              <!-- Suítes Mínimas -->
+              <div class="filter-item">
+                <label class="filter-label">Suítes Mínimas</label>
+                <select id="filterSuites" class="filter-select">
+                  <option value="0">Qualquer quantidade</option>
+                  <option value="1">1+ suíte</option>
+                  <option value="2">2+ suítes</option>
+                  <option value="3">3+ suítes</option>
+                </select>
+              </div>
+
+              <!-- Banheiros Mínimos -->
+              <div class="filter-item">
+                <label class="filter-label">Banheiros Mínimos</label>
+                <select id="filterBathrooms" class="filter-select">
+                  <option value="0">Qualquer quantidade</option>
+                  <option value="1">1+ banheiro</option>
+                  <option value="2">2+ banheiros</option>
+                  <option value="3">3+ banheiros</option>
                 </select>
               </div>
 
@@ -190,16 +238,43 @@
                   <option value="price_asc">Menor Preço</option>
                   <option value="price_desc">Maior Preço</option>
                   <option value="area_desc">Maior Área (m²)</option>
+                  <option value="area_asc">Menor Área (m²)</option>
                   <option value="beds_desc">Mais Quartos</option>
+                  <option value="suites_desc">Mais Suítes</option>
                 </select>
               </div>
 
-              <!-- Ações de Filtro -->
-              <div class="filter-actions-item">
-                <button type="button" id="applyFiltersBtn" class="btn-apply-filters">Aplicar Filtros</button>
-                <button type="button" id="resetFiltersBtn" class="btn-reset-filters">Limpar</button>
-              </div>
+            </div>
 
+            <!-- Seção de Filtros Especiais & Comodidades -->
+            <div class="filters-features-section">
+              <div class="features-header">
+                <span class="filter-label">Comodidades & Diferenciais</span>
+                <label class="tour-toggle-label">
+                  <input type="checkbox" id="filterHasTour" class="tour-toggle-checkbox">
+                  <span class="tour-toggle-btn">🎥 Apenas com Tour / Vídeo</span>
+                </label>
+              </div>
+              <div class="features-chips-list" id="featuresChipsList">
+                <button type="button" class="feature-chip" data-feature="Piscina">🏊 Piscina</button>
+                <button type="button" class="feature-chip" data-feature="Churrasqueira">🍖 Churrasqueira</button>
+                <button type="button" class="feature-chip" data-feature="Elevador">🛗 Elevador</button>
+                <button type="button" class="feature-chip" data-feature="Aceita Pets">🐾 Aceita Pets</button>
+                <button type="button" class="feature-chip" data-feature="Varanda">🌅 Varanda / Sacada</button>
+                <button type="button" class="feature-chip" data-feature="Mobiliado">🛋️ Mobiliado</button>
+                <button type="button" class="feature-chip" data-feature="Academia">🏋️ Academia</button>
+                <button type="button" class="feature-chip" data-feature="Salão de Festas">🎉 Salão de Festas</button>
+                <button type="button" class="feature-chip" data-feature="Playground">🛝 Playground</button>
+                <button type="button" class="feature-chip" data-feature="Quadra">⚽ Quadra</button>
+                <button type="button" class="feature-chip" data-feature="Quintal">🌳 Quintal</button>
+                <button type="button" class="feature-chip" data-feature="Gourmet">🍳 Espaço Gourmet</button>
+              </div>
+            </div>
+
+            <!-- Barra de Ações de Filtro -->
+            <div class="filters-footer-actions">
+              <button type="button" id="applyFiltersBtn" class="btn-apply-filters">Aplicar Filtros</button>
+              <button type="button" id="resetFiltersBtn" class="btn-reset-filters">Limpar Todos os Filtros</button>
             </div>
           </div>
 
