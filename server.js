@@ -190,13 +190,23 @@ async function syncFeed() {
       }
     }
 
+    let countRent = 0;
+    let countSale = 0;
+    for (const item of newList) {
+      const t = (item.transactionType || '').toLowerCase();
+      if (t.includes('locação') || t.includes('locacao') || t.includes('rent')) countRent++;
+      if (t.includes('venda') || t.includes('sale')) countSale++;
+    }
+
     listingsMap = newMap;
     listingsList = newList;
     metadata.lastSync = new Date().toISOString();
     metadata.total = listingsList.length;
+    metadata.totalRent = countRent;
+    metadata.totalSale = countSale;
 
-    console.log(`✅ Sincronização concluída! ${metadata.total} imóveis indexados.`);
-    return { success: true, count: metadata.total, lastSync: metadata.lastSync };
+    console.log(`✅ Sincronização concluída! ${metadata.total} imóveis indexados (${countRent} locação, ${countSale} venda).`);
+    return { success: true, count: metadata.total, totalRent: countRent, totalSale: countSale, lastSync: metadata.lastSync };
   } catch (err) {
     console.error('❌ Erro na sincronização:', err.message);
     throw err;
@@ -301,10 +311,19 @@ app.get('/api/filter-options', (req, res) => {
 app.get('/api/search', (req, res) => {
   const rawQuery = (req.query.q || '').trim();
   const transactionType = (req.query.type || '').trim();
+  const statusParam = (req.query.status || req.query.situacao || '').trim();
   const usageType = (req.query.usageType || '').trim();
   const propertyType = (req.query.propertyType || '').trim();
   const city = (req.query.city || '').trim();
-  const neighborhood = (req.query.neighborhood || '').trim();
+  
+  const rawNeighborhoods = req.query.neighborhoods || req.query.neighborhood || '';
+  let selectedNeighborhoods = [];
+  if (Array.isArray(rawNeighborhoods)) {
+    selectedNeighborhoods = rawNeighborhoods.map(n => normalizeString(n)).filter(n => n && n !== 'all');
+  } else if (typeof rawNeighborhoods === 'string' && rawNeighborhoods.trim()) {
+    selectedNeighborhoods = rawNeighborhoods.split(',').map(n => normalizeString(n)).filter(n => n && n !== 'all');
+  }
+
   const minPrice = parseFloat(req.query.minPrice) || 0;
   const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
   const minBedrooms = parseInt(req.query.minBedrooms) || 0;
@@ -323,7 +342,7 @@ app.get('/api/search', (req, res) => {
   const cleanQueryStr = rawQuery.replace(/#/g, '').trim();
 
   // Se o termo de busca for exatamente um código conhecido e nenhum outro filtro complexo foi aplicado, retorna direto
-  if (cleanQueryStr && (!transactionType || transactionType === 'all') && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!city || city === 'all') && (!neighborhood || neighborhood === 'all') && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minSuites === 0 && minBathrooms === 0 && minGarage === 0 && minArea === 0 && !hasTour && !featuresQuery) {
+  if (cleanQueryStr && (!transactionType || transactionType === 'all') && (!statusParam || statusParam === 'all' || statusParam === 'disponivel') && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!city || city === 'all') && selectedNeighborhoods.length === 0 && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minSuites === 0 && minBathrooms === 0 && minGarage === 0 && minArea === 0 && !hasTour && !featuresQuery) {
     const cleanId = cleanQueryStr.toLowerCase();
     const exact = listingsMap.get(cleanId);
     if (exact) {
@@ -333,7 +352,6 @@ app.get('/api/search', (req, res) => {
 
   const queryNorm = normalizeString(cleanQueryStr);
   const cityNorm = normalizeString(city);
-  const neighborhoodNorm = normalizeString(neighborhood);
   const propertyTypeNorm = normalizeString(propertyType);
   const requiredFeatures = featuresQuery ? featuresQuery.split(',').map(f => f.trim()).filter(Boolean) : [];
 
@@ -410,11 +428,24 @@ app.get('/api/search', (req, res) => {
       if (!matchesType) return false;
     }
 
-    // Filtro por Bairro
-    if (neighborhoodNorm && neighborhood !== 'all') {
+    // Filtro por Bairro (suporte a múltiplos bairros)
+    if (selectedNeighborhoods.length > 0) {
       const itemNeighNorm = normalizeString(item.location.neighborhood);
-      if (!itemNeighNorm.includes(neighborhoodNorm)) {
+      const matchesAnyNeigh = selectedNeighborhoods.some(nNorm => itemNeighNorm.includes(nNorm));
+      if (!matchesAnyNeigh) {
         return false;
+      }
+    }
+
+    // Filtro por Situação / Status
+    if (statusParam && statusParam !== 'all') {
+      const statusNorm = normalizeString(statusParam);
+      if (statusNorm.includes('locacao') || statusNorm.includes('rent')) {
+        const itemTransNorm = normalizeString(item.transactionType);
+        if (!itemTransNorm.includes('locacao') && !itemTransNorm.includes('rent')) return false;
+      } else if (statusNorm.includes('venda') || statusNorm.includes('sale')) {
+        const itemTransNorm = normalizeString(item.transactionType);
+        if (!itemTransNorm.includes('venda') && !itemTransNorm.includes('sale')) return false;
       }
     }
 

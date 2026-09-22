@@ -14,16 +14,35 @@
   const clearBtn = document.getElementById('clearBtn');
   const chipsList = document.getElementById('chipsList');
 
+  // Abas Rápidas de Finalidade / Situação
+  const quickStatusTabs = document.getElementById('quickStatusTabs');
+  const tabBadgeAll = document.getElementById('tabBadgeAll');
+  const tabBadgeRent = document.getElementById('tabBadgeRent');
+  const tabBadgeSale = document.getElementById('tabBadgeSale');
+
   // Filtros
   const toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
   const filtersPanel = document.getElementById('filtersPanel');
   const filterCountBadge = document.getElementById('filterCountBadge');
   const filterType = document.getElementById('filterType');
+  const filterStatus = document.getElementById('filterStatus');
   const filterUsageType = document.getElementById('filterUsageType');
   const filterPropertyType = document.getElementById('filterPropertyType');
   const filterCity = document.getElementById('filterCity');
-  const filterNeighborhood = document.getElementById('filterNeighborhood');
+  
+  // Multi-Select Bairros
+  const neighborhoodMultiSelect = document.getElementById('neighborhoodMultiSelect');
+  const neighborhoodInput = document.getElementById('neighborhoodInput');
+  const neighborhoodDropdown = document.getElementById('neighborhoodDropdown');
+  const neighborhoodOptionsList = document.getElementById('neighborhoodOptionsList');
+  const neighborhoodTags = document.getElementById('neighborhoodTags');
+  const clearNeighborhoodsBtn = document.getElementById('clearNeighborhoodsBtn');
+  const toggleNeighborhoodDropdown = document.getElementById('toggleNeighborhoodDropdown');
+
+  // Faixa de Preços
+  const filterMinPrice = document.getElementById('filterMinPrice');
   const filterMaxPrice = document.getElementById('filterMaxPrice');
+
   const filterMinArea = document.getElementById('filterMinArea');
   const filterBeds = document.getElementById('filterBeds');
   const filterSuites = document.getElementById('filterSuites');
@@ -35,6 +54,8 @@
   const applyFiltersBtn = document.getElementById('applyFiltersBtn');
   const resetFiltersBtn = document.getElementById('resetFiltersBtn');
   const selectedFeatures = new Set();
+  const selectedNeighborhoods = new Set();
+  let allNeighborhoods = [];
 
   // Estados de visualização
   const initialState = document.getElementById('initialState');
@@ -173,6 +194,214 @@
     propertyResult.style.display = state === 'single' ? 'block' : 'none';
   }
 
+  // Helper de normalização de texto
+  function normalizeStr(str) {
+    if (!str) return '';
+    return String(str)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  // Helper para conversão de valores monetários
+  function parsePriceInput(val) {
+    if (!val) return 0;
+    const clean = String(val).replace(/\D/g, '');
+    return clean ? parseFloat(clean) : 0;
+  }
+
+  function setupPriceInput(input) {
+    if (!input) return;
+    input.addEventListener('input', () => {
+      const raw = input.value.replace(/\D/g, '');
+      if (raw) {
+        const num = parseInt(raw, 10);
+        input.value = num.toLocaleString('pt-BR');
+      } else {
+        input.value = '';
+      }
+    });
+    input.addEventListener('change', () => {
+      countActiveFilters();
+      searchProperties();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        countActiveFilters();
+        searchProperties();
+      }
+    });
+  }
+
+  setupPriceInput(filterMinPrice);
+  setupPriceInput(filterMaxPrice);
+
+  // --- Multi-Select de Bairros ---
+  function renderNeighborhoodTags() {
+    if (!neighborhoodTags) return;
+    neighborhoodTags.innerHTML = '';
+    if (selectedNeighborhoods.size === 0) {
+      if (clearNeighborhoodsBtn) clearNeighborhoodsBtn.style.display = 'none';
+      return;
+    }
+    if (clearNeighborhoodsBtn) clearNeighborhoodsBtn.style.display = 'inline-block';
+    selectedNeighborhoods.forEach(bairro => {
+      const tag = document.createElement('span');
+      tag.className = 'neighborhood-tag';
+      tag.innerHTML = `<span>${bairro}</span><button type="button" class="neighborhood-tag-remove" data-bairro="${bairro}" title="Remover bairro">×</button>`;
+      neighborhoodTags.appendChild(tag);
+    });
+  }
+
+  function renderNeighborhoodOptions(query = '') {
+    if (!neighborhoodOptionsList) return;
+    neighborhoodOptionsList.innerHTML = '';
+    const qNorm = normalizeStr(query);
+    const filtered = allNeighborhoods.filter(bairro => {
+      if (!qNorm) return true;
+      return normalizeStr(bairro).includes(qNorm);
+    });
+
+    if (filtered.length === 0) {
+      neighborhoodOptionsList.innerHTML = '<div class="multi-select-empty">Nenhum bairro encontrado</div>';
+      return;
+    }
+
+    filtered.forEach(bairro => {
+      const isSelected = selectedNeighborhoods.has(bairro);
+      const opt = document.createElement('div');
+      opt.className = `multi-select-option ${isSelected ? 'selected' : ''}`;
+      opt.innerHTML = `<span>${bairro}</span>${isSelected ? '<span style="color:var(--accent-primary);font-weight:700;">✓</span>' : ''}`;
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (selectedNeighborhoods.has(bairro)) {
+          selectedNeighborhoods.delete(bairro);
+        } else {
+          selectedNeighborhoods.add(bairro);
+        }
+        renderNeighborhoodTags();
+        renderNeighborhoodOptions(neighborhoodInput ? neighborhoodInput.value.trim() : '');
+        countActiveFilters();
+        searchProperties();
+      });
+      neighborhoodOptionsList.appendChild(opt);
+    });
+  }
+
+  function openNeighborhoodDropdown() {
+    if (!neighborhoodDropdown) return;
+    renderNeighborhoodOptions(neighborhoodInput ? neighborhoodInput.value.trim() : '');
+    neighborhoodDropdown.style.display = 'block';
+    if (toggleNeighborhoodDropdown) toggleNeighborhoodDropdown.classList.add('open');
+  }
+
+  function closeNeighborhoodDropdown() {
+    if (!neighborhoodDropdown) return;
+    neighborhoodDropdown.style.display = 'none';
+    if (toggleNeighborhoodDropdown) toggleNeighborhoodDropdown.classList.remove('open');
+  }
+
+  if (neighborhoodInput) {
+    neighborhoodInput.addEventListener('focus', openNeighborhoodDropdown);
+    neighborhoodInput.addEventListener('input', () => {
+      openNeighborhoodDropdown();
+    });
+    neighborhoodInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const firstOpt = neighborhoodOptionsList ? neighborhoodOptionsList.querySelector('.multi-select-option') : null;
+        if (firstOpt) {
+          firstOpt.click();
+          neighborhoodInput.value = '';
+        }
+      } else if (e.key === 'Escape') {
+        closeNeighborhoodDropdown();
+      }
+    });
+  }
+
+  if (toggleNeighborhoodDropdown) {
+    toggleNeighborhoodDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (neighborhoodDropdown && neighborhoodDropdown.style.display === 'block') {
+        closeNeighborhoodDropdown();
+      } else {
+        if (neighborhoodInput) neighborhoodInput.focus();
+        openNeighborhoodDropdown();
+      }
+    });
+  }
+
+  if (neighborhoodTags) {
+    neighborhoodTags.addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('.neighborhood-tag-remove');
+      if (!removeBtn) return;
+      const bairro = removeBtn.dataset.bairro;
+      if (bairro) {
+        selectedNeighborhoods.delete(bairro);
+        renderNeighborhoodTags();
+        renderNeighborhoodOptions(neighborhoodInput ? neighborhoodInput.value.trim() : '');
+        countActiveFilters();
+        searchProperties();
+      }
+    });
+  }
+
+  if (clearNeighborhoodsBtn) {
+    clearNeighborhoodsBtn.addEventListener('click', () => {
+      selectedNeighborhoods.clear();
+      renderNeighborhoodTags();
+      renderNeighborhoodOptions();
+      if (neighborhoodInput) neighborhoodInput.value = '';
+      countActiveFilters();
+      searchProperties();
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (neighborhoodMultiSelect && !neighborhoodMultiSelect.contains(e.target) && clearNeighborhoodsBtn && !clearNeighborhoodsBtn.contains(e.target)) {
+      closeNeighborhoodDropdown();
+    }
+  });
+
+  // --- Abas Rápidas de Finalidade / Situação ---
+  if (quickStatusTabs) {
+    quickStatusTabs.addEventListener('click', (e) => {
+      const tab = e.target.closest('.status-tab');
+      if (!tab) return;
+      const type = tab.dataset.type;
+
+      quickStatusTabs.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      if (filterType) filterType.value = type;
+      if (filterStatus) {
+        if (type === 'Locação') {
+          filterStatus.value = 'Locação';
+        } else if (type === 'Venda') {
+          filterStatus.value = 'Venda';
+        } else {
+          filterStatus.value = 'disponivel';
+        }
+      }
+
+      countActiveFilters();
+      searchProperties();
+    });
+  }
+
+  if (filterType) {
+    filterType.addEventListener('change', () => {
+      if (quickStatusTabs) {
+        quickStatusTabs.querySelectorAll('.status-tab').forEach(t => {
+          t.classList.toggle('active', t.dataset.type === filterType.value);
+        });
+      }
+    });
+  }
+
   // --- Inicialização e Carregamento de Opções de Filtro ---
   async function loadFilterOptions() {
     try {
@@ -187,16 +416,23 @@
 
       if (statsRes.ok) {
         const stats = await statsRes.json();
-        const total = stats.data?.total || 1174;
-        feedStatusText.textContent = `${total.toLocaleString('pt-BR')} imóveis disponíveis`;
+        const total = stats.data?.total || 1202;
+        const totalRent = stats.data?.totalRent || 484;
+        const totalSale = stats.data?.totalSale || 718;
+
+        feedStatusText.textContent = `${total.toLocaleString('pt-BR')} imóveis disponíveis (${totalRent} locação • ${totalSale} venda)`;
+        if (tabBadgeAll) tabBadgeAll.textContent = total.toLocaleString('pt-BR');
+        if (tabBadgeRent) tabBadgeRent.textContent = totalRent.toLocaleString('pt-BR');
+        if (tabBadgeSale) tabBadgeSale.textContent = totalSale.toLocaleString('pt-BR');
       } else {
-        feedStatusText.textContent = '1.174 imóveis disponíveis';
+        feedStatusText.textContent = '1.202 imóveis disponíveis';
       }
 
       if (optionsRes.ok) {
         const json = await optionsRes.json();
         const cities = json.data?.cities || [];
         const neighborhoods = json.data?.neighborhoods || [];
+        allNeighborhoods = neighborhoods;
 
         if (filterCity) {
           filterCity.innerHTML = '<option value="all">Todas as cidades</option>';
@@ -208,17 +444,11 @@
           });
         }
 
-        filterNeighborhood.innerHTML = '<option value="all">Todos os bairros</option>';
-        neighborhoods.forEach(n => {
-          const opt = document.createElement('option');
-          opt.value = n;
-          opt.textContent = n;
-          filterNeighborhood.appendChild(opt);
-        });
+        renderNeighborhoodOptions();
       }
     } catch (err) {
       console.warn('Backend API fallback ativo:', err.message);
-      feedStatusText.textContent = '1.174 imóveis disponíveis';
+      feedStatusText.textContent = '1.202 imóveis disponíveis';
     }
   }
 
@@ -226,11 +456,13 @@
   function countActiveFilters() {
     let count = 0;
     if (filterType && filterType.value !== 'all') count++;
+    if (filterStatus && filterStatus.value !== 'all' && filterStatus.value !== 'disponivel') count++;
     if (filterUsageType && filterUsageType.value !== 'all') count++;
     if (filterPropertyType && filterPropertyType.value !== 'all') count++;
     if (filterCity && filterCity.value !== 'all') count++;
-    if (filterNeighborhood && filterNeighborhood.value !== 'all') count++;
-    if (filterMaxPrice && filterMaxPrice.value !== 'all') count++;
+    count += selectedNeighborhoods.size;
+    if (filterMinPrice && parsePriceInput(filterMinPrice.value) > 0) count++;
+    if (filterMaxPrice && parsePriceInput(filterMaxPrice.value) > 0) count++;
     if (filterMinArea && filterMinArea.value !== '0') count++;
     if (filterBeds && filterBeds.value !== '0') count++;
     if (filterSuites && filterSuites.value !== '0') count++;
@@ -258,11 +490,18 @@
 
   resetFiltersBtn.addEventListener('click', () => {
     if (filterType) filterType.value = 'all';
+    if (filterStatus) filterStatus.value = 'disponivel';
     if (filterUsageType) filterUsageType.value = 'all';
     if (filterPropertyType) filterPropertyType.value = 'all';
     if (filterCity) filterCity.value = 'all';
-    if (filterNeighborhood) filterNeighborhood.value = 'all';
-    if (filterMaxPrice) filterMaxPrice.value = 'all';
+    
+    selectedNeighborhoods.clear();
+    renderNeighborhoodTags();
+    renderNeighborhoodOptions();
+    if (neighborhoodInput) neighborhoodInput.value = '';
+
+    if (filterMinPrice) filterMinPrice.value = '';
+    if (filterMaxPrice) filterMaxPrice.value = '';
     if (filterMinArea) filterMinArea.value = '0';
     if (filterBeds) filterBeds.value = '0';
     if (filterSuites) filterSuites.value = '0';
@@ -270,6 +509,12 @@
     if (filterGarage) filterGarage.value = '0';
     if (filterSortBy) filterSortBy.value = 'relevance';
     if (filterHasTour) filterHasTour.checked = false;
+
+    if (quickStatusTabs) {
+      quickStatusTabs.querySelectorAll('.status-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.type === 'all');
+      });
+    }
 
     selectedFeatures.clear();
     document.querySelectorAll('.feature-chip.active').forEach(c => c.classList.remove('active'));
@@ -310,9 +555,8 @@
   }
 
   [
-    filterType, filterUsageType, filterPropertyType, filterCity,
-    filterNeighborhood, filterMaxPrice, filterMinArea, filterBeds,
-    filterSuites, filterBathrooms, filterGarage, filterSortBy
+    filterType, filterStatus, filterUsageType, filterPropertyType, filterCity,
+    filterMinArea, filterBeds, filterSuites, filterBathrooms, filterGarage, filterSortBy
   ].filter(Boolean).forEach(el => {
     el.addEventListener('change', () => {
       countActiveFilters();
@@ -326,16 +570,26 @@
     activeFilterTags.innerHTML = '';
     const tags = [];
     if (filterType && filterType.value !== 'all') tags.push(filterType.value);
+    if (filterStatus && filterStatus.value !== 'all' && filterStatus.value !== 'disponivel') {
+      tags.push(`Situação: ${filterStatus.options[filterStatus.selectedIndex]?.text || filterStatus.value}`);
+    }
     if (filterUsageType && filterUsageType.value !== 'all') tags.push(`Uso: ${filterUsageType.value}`);
     if (filterPropertyType && filterPropertyType.value !== 'all') {
       const optText = filterPropertyType.options[filterPropertyType.selectedIndex]?.text || filterPropertyType.value;
       tags.push(optText);
     }
     if (filterCity && filterCity.value !== 'all') tags.push(`📍 ${filterCity.value}`);
-    if (filterNeighborhood && filterNeighborhood.value !== 'all') tags.push(`Bairro: ${filterNeighborhood.value}`);
-    if (filterMaxPrice && filterMaxPrice.value !== 'all') {
-      const optText = filterMaxPrice.options[filterMaxPrice.selectedIndex]?.text || filterMaxPrice.value;
-      tags.push(optText);
+    if (selectedNeighborhoods.size > 0) {
+      selectedNeighborhoods.forEach(n => tags.push(`📍 ${n}`));
+    }
+    const minVal = parsePriceInput(filterMinPrice ? filterMinPrice.value : '');
+    const maxVal = parsePriceInput(filterMaxPrice ? filterMaxPrice.value : '');
+    if (minVal > 0 && maxVal > 0) {
+      tags.push(`R$ ${minVal.toLocaleString('pt-BR')} até R$ ${maxVal.toLocaleString('pt-BR')}`);
+    } else if (minVal > 0) {
+      tags.push(`A partir de R$ ${minVal.toLocaleString('pt-BR')}`);
+    } else if (maxVal > 0) {
+      tags.push(`Até R$ ${maxVal.toLocaleString('pt-BR')}`);
     }
     if (filterMinArea && filterMinArea.value !== '0') tags.push(`📐 ${filterMinArea.value}+ m²`);
     if (filterBeds && filterBeds.value !== '0') tags.push(`🛏️ ${filterBeds.value}+ qts`);
@@ -376,11 +630,22 @@
     const params = new URLSearchParams();
     if (rawQuery) params.append('q', rawQuery);
     if (filterType && filterType.value !== 'all') params.append('type', filterType.value);
+    if (filterStatus && filterStatus.value !== 'all' && filterStatus.value !== 'disponivel') {
+      params.append('status', filterStatus.value);
+    }
     if (filterUsageType && filterUsageType.value !== 'all') params.append('usageType', filterUsageType.value);
     if (filterPropertyType && filterPropertyType.value !== 'all') params.append('propertyType', filterPropertyType.value);
     if (filterCity && filterCity.value !== 'all') params.append('city', filterCity.value);
-    if (filterNeighborhood && filterNeighborhood.value !== 'all') params.append('neighborhood', filterNeighborhood.value);
-    if (filterMaxPrice && filterMaxPrice.value !== 'all') params.append('maxPrice', filterMaxPrice.value);
+    
+    if (selectedNeighborhoods.size > 0) {
+      params.append('neighborhoods', Array.from(selectedNeighborhoods).join(','));
+    }
+
+    const minPriceVal = parsePriceInput(filterMinPrice ? filterMinPrice.value : '');
+    const maxPriceVal = parsePriceInput(filterMaxPrice ? filterMaxPrice.value : '');
+    if (minPriceVal > 0) params.append('minPrice', minPriceVal);
+    if (maxPriceVal > 0) params.append('maxPrice', maxPriceVal);
+
     if (filterMinArea && filterMinArea.value !== '0') params.append('minArea', filterMinArea.value);
     if (filterBeds && filterBeds.value !== '0') params.append('minBedrooms', filterBeds.value);
     if (filterSuites && filterSuites.value !== '0') params.append('minSuites', filterSuites.value);
@@ -391,7 +656,6 @@
     if (filterSortBy && filterSortBy.value !== 'relevance') params.append('sortBy', filterSortBy.value);
     params.append('offset', currentOffset);
     params.append('limit', PAGE_SIZE);
-
     clearBtn.style.display = rawQuery ? 'flex' : 'none';
 
     try {

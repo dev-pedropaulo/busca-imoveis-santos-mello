@@ -54,6 +54,22 @@
       <section class="search-section">
         <div class="search-card">
           
+             <!-- Abas Rápidas de Finalidade / Situação -->
+          <div class="quick-status-tabs" id="quickStatusTabs">
+            <button type="button" class="status-tab active" data-type="all" id="tabAll">
+              <span class="tab-label">Todos os Imóveis</span>
+              <span class="tab-badge" id="tabBadgeAll">1.202</span>
+            </button>
+            <button type="button" class="status-tab" data-type="Locação" id="tabRent">
+              <span class="tab-label">Locação (Disponíveis)</span>
+              <span class="tab-badge rent" id="tabBadgeRent">484</span>
+            </button>
+            <button type="button" class="status-tab" data-type="Venda" id="tabSale">
+              <span class="tab-label">Venda (Disponíveis)</span>
+              <span class="tab-badge sale" id="tabBadgeSale">718</span>
+            </button>
+          </div>
+
           <!-- Search Form -->
           <form id="searchForm" class="search-form">
             <div class="input-wrapper">
@@ -104,8 +120,19 @@
                 <label class="filter-label">Finalidade</label>
                 <select id="filterType" class="filter-select">
                   <option value="all">Todas as finalidades</option>
-                  <option value="Venda">Venda</option>
                   <option value="Locação">Locação</option>
+                  <option value="Venda">Venda</option>
+                </select>
+              </div>
+
+              <!-- Situação do Imóvel -->
+              <div class="filter-item">
+                <label class="filter-label">Situação</label>
+                <select id="filterStatus" class="filter-select">
+                  <option value="disponivel" selected>Vago / Disponível</option>
+                  <option value="Locação">Disponível p/ Locação</option>
+                  <option value="Venda">Disponível p/ Venda</option>
+                  <option value="all">Todas as situações</option>
                 </select>
               </div>
 
@@ -144,29 +171,66 @@
                 </select>
               </div>
 
-              <!-- Bairro -->
-              <div class="filter-item">
-                <label class="filter-label">Bairro</label>
-                <select id="filterNeighborhood" class="filter-select">
-                  <option value="all">Todos os bairros</option>
-                </select>
+              <!-- Bairros com Múltipla Seleção e Pesquisa Autocomplete -->
+              <div class="filter-item filter-item-wide" id="neighborhoodFilterWrapper">
+                <div class="filter-label-row">
+                  <label class="filter-label" for="neighborhoodInput">Bairros (Selecione múltiplos)</label>
+                  <button type="button" id="clearNeighborhoodsBtn" class="clear-sub-btn" style="display: none;">Limpar bairros</button>
+                </div>
+                <div class="multi-select-box" id="neighborhoodMultiSelect">
+                  <div class="multi-select-tags" id="neighborhoodTags"></div>
+                  <div class="multi-select-input-wrap">
+                    <input 
+                      type="text" 
+                      id="neighborhoodInput" 
+                      class="multi-select-input" 
+                      placeholder="Buscar bairro e adicionar..." 
+                      autocomplete="off"
+                    />
+                    <span class="multi-select-arrow" id="toggleNeighborhoodDropdown">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m6 9 6 6 6-6"/>
+                      </svg>
+                    </span>
+                  </div>
+                  <div class="multi-select-dropdown" id="neighborhoodDropdown" style="display: none;">
+                    <div class="multi-select-list" id="neighborhoodOptionsList">
+                      <!-- Bairros inseridos dinamicamente via JS -->
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <!-- Faixa de Preço Máximo -->
+              <!-- Faixa de Valores: Valor Mínimo -->
               <div class="filter-item">
-                <label class="filter-label">Preço Máximo</label>
-                <select id="filterMaxPrice" class="filter-select">
-                  <option value="all">Qualquer valor</option>
-                  <option value="2000">Até R$ 2.000/mês (Locação)</option>
-                  <option value="3500">Até R$ 3.500/mês (Locação)</option>
-                  <option value="5000">Até R$ 5.000/mês (Locação)</option>
-                  <option value="300000">Até R$ 300.000</option>
-                  <option value="500000">Até R$ 500.000</option>
-                  <option value="800000">Até R$ 800.000</option>
-                  <option value="1200000">Até R$ 1,2 Milhão</option>
-                  <option value="2000000">Até R$ 2 Milhões</option>
-                  <option value="3500000">Até R$ 3,5 Milhões</option>
-                </select>
+                <label class="filter-label" for="filterMinPrice">Valor Mínimo</label>
+                <div class="price-input-container">
+                  <span class="currency-symbol">R$</span>
+                  <input 
+                    type="text" 
+                    id="filterMinPrice" 
+                    class="filter-input-price" 
+                    placeholder="Mínimo (ex: 1.500)" 
+                    inputmode="numeric"
+                    autocomplete="off"
+                  />
+                </div>
+              </div>
+
+              <!-- Faixa de Valores: Valor Máximo -->
+              <div class="filter-item">
+                <label class="filter-label" for="filterMaxPrice">Valor Máximo</label>
+                <div class="price-input-container">
+                  <span class="currency-symbol">R$</span>
+                  <input 
+                    type="text" 
+                    id="filterMaxPrice" 
+                    class="filter-input-price" 
+                    placeholder="Máximo (ex: 5.000)" 
+                    inputmode="numeric"
+                    autocomplete="off"
+                  />
+                </div>
               </div>
 
               <!-- Área Útil Mínima -->
