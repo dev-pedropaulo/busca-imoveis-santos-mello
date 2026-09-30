@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { XMLParser } = require('fast-xml-parser');
+const { buildPropertyWebsiteUrl } = require('./lib/property-website-url');
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -118,10 +119,11 @@ function normalizeListing(raw) {
   const livingArea = parseFloat(cleanText(details.LivingArea)) || 0;
   const constructedArea = parseFloat(cleanText(details.ConstructedArea)) || 0;
   const lotArea = parseFloat(cleanText(details.LotArea)) || 0;
+  const title = cleanText(raw.Title) || `Imóvel #${listingId}`;
 
   return {
     id: listingId,
-    title: cleanText(raw.Title) || `Imóvel #${listingId}`,
+    title,
     transactionType,
     propertyType: cleanText(details.PropertyType) || 'Imóvel',
     usageType,
@@ -151,7 +153,7 @@ function normalizeListing(raw) {
     },
     images,
     primaryImage: images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80',
-    websiteUrl: `https://www.santosemello.com.br/imovel/${listingId}`,
+    websiteUrl: buildPropertyWebsiteUrl(title, listingId),
     virtualTourLink: cleanText(raw.VirtualTourLink),
     status: cleanText(raw.Status?.PropertyStatus) || 'Disponível'
   };
