@@ -7,8 +7,8 @@ Permitir que um agente de atendimento imobiliário consulte, durante uma convers
 ## Escopo do MVP
 
 - Um webhook n8n público com método `GET`.
-- Entrada por query string: `codigo`, por exemplo `?codigo=SM-1001`.
-- Catálogo em memória com os códigos `SM-1001`, `SM-1002` e `SM-1003`.
+- Entrada por query string: `codigo`, por exemplo `?codigo=1001`.
+- Catálogo em memória com os códigos `1001`, `1002` e `1003`.
 - Resposta JSON com uma mensagem humanizada e os dados estruturados do imóvel.
 - Resposta JSON de erro para código ausente ou inexistente.
 
@@ -19,7 +19,7 @@ Fotos não serão entregues nesta etapa. O modelo terá o campo opcional `imagen
 Após ativar o fluxo no n8n, a URL de produção seguirá o padrão:
 
 ```text
-GET https://SEU-N8N/webhook/imovel?codigo=SM-1001
+GET https://SEU-N8N/webhook/imovel?codigo=1001
 ```
 
 ### Sucesso: HTTP 200
@@ -27,10 +27,10 @@ GET https://SEU-N8N/webhook/imovel?codigo=SM-1001
 ```json
 {
   "encontrado": true,
-  "codigo": "SM-1001",
+  "codigo": "1001",
   "mensagem": "Apartamento à venda no Gonzaga, Santos/SP. 2 dormitórios, 1 suíte, 78 m², 1 vaga. Valor: R$ 690.000. Próximo à praia, com varanda e lazer completo.",
   "imovel": {
-    "codigo": "SM-1001",
+    "codigo": "1001",
     "titulo": "Apartamento com varanda no Gonzaga",
     "tipo": "Apartamento",
     "finalidade": "Venda",
@@ -54,8 +54,8 @@ GET https://SEU-N8N/webhook/imovel?codigo=SM-1001
 ```json
 {
   "encontrado": false,
-  "codigo": "SM-9999",
-  "mensagem": "Não encontrei um imóvel disponível com o código SM-9999. Confirme o código e tente novamente."
+  "codigo": "9999",
+  "mensagem": "Não encontrei um imóvel disponível com o código 9999. Confirme o código e tente novamente."
 }
 ```
 
@@ -64,7 +64,7 @@ GET https://SEU-N8N/webhook/imovel?codigo=SM-1001
 ```json
 {
   "encontrado": false,
-  "mensagem": "Informe o código do imóvel no parâmetro codigo. Exemplo: ?codigo=SM-1001"
+  "mensagem": "Informe o código do imóvel no parâmetro codigo. Exemplo: ?codigo=1001"
 }
 ```
 
@@ -84,7 +84,7 @@ Quando o catálogo real estiver pronto, substituir somente o catálogo mockado p
 
 ## Testes de aceitação
 
-1. `?codigo=SM-1001`, `SM-1002` e `SM-1003` retornam HTTP 200, com `encontrado: true` e uma mensagem em português.
-2. `?codigo=sm-1001` também localiza o imóvel.
-3. `?codigo=SM-9999` retorna HTTP 404 e mensagem de orientação.
+1. `?codigo=1001`, `1002` e `1003` retornam HTTP 200, com `encontrado: true` e uma mensagem em português.
+2. `?codigo=1001` com espaços externos também localiza o imóvel.
+3. `?codigo=9999` retorna HTTP 404 e mensagem de orientação.
 4. A chamada sem `codigo` retorna HTTP 400 e exemplo de uso.
