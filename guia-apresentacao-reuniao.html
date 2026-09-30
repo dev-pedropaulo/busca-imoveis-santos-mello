@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>Roteiro de apresentação | Plataforma Taime Pro</title>
+  <style>
+    :root {
+      --ink: #102a43;
+      --muted: #60758a;
+      --paper: #f4f7fb;
+      --card: #ffffff;
+      --line: #dbe5ef;
+      --blue: #1d70b8;
+      --teal: #008a84;
+      --gold: #d58b18;
+      --soft-blue: #e8f2fc;
+      --soft-teal: #e4f7f4;
+      --soft-gold: #fff4de;
+      --shadow: 0 12px 34px rgba(17, 53, 81, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .shell { max-width: 1500px; margin: 0 auto; padding: 24px; }
+    .hero {
+      display: flex; align-items: end; justify-content: space-between; gap: 24px;
+      padding: 32px 34px; border-radius: 22px;
+      color: white; background: linear-gradient(130deg, #102a43, #176b9f 64%, #008a84);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { margin: 0 0 7px; letter-spacing: .11em; font-size: .74rem; font-weight: 800; text-transform: uppercase; color: #bde4fb; }
+    h1 { margin: 0; max-width: 790px; font-size: clamp(1.8rem, 4vw, 3rem); line-height: 1.08; }
+    .hero p { max-width: 680px; margin: 12px 0 0; color: #e3f0f8; }
+    .badge { flex: none; padding: 9px 13px; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; font-size: .85rem; font-weight: 750; }
+
+    .layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); align-items: start; gap: 24px; margin-top: 24px; }
+    .sidebar { position: sticky; top: 18px; }
+    .nav-card, .card, .note { border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); }
+    .nav-card { overflow: hidden; border-radius: 18px; }
+    .nav-title { padding: 16px 18px 9px; color: var(--muted); font-size: .76rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+    .nav { display: grid; padding: 4px 8px 12px; }
+    .nav a { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 10px; color: #35526b; font-size: .88rem; font-weight: 650; text-decoration: none; }
+    .nav a:hover, .nav a:focus { background: var(--soft-blue); color: var(--blue); outline: none; }
+    .nav b { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; color: #fff; background: var(--blue); font-size: .72rem; }
+    .quick { margin-top: 16px; padding: 18px; border-left: 5px solid var(--gold); border-radius: 14px; background: var(--soft-gold); }
+    .quick strong { display: block; font-size: .86rem; }
+    .quick p { margin: 6px 0 0; font-size: .84rem; color: #684a14; }
+
+    main { min-width: 0; }
+    .section { scroll-margin-top: 20px; margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; }
+    .number { display: grid; width: 31px; height: 31px; place-items: center; flex: none; border-radius: 9px; color: white; background: var(--blue); font-weight: 850; }
+    h2 { margin: 0; font-size: clamp(1.27rem, 2vw, 1.62rem); line-height: 1.2; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr); gap: 16px; }
+    .card { border-radius: 18px; padding: 22px; }
+    h3 { margin: 0 0 9px; font-size: 1rem; }
+    p { margin: 0 0 12px; }
+    p:last-child { margin-bottom: 0; }
+    .lead { color: #27445b; font-size: 1.03rem; }
+    .talk { padding: 16px 18px; border-radius: 12px; border-left: 4px solid var(--teal); background: var(--soft-teal); color: #075a58; font-size: 1.03rem; }
+    .talk::before { content: "FALA-CHAVE"; display: block; margin-bottom: 6px; font-size: .7rem; font-weight: 900; letter-spacing: .1em; }
+    .demo { border-color: #b8d8f0; background: var(--soft-blue); }
+    .demo h3 { color: #135c96; }
+    .alert { border-color: #f0cf8e; background: var(--soft-gold); }
+    .alert h3 { color: #855412; }
+    ul { margin: 10px 0 0; padding-left: 19px; }
+    li + li { margin-top: 7px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 13px 0 0; }
+    .chip { padding: 5px 9px; border-radius: 999px; color: #155a92; background: #dceefa; font-size: .78rem; font-weight: 780; }
+    .chip.teal { color: #056865; background: #d7f1ed; }
+    .chip.gold { color: #83530d; background: #ffedc7; }
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+    .flow div { position: relative; padding: 11px 9px; border: 1px solid var(--line); border-radius: 10px; background: #fbfdff; text-align: center; font-size: .82rem; font-weight: 720; }
+    .flow div:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; right: -11px; top: 50%; transform: translateY(-50%); color: var(--blue); font-size: 1.15rem; }
+    .footer { padding: 24px 0 6px; color: var(--muted); font-size: .83rem; text-align: center; }
+    .actions { display: flex; justify-content: space-between; gap: 10px; margin: 12px 0 26px; }
+    button { cursor: pointer; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: white; font: inherit; font-weight: 750; }
+    button:hover { border-color: var(--blue); color: var(--blue); }
+
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; } .nav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .shell { padding: 14px; } .hero { align-items: start; flex-direction: column; padding: 25px 22px; } .grid { grid-template-columns: 1fr; } .nav { grid-template-columns: 1fr; } .flow { grid-template-columns: 1fr 1fr; } .flow div:not(:last-child)::after { display: none; } .card { padding: 18px; } }
+    @media print { body { background: #fff; } .shell { max-width: none; padding: 0; } .hero, .card, .nav-card { box-shadow: none; } .sidebar { position: static; } .actions { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Guia rápido de reunião</p>
+        <h1>Plataforma Taime Pro<br>Roteiro de apresentação</h1>
+        <p>Use este guia como apoio durante a call: siga os blocos na ordem, demonstre os itens marcados e guarde a proposta para o encerramento.</p>
+      </div>
+      <span class="badge">7 etapas • modo apresentação</span>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <nav class="nav-card" aria-label="Etapas da apresentação">
+          <div class="nav-title">Roteiro da call</div>
+          <div class="nav">
+            <a href="#abertura"><b>1</b>Abertura</a>
+            <a href="#atendimento"><b>2</b>Atendimento com IA</a>
+            <a href="#administrativo"><b>3</b>Administrativo</a>
+            <a href="#crm"><b>4</b>CRM e automações</a>
+            <a href="#relatorios"><b>5</b>Relatórios</a>
+            <a href="#desenvolvimento"><b>6</b>Em desenvolvimento</a>
+            <a href="#proposta"><b>7</b>Proposta e próximos passos</a>
+          </div>
+        </nav>
+        <div class="quick">
+          <strong>Regra de ouro</strong>
+          <p>Demonstre o valor primeiro; deixe valores e condições comerciais para o final.</p>
+        </div>
+      </aside>
+
+      <main>
+        <section class="section" id="abertura">
+          <div class="section-header"><span class="number">1</span><h2>Abertura: como a operação começa</h2></div>
+          <div class="grid">
+            <article class="card">
+              <p class="lead">Explique que, quando um lead converte em um portal ou no site, o primeiro atendimento é iniciado pela IA no menu de <strong>Atendimentos</strong>.</p>
+              <div class="flow" aria-label="Fluxo de atendimento"><div>Lead do portal ou site</div><div>IA inicia o atendimento</div><div>Cartão e qualificação</div><div>Transferência ao corretor</div></div>
+              <div class="chips"><span class="chip">Atendimento</span><span class="chip teal">Qualificação</span><span class="chip">Carteira do corretor</span></div>
+            </article>
+            <aside class="card demo">
+              <h3>Na tela</h3>
+              <ul><li>Abra o menu <strong>Atendimentos</strong>.</li><li>Mostre o cartão criado pelo lead.</li><li>Contextualize que a IA coleta os dados antes da transferência.</li></ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section" id="atendimento">
+          <div class="section-header"><span class="number">2</span><h2>Atendimento com IA: qualificação e controle</h2></div>
+          <div class="grid">
+            <article class="card">
+              <p class="talk">A IA faz a triagem e registra o contexto. Depois de coletar as informações necessárias, ela transfere o atendimento ao corretor, que entra na conversa já sabendo o que o cliente procura.</p>
+              <h3>Funcionalidades a enfatizar</h3>
+              <ul>
+                <li><strong>Origem do lead:</strong> deixa claro de qual portal, campanha ou site o contato chegou.</li>
+                <li><strong>Histórico registrado:</strong> a conversa permanece vinculada ao atendimento e ao cartão.</li>
+                <li><strong>Transferência entre departamentos:</strong> encaminhamento sem perda de contexto.</li>
+                <li><strong>Visão gerencial:</strong> acesso às conversas dos colaboradores para acompanhar a qualidade do atendimento.</li>
+                <li><strong>Avaliação de atendimento:</strong> fechamento do ciclo com a percepção do cliente.</li>
+              </ul>
+            </article>
+            <aside class="card demo">
+              <h3>Na tela</h3>
+              <ul><li>Abra uma conversa com histórico.</li><li>Aponte a origem do lead.</li><li>Mostre a transferência de departamento/corretor.</li><li>Finalize na avaliação de atendimento.</li></ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section" id="administrativo">
+          <div class="section-header"><span class="number">3</span><h2>Canal administrativo: atendimento orientado por menu</h2></div>
+          <div class="grid">
+            <article class="card">
+              <p class="lead">Para o número do Administrativo, haverá outro agente de IA e uma experiência diferente: o cliente escolhe no menu se quer falar com <strong>Financeiro, Desocupação, Manutenção</strong> ou outro departamento.</p>
+              <div class="talk">Conversando com o Adriano, ele nos passou que as solicitações de segunda via de boleto são uma dor para vocês. A proposta é integrar o Superlógica: quando a pessoa pedir a segunda via, basta informar o CPF e o sistema entrega o boleto, sem intervenção humana.</div>
+              <p><strong>Importante:</strong> o menu e a segunda via de boleto são o ponto de partida. Antes de colocar o agente em operação, vamos aprofundar quais são as maiores demandas do Administrativo, priorizar os fluxos e configurar o agente para responder e encaminhar cada caso da forma correta.</p>
+              <div class="chips"><span class="chip teal">Financeiro</span><span class="chip teal">Desocupação</span><span class="chip teal">Manutenção</span><span class="chip teal">Outros departamentos</span><span class="chip gold">Superlógica</span></div>
+            </article>
+            <aside class="card demo">
+              <h3>Mensagem para reforçar</h3>
+              <p>Não é apenas automação: é redução de volume operacional em uma solicitação repetitiva e de alta demanda.</p>
+              <p>O próximo passo será mapear as dúvidas e solicitações mais recorrentes para evoluir o menu e treinar/configurar o agente de acordo com a rotina real da equipe.</p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section" id="crm">
+          <div class="section-header"><span class="number">4</span><h2>Apps, CRM e automações</h2></div>
+          <div class="grid">
+            <article class="card">
+              <p class="lead">Depois de uma visão superficial dos apps, leve a conversa para o CRM: é onde a equipe enxerga o processo, organiza a operação e reduz ações manuais.</p>
+              <h3>O que demonstrar</h3>
+              <ul><li>Os <strong>painéis</strong> e os cartões já configurados para a operação.</li><li>As <strong>automações</strong> que movem e orientam o fluxo de trabalho.</li><li>Na etapa de <strong>Análise</strong>, o disparo de um webhook que consulta as plataformas previstas — com exceção da Loft.</li></ul>
+              <p class="talk">O objetivo do webhook é concentrar essa análise e diminuir o trabalho e a ação humana no processo.</p>
+            </article>
+            <aside class="card demo">
+              <h3>Na tela</h3>
+              <ul><li>Mostre os painéis e cartões configurados.</li><li>Abra uma automação relevante.</li><li>Explique o gatilho da etapa “Análise”.</li><li>Mencione explicitamente a exceção da Loft.</li></ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section" id="relatorios">
+          <div class="section-header"><span class="number">5</span><h2>Relatórios: foco na gestão da operação</h2></div>
+          <div class="grid">
+            <article class="card">
+              <p class="lead">Dê prioridade aos relatórios e ao painel. Além dos relatórios nativos, apresente o dashboard personalizado para a operação de locação que já foi configurado.</p>
+              <h3>Roteiro recomendado</h3>
+              <ul><li>Comece pelos indicadores do painel e o que eles ajudam a decidir.</li><li>Mostre o dashboard customizado de locação.</li><li>Cite os relatórios nativos como apoio para outras necessidades da operação.</li><li>Apresente as demais funcionalidades de maneira breve, sem dispersar do painel.</li></ul>
+            </article>
+            <aside class="card demo">
+              <h3>Na tela</h3>
+              <ul><li>Abra <strong>Relatórios</strong>.</li><li>Localize o dashboard personalizado.</li><li>Conduza a leitura pelos indicadores mais relevantes para eles.</li></ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section" id="desenvolvimento">
+          <div class="section-header"><span class="number">6</span><h2>O que está em desenvolvimento</h2></div>
+          <div class="grid">
+            <article class="card">
+              <p class="lead">Finalize a demonstração de produto com transparência: a base de cadastro de imóveis e as integrações com os portais estão em desenvolvimento.</p>
+              <ul><li>Abra o menu criado para essa frente.</li><li>Apresente apenas as funcionalidades que já estão disponíveis para demonstração.</li><li>Dê uma prévia de como essa base e as integrações vão complementar a operação.</li></ul>
+              <p class="talk">A plataforma já organiza atendimento, CRM e gestão; esta frente amplia a operação para a base de imóveis e a distribuição/integração com os portais.</p>
+            </article>
+            <aside class="card alert">
+              <h3>Evite prometer além do escopo</h3>
+              <p>Use “em desenvolvimento” e apresente o estágio atual. Não detalhe funcionalidades, datas ou integrações que não estejam confirmadas no orçamento ou no cronograma.</p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section" id="proposta">
+          <div class="section-header"><span class="number">7</span><h2>Proposta, prazos e encerramento</h2></div>
+          <div class="grid">
+            <article class="card">
+              <p class="lead">Somente agora apresente a proposta. Retome o ganho prático que foi demonstrado: atendimento inicial com IA, redução de intervenção humana, CRM estruturado, automações e visão por relatórios.</p>
+              <h3>Fechamento comercial</h3>
+              <ul><li>Apresente os <strong>prazos</strong> previstos no orçamento.</li><li>Apresente os <strong>valores</strong> conforme a proposta comercial.</li><li>Se houver objeção de preço, informe que a contratação <strong>semestral ou anual tem 20% de desconto</strong>.</li><li>Encerre sem negociar além desta condição; a negociação posterior fica com o Adriano.</li></ul>
+              <div class="talk">“Para contratos semestrais e anuais, conseguimos aplicar 20% de desconto.”</div>
+            </article>
+            <aside class="card alert">
+              <h3>Antes de entrar na call</h3>
+              <ul><li>Tenha a proposta/orçamento aberta.</li><li>Confirme os prazos e valores vigentes.</li><li>Deixe pronto o número de WhatsApp para testar o agente.</li><li>Não antecipe valores antes da demonstração.</li></ul>
+            </aside>
+          </div>
+        </section>
+
+        <div class="actions" aria-label="Controles de navegação">
+          <button type="button" id="previous">← Etapa anterior</button>
+          <button type="button" id="next">Próxima etapa →</button>
+        </div>
+      </main>
+    </div>
+    <footer class="footer">Guia interno de apoio à apresentação • preparado a partir do briefing recebido</footer>
+  </div>
+  <script>
+    const steps = [...document.querySelectorAll('main .section')];
+    let current = 0;
+    function move(direction) {
+      current = Math.max(0, Math.min(steps.length - 1, current + direction));
+      steps[current].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    document.getElementById('previous').addEventListener('click', () => move(-1));
+    document.getElementById('next').addEventListener('click', () => move(1));
+    document.querySelectorAll('.nav a').forEach((link, index) => link.addEventListener('click', () => { current = index; }));
+    document.addEventListener('keydown', event => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key === 'ArrowRight') move(1);
+      if (event.key === 'ArrowLeft') move(-1);
+    });
+  </script>
+</body>
+</html>

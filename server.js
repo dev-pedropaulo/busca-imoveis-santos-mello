@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const { XMLParser } = require('fast-xml-parser');
 const { buildPropertyWebsiteUrl } = require('./lib/property-website-url');
+const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -233,16 +234,56 @@ async function ensureDataLoaded(req, res, next) {
 
 app.use('/api', ensureDataLoaded);
 
+// Helpers para enriquecimento de dados e mesclagem com CRM Store
+function enrichProperty(item) {
+  if (!item) return null;
+  const override = crmStore.getPropertyOverride(item.id) || {};
+  if (override.deleted) return null;
+
+  return {
+    ...item,
+    kanbanStage: override.kanbanStage || item.kanbanStage || 'disponivel',
+    status: override.status || item.status || 'Vago / Disponível',
+    keyTag: override.keyTag || item.keyTag || `CLAV-${item.id}`
+  };
+}
+
+function getAllPropertiesMerged() {
+  const customList = crmStore.getCustomProperties().map(p => enrichProperty(p)).filter(Boolean);
+  const customIds = new Set(customList.map(p => String(p.id).toLowerCase()));
+
+  const merged = [...customList];
+  for (const item of listingsList) {
+    if (!customIds.has(String(item.id).toLowerCase())) {
+      const enriched = enrichProperty(item);
+      if (enriched) merged.push(enriched);
+    }
+  }
+  return merged;
+}
+
 // Rotas da API
 app.get('/api/imovel/:id', (req, res) => {
   const code = (req.params.id || '').trim().toLowerCase();
-  const imovel = listingsMap.get(code);
 
+  // Verifica primeiro em customProperties
+  const custom = crmStore.getCustomProperties().find(p => String(p.id).toLowerCase() === code);
+  if (custom) {
+    const enriched = enrichProperty(custom);
+    if (enriched) return res.json({ success: true, data: enriched });
+  }
+
+  const imovel = listingsMap.get(code);
   if (!imovel) {
     return res.status(404).json({ error: 'Imóvel não encontrado com o código fornecido.' });
   }
 
-  res.json({ success: true, data: imovel });
+  const enriched = enrichProperty(imovel);
+  if (!enriched) {
+    return res.status(404).json({ error: 'Imóvel inativo ou excluído.' });
+  }
+
+  res.json({ success: true, data: enriched });
 });
 
 function normalizeString(str) {
@@ -533,6 +574,359 @@ app.get('/api/search', (req, res) => {
     total: filtered.length,
     offset,
     limit
+  });
+});
+
+// --- ROTAS DO CRM & GESTÃO DE IMÓVEIS (CRUD) ---
+
+// Listar imóveis gerenciais com paginação e filtros
+app.get('/api/imoveis', (req, res) => {
+  const query = normalizeString(req.query.q || '');
+  const typeFilter = normalizeString(req.query.type || '');
+  const stageFilter = (req.query.kanbanStage || req.query.stage || '').trim();
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+
+  let all = getAllPropertiesMerged();
+
+  if (query) {
+    all = all.filter(p => {
+      const idN = normalizeString(p.id);
+      const titleN = normalizeString(p.title);
+      const neighN = normalizeString(p.location?.neighborhood);
+      const cityN = normalizeString(p.location?.city);
+      const typeN = normalizeString(p.propertyType);
+      return idN.includes(query) || titleN.includes(query) || neighN.includes(query) || cityN.includes(query) || typeN.includes(query);
+    });
+  }
+
+  if (typeFilter && typeFilter !== 'all') {
+    all = all.filter(p => normalizeString(p.transactionType).includes(typeFilter));
+  }
+
+  if (stageFilter && stageFilter !== 'all') {
+    all = all.filter(p => (p.kanbanStage || 'disponivel') === stageFilter);
+  }
+
+  const total = all.length;
+  const totalPages = Math.ceil(total / limit) || 1;
+  const startIndex = (page - 1) * limit;
+  const items = all.slice(startIndex, startIndex + limit);
+
+  res.json({
+    success: true,
+    data: items,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages
+    },
+    stages: KANBAN_STAGES
+  });
+});
+
+// Criar novo imóvel
+app.post('/api/imoveis', (req, res) => {
+  try {
+    const data = req.body;
+    if (!data.title) {
+      return res.status(400).json({ error: 'O título do imóvel é obrigatório.' });
+    }
+
+    const created = crmStore.createProperty(data);
+    res.status(201).json({ success: true, data: created, message: 'Imóvel cadastrado com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar imóvel: ' + err.message });
+  }
+});
+
+// Atualizar imóvel existente
+app.put('/api/imoveis/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const updated = crmStore.updateProperty(id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Imóvel não encontrado para atualização.' });
+    }
+    res.json({ success: true, data: updated, message: 'Imóvel atualizado com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar imóvel: ' + err.message });
+  }
+});
+
+// Excluir imóvel
+app.delete('/api/imoveis/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    crmStore.deleteProperty(id);
+    res.json({ success: true, message: `Imóvel #${id} excluído com sucesso.` });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir imóvel: ' + err.message });
+  }
+});
+
+// Alteração rápida de etapa do Kanban / Status do Imóvel
+app.patch('/api/imoveis/:id/status', (req, res) => {
+  try {
+    const id = req.params.id;
+    const { kanbanStage, status, keyTag } = req.body;
+
+    const stageObj = KANBAN_STAGES.find(s => s.id === kanbanStage);
+    const finalStatus = status || (stageObj ? stageObj.label : 'Vago / Disponível');
+
+    const updated = crmStore.savePropertyOverride(id, {
+      kanbanStage,
+      status: finalStatus,
+      ...(keyTag ? { keyTag } : {})
+    });
+
+    res.json({ success: true, data: updated, message: 'Status do imóvel atualizado!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar status: ' + err.message });
+  }
+});
+
+// --- ROTA DO KANBAN DA JORNADA DO IMÓVEL ---
+app.get('/api/kanban', (req, res) => {
+  const all = getAllPropertiesMerged();
+  const columns = {};
+
+  for (const stage of KANBAN_STAGES) {
+    columns[stage.id] = [];
+  }
+
+  for (const prop of all) {
+    const stageId = prop.kanbanStage || 'disponivel';
+    if (columns[stageId]) {
+      // Limite inteligente para evitar sobrecarga no DOM do kanban (até 30 por coluna)
+      if (columns[stageId].length < 30) {
+        columns[stageId].push({
+          id: prop.id,
+          title: prop.title,
+          transactionType: prop.transactionType,
+          propertyType: prop.propertyType,
+          price: prop.price,
+          rentalPrice: prop.rentalPrice,
+          livingArea: prop.livingArea,
+          bedrooms: prop.bedrooms,
+          garage: prop.garage,
+          neighborhood: prop.location?.neighborhood || 'Santo André',
+          primaryImage: prop.primaryImage,
+          keyTag: prop.keyTag || `CLAV-${prop.id}`,
+          status: prop.status,
+          kanbanStage: stageId
+        });
+      }
+    }
+  }
+
+  // Contadores totais reais em cada coluna
+  const counts = {};
+  for (const stage of KANBAN_STAGES) {
+    counts[stage.id] = all.filter(p => (p.kanbanStage || 'disponivel') === stage.id).length;
+  }
+
+  res.json({
+    success: true,
+    stages: KANBAN_STAGES,
+    columns,
+    counts,
+    totalProperties: all.length
+  });
+});
+
+// --- ROTAS DE AGENDAMENTO DE VISITAS ---
+app.get('/api/visits', (req, res) => {
+  const visits = crmStore.getVisits({
+    status: req.query.status,
+    propertyId: req.query.propertyId
+  });
+  res.json({ success: true, data: visits });
+});
+
+app.post('/api/visits', (req, res) => {
+  try {
+    const data = req.body;
+    if (!data.propertyId || !data.clientName || !data.date || !data.time) {
+      return res.status(400).json({ error: 'Preencha o imóvel, cliente, data e horário da visita.' });
+    }
+
+    const created = crmStore.createVisit(data);
+    res.status(201).json({ success: true, data: created, message: 'Visita agendada com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao agendar visita: ' + err.message });
+  }
+});
+
+app.patch('/api/visits/:id', (req, res) => {
+  try {
+    const updated = crmStore.updateVisit(req.params.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Visita não encontrada.' });
+    }
+    res.json({ success: true, data: updated, message: 'Visita atualizada com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar visita: ' + err.message });
+  }
+});
+
+app.delete('/api/visits/:id', (req, res) => {
+  try {
+    crmStore.deleteVisit(req.params.id);
+    res.json({ success: true, message: 'Visita cancelada/removida com sucesso.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao remover visita: ' + err.message });
+  }
+});
+
+// --- ROTAS DE CONTROLE DE CHAVES (CLAVICULÁRIO) ---
+app.get('/api/keys', (req, res) => {
+  const movements = crmStore.getKeyMovements({
+    status: req.query.status,
+    propertyId: req.query.propertyId
+  });
+  res.json({ success: true, data: movements });
+});
+
+app.post('/api/keys/checkout', (req, res) => {
+  try {
+    const data = req.body;
+    if (!data.propertyId || !data.takenBy) {
+      return res.status(400).json({ error: 'Informe o imóvel e o responsável pela retirada da chave.' });
+    }
+
+    const created = crmStore.checkoutKey(data);
+    res.status(201).json({ success: true, data: created, message: 'Saída de chave registrada!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao registrar saída de chave: ' + err.message });
+  }
+});
+
+app.post('/api/keys/:id/return', (req, res) => {
+  try {
+    const updated = crmStore.returnKey(req.params.id, req.body.notes);
+    if (!updated) {
+      return res.status(404).json({ error: 'Registro de chave não encontrado.' });
+    }
+    res.json({ success: true, data: updated, message: 'Devolução de chave confirmada no claviculário!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao devolver chave: ' + err.message });
+  }
+});
+
+// --- ROTA DE RELATÓRIOS & BI IMOBILIÁRIO ---
+app.get('/api/bi/reports', (req, res) => {
+  const all = getAllPropertiesMerged();
+  const visits = crmStore.getVisits();
+  const keys = crmStore.getKeyMovements();
+
+  let countRent = 0;
+  let countSale = 0;
+  let countBoth = 0;
+  let sumRentPrice = 0;
+  let rentPriceCount = 0;
+  let sumSalePrice = 0;
+  let salePriceCount = 0;
+
+  const neighborhoodCounts = {};
+  const typeCounts = {};
+  const stageCounts = {};
+
+  for (const s of KANBAN_STAGES) {
+    stageCounts[s.id] = 0;
+  }
+
+  for (const p of all) {
+    const trans = (p.transactionType || '').toLowerCase();
+    if (trans.includes('locação') && trans.includes('venda')) {
+      countBoth++;
+    } else if (trans.includes('locação') || trans.includes('rent')) {
+      countRent++;
+    } else {
+      countSale++;
+    }
+
+    if (p.rentalPrice > 0) {
+      sumRentPrice += p.rentalPrice;
+      rentPriceCount++;
+    }
+    if (p.price > 0) {
+      sumSalePrice += p.price;
+      salePriceCount++;
+    }
+
+    const neigh = p.location?.neighborhood?.trim() || 'Outros';
+    neighborhoodCounts[neigh] = (neighborhoodCounts[neigh] || 0) + 1;
+
+    const propType = p.propertyType ? p.propertyType.replace('Residential / ', '').replace('Commercial / ', '').trim() : 'Outros';
+    typeCounts[propType] = (typeCounts[propType] || 0) + 1;
+
+    const stageId = p.kanbanStage || 'disponivel';
+    if (stageCounts[stageId] !== undefined) {
+      stageCounts[stageId]++;
+    }
+  }
+
+  const topNeighborhoods = Object.entries(neighborhoodCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, count]) => ({ name, count, percent: ((count / all.length) * 100).toFixed(1) }));
+
+  const topPropertyTypes = Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([type, count]) => ({ type, count, percent: ((count / all.length) * 100).toFixed(1) }));
+
+  // Métricas do PDF:
+  // "hj por exemplo eu integrei com o chaves na mão e meu 512 imóveis disponiveis, aqui no nosso esta 1200"
+  const totalXmlCatalog = metadata.total || all.length;
+  const chavesNaMaoAvailable = 512;
+  const currentlyAvailable = stageCounts['disponivel'] || 0;
+  const inPipelineCount = all.length - currentlyAvailable;
+
+  res.json({
+    success: true,
+    data: {
+      overview: {
+        totalProperties: all.length,
+        totalXmlCatalog,
+        totalRent: countRent + countBoth,
+        totalSale: countSale + countBoth,
+        totalBoth: countBoth,
+        avgRentalPrice: rentPriceCount ? Math.round(sumRentPrice / rentPriceCount) : 0,
+        avgSalePrice: salePriceCount ? Math.round(sumSalePrice / salePriceCount) : 0
+      },
+      chavesNaMaoPortalComparison: {
+        totalXmlFeed: totalXmlCatalog,
+        chavesNaMaoPublished: chavesNaMaoAvailable,
+        crmAvailableForPortals: currentlyAvailable,
+        inNegotiationOrReserved: inPipelineCount,
+        discrepancyNote: 'No portal Chaves na Mão estão ativos 512 imóveis com fotos aprovadas e regras de publicação. No feed XML geral constam 1.200 imóveis cadastrados, dos quais parte estão em visita, proposta ou pendentes de atualização de mídia.'
+      },
+      kanbanFunnel: {
+        stages: KANBAN_STAGES.map(s => ({
+          ...s,
+          count: stageCounts[s.id] || 0,
+          percent: all.length ? (((stageCounts[s.id] || 0) / all.length) * 100).toFixed(1) : 0
+        }))
+      },
+      visitsMetrics: {
+        total: visits.length,
+        scheduled: visits.filter(v => v.status === 'Agendada').length,
+        confirmed: visits.filter(v => v.status === 'Confirmada').length,
+        completed: visits.filter(v => v.status === 'Realizada').length,
+        cancelled: visits.filter(v => v.status === 'Cancelada').length
+      },
+      keysMetrics: {
+        totalMovements: keys.length,
+        checkedOut: keys.filter(k => k.status === 'Retirada').length,
+        delayed: keys.filter(k => k.status === 'Atrasada').length,
+        returned: keys.filter(k => k.status === 'Devolvida').length
+      },
+      topNeighborhoods,
+      topPropertyTypes
+    }
   });
 });
 

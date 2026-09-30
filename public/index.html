@@ -13,6 +13,7 @@
   
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="crm.css">
 </head>
 <body>
   <div class="app-container">
@@ -24,8 +25,8 @@
           <img src="logo.png" alt="Santos & Mello Imóveis" class="brand-logo" />
         </div>
         <div class="brand-text">
-          <h1>Consulta de Imóveis</h1>
-          <span class="brand-sub">Feed XML VivaReal • Santos & Mello</span>
+          <h1>Portal Imobiliário</h1>
+          <span class="brand-sub">Santos & Mello • Catálogo XML & Gestão CRM</span>
         </div>
       </div>
 
@@ -47,8 +48,45 @@
       </div>
     </header>
 
+    <!-- Barra de Navegação da Suíte Santos & Mello -->
+    <div class="main-nav-container">
+      <nav class="main-nav" id="mainNav">
+        <button type="button" class="nav-tab active" data-target="catalogSection">
+          <span class="nav-tab-icon">🔍</span>
+          <span class="nav-tab-title">Catálogo & Busca</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="crudSection">
+          <span class="nav-tab-icon">📋</span>
+          <span class="nav-tab-title">Gestão de Imóveis</span>
+          <span class="nav-tab-badge" id="crudNavBadge">CRUD</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="kanbanSection">
+          <span class="nav-tab-icon">📊</span>
+          <span class="nav-tab-title">Jornada do Imóvel</span>
+          <span class="nav-tab-badge kanban-badge">Kanban</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="visitsSection">
+          <span class="nav-tab-icon">📅</span>
+          <span class="nav-tab-title">Visitas Agendadas</span>
+          <span class="nav-tab-badge visit-badge" id="visitsNavBadge">4</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="keysSection">
+          <span class="nav-tab-icon">🔑</span>
+          <span class="nav-tab-title">Controle de Chaves</span>
+          <span class="nav-tab-badge key-badge" id="keysNavBadge">3</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="reportsSection">
+          <span class="nav-tab-icon">📈</span>
+          <span class="nav-tab-title">Relatórios & BI</span>
+        </button>
+      </nav>
+    </div>
+
     <!-- Main Content Area -->
     <main class="main-content">
+      
+      <!-- PAINEL 1: CATÁLOGO DE IMÓVEIS (BUSCA ATUAL) -->
+      <div class="crm-tab-panel active" id="catalogSection">
       
       <!-- Search & Filters Box Section -->
       <section class="search-section">
@@ -656,14 +694,535 @@
         </div>
 
       </section>
+      </div> <!-- /#catalogSection -->
+
+      <!-- PAINEL 2: GESTÃO DE IMÓVEIS (CRUD) -->
+      <div class="crm-tab-panel" id="crudSection" style="display: none;">
+        <div class="section-top-bar">
+          <div class="section-top-info">
+            <h2>📋 Gestão e Cadastro de Imóveis</h2>
+            <p>Cadastre, edite, gerencie status e exclua imóveis do portfólio da Santos & Mello</p>
+          </div>
+          <div class="section-top-actions">
+            <button type="button" class="btn-primary-action" id="btnNewProperty">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              <span>+ Novo Imóvel</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="crud-toolbar">
+          <input type="text" id="crudSearchInput" class="crud-search-input" placeholder="Filtrar por código (ex: 8797), título, bairro..." autocomplete="off">
+          <select id="crudTypeFilter" class="crud-select">
+            <option value="all">Todas as Finalidades</option>
+            <option value="Locação">Locação</option>
+            <option value="Venda">Venda</option>
+          </select>
+          <select id="crudStageFilter" class="crud-select">
+            <option value="all">Todas as Etapas (Jornada)</option>
+            <option value="disponivel">🟢 Vago / Disponível</option>
+            <option value="visita_agendada">📅 Visita Agendada</option>
+            <option value="chave_entregue">🔑 Chave Entregue (Em Visita)</option>
+            <option value="com_proposta">📝 Com Proposta</option>
+            <option value="analise_contrato">🔍 Análise / Contrato</option>
+            <option value="concluido">🤝 Concluído</option>
+          </select>
+        </div>
+
+        <div class="crud-table-card">
+          <div class="table-responsive">
+            <table class="crud-table">
+              <thead>
+                <tr>
+                  <th>Imóvel</th>
+                  <th>Código</th>
+                  <th>Finalidade</th>
+                  <th>Preço</th>
+                  <th>Etapa na Jornada</th>
+                  <th>Chaveiro</th>
+                  <th style="text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="crudTableBody">
+                <!-- Linhas inseridas dinamicamente via JS -->
+              </tbody>
+            </table>
+          </div>
+          <div class="crud-pagination">
+            <span id="crudPaginationText">Carregando imóveis...</span>
+            <div class="crud-page-buttons">
+              <button type="button" id="crudPrevBtn" class="btn-secondary-action" style="padding: 0.4rem 0.8rem; font-size: 0.82rem;">Anterior</button>
+              <button type="button" id="crudNextBtn" class="btn-secondary-action" style="padding: 0.4rem 0.8rem; font-size: 0.82rem;">Próxima</button>
+            </div>
+          </div>
+        </div>
+      </div> <!-- /#crudSection -->
+
+      <!-- PAINEL 3: JORNADA DO IMÓVEL (KANBAN PIPELINE) -->
+      <div class="crm-tab-panel" id="kanbanSection" style="display: none;">
+        <div class="section-top-bar">
+          <div class="section-top-info">
+            <h2>📊 Jornada do Imóvel • Funil Comercial</h2>
+            <p>Acompanhe e mova os imóveis pelas etapas do funil de locação e vendas</p>
+          </div>
+          <div class="section-top-actions">
+            <button type="button" class="btn-secondary-action" id="btnKanbanRefresh">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+              <span>Atualizar Funil</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="kanban-board-container">
+          <div class="kanban-board" id="kanbanBoard">
+            <!-- Colunas do Kanban renderizadas via JS -->
+          </div>
+        </div>
+      </div> <!-- /#kanbanSection -->
+
+      <!-- PAINEL 4: AGENDAMENTO DE VISITAS -->
+      <div class="crm-tab-panel" id="visitsSection" style="display: none;">
+        <div class="section-top-bar">
+          <div class="section-top-info">
+            <h2>📅 Agendamento de Visitas</h2>
+            <p>Gerenciamento de visitas com clientes, corretores e confirmações</p>
+          </div>
+          <div class="section-top-actions">
+            <select id="visitStatusFilter" class="crud-select">
+              <option value="all">Todos os Status</option>
+              <option value="Agendada">Agendadas</option>
+              <option value="Confirmada">Confirmadas</option>
+              <option value="Realizada">Realizadas</option>
+              <option value="Cancelada">Canceladas</option>
+            </select>
+            <button type="button" class="btn-primary-action" id="btnNewVisit">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              <span>+ Agendar Visita</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="visits-grid" id="visitsGrid">
+          <!-- Cards de visitas carregados via JS -->
+        </div>
+      </div> <!-- /#visitsSection -->
+
+      <!-- PAINEL 5: CONTROLE DE CHAVES (CLAVICULÁRIO) -->
+      <div class="crm-tab-panel" id="keysSection" style="display: none;">
+        <div class="section-top-bar">
+          <div class="section-top-info">
+            <h2>🔑 Controle de Chaves & Claviculário</h2>
+            <p>Registro de saída de chaves para visitas, corretores e controle de devolução</p>
+          </div>
+          <div class="section-top-actions">
+            <button type="button" class="btn-primary-action" id="btnCheckoutKey">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              <span>+ Registrar Saída de Chave</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="keys-overview-banner">
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Claviculário Digital Santos & Mello</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">Controle seguro de chaves com prazo de devolução e identificação de corretor</p>
+          </div>
+          <div class="keys-stats-group">
+            <div class="key-stat-item">
+              <span class="key-stat-num" id="keyStatAvailable" style="color: #10b981;">--</span>
+              <span class="key-stat-lbl">Disponíveis</span>
+            </div>
+            <div class="key-stat-item">
+              <span class="key-stat-num" id="keyStatOut" style="color: #6366f1;">--</span>
+              <span class="key-stat-lbl">Em Visita</span>
+            </div>
+            <div class="key-stat-item">
+              <span class="key-stat-num" id="keyStatDelayed" style="color: #ef4444;">--</span>
+              <span class="key-stat-lbl">Atrasadas</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="keys-grid" id="keysGrid">
+          <!-- Cards de chaves carregados via JS -->
+        </div>
+      </div> <!-- /#keysSection -->
+
+      <!-- PAINEL 6: RELATÓRIOS & BI IMOBILIÁRIO -->
+      <div class="crm-tab-panel" id="reportsSection" style="display: none;">
+        <div class="section-top-bar">
+          <div class="section-top-info">
+            <h2>📈 Relatórios Gerenciais & Business Intelligence</h2>
+            <p>Indicadores de portfólio, comparativo de portais e desempenho comercial</p>
+          </div>
+        </div>
+
+        <!-- Destaque Especial: Comparativo Chaves na Mão vs Feed Geral Santos & Mello -->
+        <div class="bi-portal-alert">
+          <div class="bi-portal-header">
+            <span>⚡</span>
+            <span>Comparativo de Disponibilidade: Chaves na Mão vs. Feed XML</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5;">
+            Conforme observado nas diretrizes operacionais, no portal <strong>Chaves na Mão</strong> constam <strong>512 imóveis disponíveis</strong> para locação, enquanto o catálogo XML geral da Santos & Mello indexa <strong>1.202 imóveis</strong>. O dashboard abaixo rastreia a diferença entre imóveis em visita, proposta, análise ou pendentes de fotos aprovadas pelos portais parceiros.
+          </p>
+          <div class="bi-portal-comparison-grid">
+            <div class="portal-metric-card">
+              <div class="portal-metric-num" id="biPortalXmlTotal">1.202</div>
+              <div class="portal-metric-lbl">Total no Catálogo XML</div>
+            </div>
+            <div class="portal-metric-card">
+              <div class="portal-metric-num" id="biPortalChavesMao" style="color: #10b981;">512</div>
+              <div class="portal-metric-lbl">Disponíveis no Chaves na Mão</div>
+            </div>
+            <div class="portal-metric-card">
+              <div class="portal-metric-num" id="biPortalDiscrepancy" style="color: #f59e0b;">690</div>
+              <div class="portal-metric-lbl">Em Processo / Filtros de Portal</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs Globais -->
+        <div class="bi-kpi-grid">
+          <div class="bi-kpi-card">
+            <span class="bi-kpi-title">Total de Imóveis</span>
+            <span class="bi-kpi-value" id="biKpiTotal">--</span>
+            <span class="bi-kpi-sub">Cadastrados no sistema</span>
+          </div>
+          <div class="bi-kpi-card">
+            <span class="bi-kpi-title">Locação</span>
+            <span class="bi-kpi-value" id="biKpiRent" style="color: #10b981;">--</span>
+            <span class="bi-kpi-sub">Imóveis para alugar</span>
+          </div>
+          <div class="bi-kpi-card">
+            <span class="bi-kpi-title">Venda</span>
+            <span class="bi-kpi-value" id="biKpiSale" style="color: #6366f1;">--</span>
+            <span class="bi-kpi-sub">Imóveis para compra</span>
+          </div>
+          <div class="bi-kpi-card">
+            <span class="bi-kpi-title">Aluguel Médio</span>
+            <span class="bi-kpi-value" id="biKpiAvgRent">--</span>
+            <span class="bi-kpi-sub">Ticket médio mensal</span>
+          </div>
+          <div class="bi-kpi-card">
+            <span class="bi-kpi-title">Venda Média</span>
+            <span class="bi-kpi-value" id="biKpiAvgSale">--</span>
+            <span class="bi-kpi-sub">Valor médio de venda</span>
+          </div>
+          <div class="bi-kpi-card">
+            <span class="bi-kpi-title">Visitas Registradas</span>
+            <span class="bi-kpi-value" id="biKpiVisits" style="color: #ec4899;">--</span>
+            <span class="bi-kpi-sub">Agendadas no período</span>
+          </div>
+        </div>
+
+        <!-- Gráficos Visuais de BI -->
+        <div class="bi-charts-row">
+          <div class="bi-chart-card">
+            <div class="bi-chart-title">
+              <span>🎯</span>
+              <span>Distribuição por Etapa da Jornada</span>
+            </div>
+            <div id="biFunnelBars">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+
+          <div class="bi-chart-card">
+            <div class="bi-chart-title">
+              <span>📍</span>
+              <span>Bairros com Maior Oferta</span>
+            </div>
+            <div id="biNeighborhoodBars">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+
+          <div class="bi-chart-card">
+            <div class="bi-chart-title">
+              <span>🏢</span>
+              <span>Tipologia dos Imóveis</span>
+            </div>
+            <div id="biTypesBars">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- /#reportsSection -->
 
     </main>
 
     <!-- Footer -->
     <footer class="footer">
-      <p>Buscador de Imóveis • Sincronizado com feed XML da Santos & Mello</p>
+      <p>Santos & Mello • Sistema de Gestão Imobiliária & Consulta VivaReal</p>
     </footer>
 
+  </div>
+
+  <!-- MODAL DE CADASTRO / EDIÇÃO DE IMÓVEL (CRUD) -->
+  <div class="crm-modal-overlay" id="propModalOverlay">
+    <div class="crm-modal-container">
+      <div class="crm-modal-header">
+        <h3 id="propModalTitle">Cadastrar Novo Imóvel</h3>
+        <button type="button" class="btn-icon-action" id="propModalClose">✕</button>
+      </div>
+      <form id="propForm" class="crm-modal-body">
+        
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label" for="formPropId">Código do Imóvel *</label>
+            <input type="text" id="formPropId" class="form-control" placeholder="ex: SM-9010" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropTransaction">Finalidade *</label>
+            <select id="formPropTransaction" class="form-control">
+              <option value="Locação">Locação</option>
+              <option value="Venda">Venda</option>
+              <option value="Venda / Locação">Venda / Locação</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropStage">Situação / Status *</label>
+            <select id="formPropStage" class="form-control">
+              <option value="disponivel">🟢 Vago / Disponível</option>
+              <option value="visita_agendada">📅 Visita Agendada</option>
+              <option value="chave_entregue">🔑 Chave Entregue (Em Visita)</option>
+              <option value="com_proposta">📝 Com Proposta</option>
+              <option value="analise_contrato">🔍 Análise / Contrato</option>
+              <option value="concluido">🤝 Concluído</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="formPropTitle">Título do Anúncio *</label>
+          <input type="text" id="formPropTitle" class="form-control" placeholder="ex: Apartamento 3 Dormitórios com Varanda Gourmet no Bairro Jardim" required>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label" for="formPropCategory">Tipo de Imóvel</label>
+            <select id="formPropCategory" class="form-control">
+              <option value="Apartment">Apartamento</option>
+              <option value="Sobrado">Sobrado</option>
+              <option value="Home">Casa</option>
+              <option value="Penthouse">Cobertura</option>
+              <option value="Kitnet">Kitnet / Studio</option>
+              <option value="Office">Sala Comercial</option>
+              <option value="Business">Prédio Comercial</option>
+              <option value="Industrial">Galpão / Industrial</option>
+              <option value="Land Lot">Terreno</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropUsage">Uso</label>
+            <select id="formPropUsage" class="form-control">
+              <option value="Residencial">Residencial</option>
+              <option value="Comercial">Comercial</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropKeyTag">Código Chaveiro (Claviculário)</label>
+            <input type="text" id="formPropKeyTag" class="form-control" placeholder="ex: CLAV-085">
+          </div>
+        </div>
+
+        <div class="form-grid-4">
+          <div class="form-group">
+            <label class="form-label" for="formPropPriceRent">Aluguel (R$/mês)</label>
+            <input type="number" id="formPropPriceRent" class="form-control" placeholder="ex: 3500">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropPriceSale">Venda (R$)</label>
+            <input type="number" id="formPropPriceSale" class="form-control" placeholder="ex: 650000">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropCondo">Condomínio (R$)</label>
+            <input type="number" id="formPropCondo" class="form-control" placeholder="ex: 650">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropIptu">IPTU (R$)</label>
+            <input type="number" id="formPropIptu" class="form-control" placeholder="ex: 120">
+          </div>
+        </div>
+
+        <div class="form-grid-4">
+          <div class="form-group">
+            <label class="form-label" for="formPropArea">Área Útil (m²)</label>
+            <input type="number" id="formPropArea" class="form-control" placeholder="ex: 85">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropBeds">Dormitórios</label>
+            <input type="number" id="formPropBeds" class="form-control" placeholder="ex: 3">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropSuites">Suítes</label>
+            <input type="number" id="formPropSuites" class="form-control" placeholder="ex: 1">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropBaths">Banheiros</label>
+            <input type="number" id="formPropBaths" class="form-control" placeholder="ex: 2">
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label" for="formPropGarage">Vagas de Garagem</label>
+            <input type="number" id="formPropGarage" class="form-control" placeholder="ex: 2">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropNeighborhood">Bairro *</label>
+            <input type="text" id="formPropNeighborhood" class="form-control" placeholder="ex: Bairro Jardim" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropCity">Cidade</label>
+            <input type="text" id="formPropCity" class="form-control" value="Santo André">
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label" for="formPropAddress">Logradouro / Rua</label>
+            <input type="text" id="formPropAddress" class="form-control" placeholder="ex: Rua das Figueiras">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropNumber">Número</label>
+            <input type="text" id="formPropNumber" class="form-control" placeholder="ex: 1200">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropComplement">Complemento</label>
+            <input type="text" id="formPropComplement" class="form-control" placeholder="ex: Apto 54">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="formPropImage">Foto Principal (URL)</label>
+            <input type="url" id="formPropImage" class="form-control" placeholder="https://exemplo.com/foto.jpg">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropTour">Tour Virtual / Vídeo (URL)</label>
+            <input type="url" id="formPropTour" class="form-control" placeholder="https://youtube.com/... ou Matterport">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Comodidades & Diferenciais</label>
+          <div class="checkbox-features-grid">
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Piscina"> 🏊 Piscina</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Churrasqueira"> 🍖 Churrasqueira</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Elevador"> 🛗 Elevador</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Aceita Pets"> 🐾 Aceita Pets</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Varanda / Sacada"> 🌅 Varanda</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Mobiliado"> 🛋️ Mobiliado</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Academia"> 🏋️ Academia</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Salão de Festas"> 🎉 Salão de Festas</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Playground"> 🛝 Playground</label>
+            <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Espaço Gourmet"> 🍳 Espaço Gourmet</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="formPropDesc">Descrição Detalhada do Imóvel</label>
+          <textarea id="formPropDesc" class="form-control" placeholder="Informações completas sobre o imóvel, acabamentos, proximidade a transportes..."></textarea>
+        </div>
+
+        <div class="crm-modal-footer">
+          <button type="button" class="btn-secondary-action" id="propModalCancel">Cancelar</button>
+          <button type="submit" class="btn-primary-action">💾 Salvar Imóvel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE AGENDAMENTO DE VISITA -->
+  <div class="crm-modal-overlay" id="visitModalOverlay">
+    <div class="crm-modal-container" style="max-width: 540px;">
+      <div class="crm-modal-header">
+        <h3>📅 Agendar Nova Visita</h3>
+        <button type="button" class="btn-icon-action" id="visitModalClose">✕</button>
+      </div>
+      <form id="visitForm" class="crm-modal-body">
+        <div class="form-group">
+          <label class="form-label" for="visitPropertySelect">Código do Imóvel *</label>
+          <input type="text" id="visitPropertySelect" class="form-control" placeholder="ex: 8797 ou SM-9001" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="visitClientName">Nome do Cliente *</label>
+          <input type="text" id="visitClientName" class="form-control" placeholder="ex: Mariana Fernandes" required>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="visitClientPhone">Telefone / WhatsApp *</label>
+            <input type="tel" id="visitClientPhone" class="form-control" placeholder="(11) 99999-8888" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="visitClientEmail">E-mail</label>
+            <input type="email" id="visitClientEmail" class="form-control" placeholder="cliente@email.com">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="visitDate">Data da Visita *</label>
+            <input type="date" id="visitDate" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="visitTime">Horário *</label>
+            <input type="time" id="visitTime" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="visitBrokerSelect">Corretor Responsável</label>
+          <select id="visitBrokerSelect" class="form-control">
+            <option value="Carlos Silva (CRECI 124589)">Carlos Silva (CRECI 124589)</option>
+            <option value="Mariana Costa (CRECI 187652)">Mariana Costa (CRECI 187652)</option>
+            <option value="Roberto Santos (CRECI 98451)">Roberto Santos (CRECI 98451)</option>
+            <option value="Plantão de Vendas & Locação">Plantão de Vendas & Locação</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="visitNotes">Observações do Cliente</label>
+          <textarea id="visitNotes" class="form-control" placeholder="Preferências do cliente, garantias, etc."></textarea>
+        </div>
+        <div class="crm-modal-footer">
+          <button type="button" class="btn-secondary-action" id="visitModalCancel">Cancelar</button>
+          <button type="submit" class="btn-primary-action">Confirmar Agendamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONTROLE DE CHAVES (RETIRADA) -->
+  <div class="crm-modal-overlay" id="keyModalOverlay">
+    <div class="crm-modal-container" style="max-width: 520px;">
+      <div class="crm-modal-header">
+        <h3>🔑 Registrar Saída de Chave</h3>
+        <button type="button" class="btn-icon-action" id="keyModalClose">✕</button>
+      </div>
+      <form id="keyCheckoutForm" class="crm-modal-body">
+        <div class="form-group">
+          <label class="form-label" for="keyPropertySelect">Código do Imóvel *</label>
+          <input type="text" id="keyPropertySelect" class="form-control" placeholder="ex: 8830 ou SM-9002" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="keyTagInput">Código do Chaveiro / Claviculário</label>
+          <input type="text" id="keyTagInput" class="form-control" placeholder="ex: CLAV-034">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="keyBrokerInput">Responsável pela Retirada *</label>
+          <input type="text" id="keyBrokerInput" class="form-control" placeholder="ex: Carlos Silva (Corretor)" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="keyPurposeInput">Finalidade da Saída</label>
+          <input type="text" id="keyPurposeInput" class="form-control" placeholder="ex: Visita com cliente / Vistoria">
+        </div>
+        <div class="crm-modal-footer">
+          <button type="button" class="btn-secondary-action" id="keyModalCancel">Cancelar</button>
+          <button type="submit" class="btn-primary-action">Registrar Saída</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Fullscreen Photo Modal -->
@@ -690,5 +1249,6 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="crm.js"></script>
 </body>
 </html>
