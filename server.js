@@ -4,6 +4,7 @@ const path = require('path');
 const { XMLParser } = require('fast-xml-parser');
 const { buildPropertyWebsiteUrl } = require('./lib/property-website-url');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
+const { fetchHelenaContact, extractLeadCriteriaFromContact } = require('./lib/helena-crm');
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -11,6 +12,17 @@ const XML_URL = 'https://universal-ftp2.s3.us-west-2.amazonaws.com/vr/santosemel
 
 app.use(cors());
 app.use(express.json());
+
+// Permite incorporação segura no Helena CRM (flw.chat / wts.chat) em Menus Personalizados e Iframes
+app.use((req, res, next) => {
+  res.removeHeader('X-Frame-Options');
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' https://*.flw.chat https://*.helenacrm.com https://*.wts.chat https://app.flw.chat *"
+  );
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -574,6 +586,338 @@ app.get('/api/search', (req, res) => {
     total: filtered.length,
     offset,
     limit
+  });
+});
+
+// --- ROTA DE BUSCA CONTEXTUAL POR PERFIL DE LEAD (GET) ---
+// Utilizada pelo corretor no CRM e pelo Agente de IA no n8n
+app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
+  // Se for informado o ID do contato (ex: dashboard enviando contactId), consulta no Helena CRM
+  const contactId = (req.query.contactId || req.query.contact_id || req.query.id || req.query.leadId || req.query.contatoId || '').trim();
+  let contactData = null;
+  let criteriaFromContact = {};
+
+  if (contactId) {
+    try {
+      const customToken = req.headers['x-helena-token'] || req.headers['x-crm-token'] || req.query.token;
+      contactData = await fetchHelenaContact(contactId, customToken);
+      criteriaFromContact = extractLeadCriteriaFromContact(contactData);
+    } catch (err) {
+      console.error(`⚠️ Erro ao consultar contato #${contactId} no Helena CRM:`, err.message);
+      return res.status(502).json({
+        success: false,
+        error: `Falha ao consultar contato #${contactId} no Helena CRM: ${err.message}`,
+        contactId
+      });
+    }
+  }
+
+  // Parâmetros do Lead: mescla os campos personalizados do Helena CRM com possíveis overrides passados na query
+  const rawPropertyType = (req.query.tipo || req.query.propertyType || criteriaFromContact.tipo || '').trim();
+  const rawTransactionType = (req.query.finalidade || req.query.transacao || req.query.transactionType || req.query.type || criteriaFromContact.finalidade || '').trim();
+  const rawUsageType = (req.query.uso || req.query.usageType || criteriaFromContact.uso || '').trim();
+  const rawMaxPrice = parseFloat(req.query.orcamento || req.query.orcamentoMax || req.query.maxPrice || req.query.precoMax || criteriaFromContact.orcamentoMax || 0);
+  const rawMinPrice = parseFloat(req.query.orcamentoMin || req.query.minPrice || req.query.precoMin || criteriaFromContact.orcamentoMin || 0);
+  const rawBedrooms = parseInt(req.query.quartos || req.query.minBedrooms || req.query.dormitorios || criteriaFromContact.quartos || 0);
+  const rawSuites = parseInt(req.query.suites || req.query.minSuites || criteriaFromContact.suites || 0);
+  const rawBathrooms = parseInt(req.query.banheiros || req.query.minBathrooms || criteriaFromContact.banheiros || 0);
+  const rawGarage = parseInt(req.query.vagas || req.query.minGarage || req.query.garagem || criteriaFromContact.vagas || 0);
+  const rawCity = (req.query.cidade || req.query.city || criteriaFromContact.cidade || '').trim();
+  const rawNeighborhoods = (req.query.regiao || req.query.bairro || req.query.neighborhood || req.query.bairros || criteriaFromContact.regiao || '').trim();
+  const rawFeatures = (req.query.caracteristicas || req.query.features || req.query.comodidades || criteriaFromContact.caracteristicas || '').trim();
+  const rawContext = (req.query.contexto || req.query.q || req.query.perfil || req.query.observacoes || req.query.obs || criteriaFromContact.contexto || '').trim();
+  const onlyAvailable = req.query.somenteDisponiveis !== 'false' && req.query.onlyAvailable !== 'false';
+  const format = (req.query.formato || req.query.format || 'full').toLowerCase();
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+
+  // Normalização de filtros
+  const propTypeNorm = normalizeString(rawPropertyType);
+  const transTypeNorm = normalizeString(rawTransactionType);
+  const usageTypeNorm = normalizeString(rawUsageType);
+  const cityNorm = normalizeString(rawCity);
+
+  const targetNeighborhoods = rawNeighborhoods
+    ? rawNeighborhoods.split(',').map(n => normalizeString(n)).filter(n => n && n !== 'all')
+    : [];
+
+  const targetFeatures = rawFeatures
+    ? rawFeatures.split(',').map(f => normalizeString(f)).filter(Boolean)
+    : [];
+
+  // Extração de palavras-chave do contexto do lead (remove stopwords comuns)
+  const stopWords = new Set([
+    'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 'nos', 'nas',
+    'com', 'sem', 'para', 'pra', 'por', 'que', 'um', 'uma', 'uns', 'umas',
+    'o', 'a', 'os', 'as', 'e', 'ou', 'se', 'ja', 'bem', 'muito', 'cliente',
+    'lead', 'busca', 'procura', 'quer', 'deseja', 'precisa', 'gostaria'
+  ]);
+
+  const contextKeywords = rawContext
+    ? normalizeString(rawContext)
+        .split(/[\s,.;:!?/\\()\-]+/)
+        .filter(w => w.length >= 3 && !stopWords.has(w))
+    : [];
+
+  // Obter catálogo unificado (XML + Overrides e Imóveis cadastrados no CRM)
+  const allProperties = getAllPropertiesMerged();
+
+  const matchedItems = [];
+
+  for (const item of allProperties) {
+    // 1. Filtro de Disponibilidade (somente imóveis disponíveis / não concluídos)
+    const stage = item.kanbanStage || 'disponivel';
+    if (onlyAvailable) {
+      if (stage === 'concluido' || stage === 'excluido') continue;
+      if (item.status && (item.status.toLowerCase().includes('alugado') || item.status.toLowerCase().includes('vendido') || item.status.toLowerCase().includes('inativo'))) {
+        continue;
+      }
+    }
+
+    // 2. Filtro de Finalidade (Locação / Venda)
+    const itemTransNorm = normalizeString(item.transactionType);
+    let isRent = itemTransNorm.includes('locacao') || itemTransNorm.includes('rent');
+    let isSale = itemTransNorm.includes('venda') || itemTransNorm.includes('sale');
+
+    if (transTypeNorm && transTypeNorm !== 'all' && transTypeNorm !== 'ambos') {
+      if (transTypeNorm.includes('locacao') || transTypeNorm.includes('aluguel') || transTypeNorm.includes('rent')) {
+        if (!isRent) continue;
+      } else if (transTypeNorm.includes('venda') || transTypeNorm.includes('compra') || transTypeNorm.includes('sale')) {
+        if (!isSale) continue;
+      }
+    }
+
+    // 3. Filtro de Uso (Residencial / Comercial)
+    if (usageTypeNorm && usageTypeNorm !== 'all') {
+      const itemUsageNorm = normalizeString(item.usageType);
+      if (!itemUsageNorm.includes(usageTypeNorm)) continue;
+    }
+
+    // 4. Filtro por Tipo de Imóvel com sinônimos imobiliários
+    if (propTypeNorm && propTypeNorm !== 'all') {
+      const itemTypeNorm = normalizeString(item.propertyType);
+      let matchType = itemTypeNorm.includes(propTypeNorm);
+
+      if (!matchType) {
+        if (propTypeNorm.includes('apto') || propTypeNorm.includes('apartamento') || propTypeNorm.includes('apartment')) {
+          matchType = itemTypeNorm.includes('apartment') || itemTypeNorm.includes('apartamento') || itemTypeNorm.includes('flat') || itemTypeNorm.includes('studio') || itemTypeNorm.includes('cobertura') || itemTypeNorm.includes('penthouse');
+        } else if (propTypeNorm.includes('casa') || propTypeNorm.includes('home')) {
+          matchType = itemTypeNorm.includes('home') || itemTypeNorm.includes('casa') || itemTypeNorm.includes('sobrado');
+        } else if (propTypeNorm.includes('sobrado')) {
+          matchType = itemTypeNorm.includes('sobrado') || itemTypeNorm.includes('casa');
+        } else if (propTypeNorm.includes('cobertura') || propTypeNorm.includes('penthouse')) {
+          matchType = itemTypeNorm.includes('penthouse') || itemTypeNorm.includes('cobertura');
+        } else if (propTypeNorm.includes('comercial') || propTypeNorm.includes('sala') || propTypeNorm.includes('office')) {
+          matchType = itemTypeNorm.includes('commercial') || itemTypeNorm.includes('comercial') || itemTypeNorm.includes('office') || itemTypeNorm.includes('business') || itemTypeNorm.includes('sala') || itemTypeNorm.includes('edificio');
+        } else if (propTypeNorm.includes('terreno') || propTypeNorm.includes('lote') || propTypeNorm.includes('land')) {
+          matchType = itemTypeNorm.includes('land') || itemTypeNorm.includes('terreno') || itemTypeNorm.includes('lote');
+        } else if (propTypeNorm.includes('galpao') || propTypeNorm.includes('industrial') || propTypeNorm.includes('deposito')) {
+          matchType = itemTypeNorm.includes('industrial') || itemTypeNorm.includes('galpao') || itemTypeNorm.includes('deposito');
+        }
+      }
+
+      if (!matchType) continue;
+    }
+
+    // 5. Filtro de Orçamento
+    let priceToCheck = 0;
+    if (transTypeNorm.includes('locacao') || transTypeNorm.includes('aluguel') || transTypeNorm.includes('rent')) {
+      priceToCheck = item.rentalPrice || item.price || 0;
+    } else if (transTypeNorm.includes('venda') || transTypeNorm.includes('compra') || transTypeNorm.includes('sale')) {
+      priceToCheck = item.price || item.rentalPrice || 0;
+    } else {
+      priceToCheck = isRent ? (item.rentalPrice || item.price || 0) : (item.price || item.rentalPrice || 0);
+    }
+
+    if (rawMinPrice > 0 && priceToCheck > 0 && priceToCheck < rawMinPrice) {
+      continue;
+    }
+
+    if (rawMaxPrice > 0 && priceToCheck > 0) {
+      if (priceToCheck > rawMaxPrice) {
+        continue;
+      }
+    }
+
+    // 6. Filtros Estruturais Mínimos
+    if (rawBedrooms > 0 && (item.bedrooms || 0) < rawBedrooms) continue;
+    if (rawSuites > 0 && (item.suites || 0) < rawSuites) continue;
+    if (rawBathrooms > 0 && (item.bathrooms || 0) < rawBathrooms) continue;
+    if (rawGarage > 0 && (item.garage || 0) < rawGarage) continue;
+
+    // 7. Filtro de Cidade
+    if (cityNorm && cityNorm !== 'all') {
+      const itemCityNorm = normalizeString(item.location?.city);
+      if (!itemCityNorm.includes(cityNorm)) continue;
+    }
+
+    // 8. Filtro de Bairro (se especificado, deve conferir com pelo menos um da lista)
+    const itemNeighNorm = normalizeString(item.location?.neighborhood);
+    const itemAddressNorm = normalizeString(item.location?.address);
+    let matchedNeighborhood = null;
+    if (targetNeighborhoods.length > 0) {
+      const matched = targetNeighborhoods.some(n => {
+        if (itemNeighNorm.includes(n) || itemAddressNorm.includes(n)) {
+          matchedNeighborhood = item.location?.neighborhood || n;
+          return true;
+        }
+        return false;
+      });
+      if (!matched) continue;
+    }
+
+    // --- CÁLCULO DO SCORE DE COMPATIBILIDADE & HIGHLIGHTS ---
+    let matchScore = 50; // Base por atender todos os requisitos rígidos
+    const matchHighlights = [];
+
+    // Highlight e bônus de preço
+    if (rawMaxPrice > 0 && priceToCheck > 0) {
+      const formattedPrice = priceToCheck.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const formattedMax = rawMaxPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const savingsPercent = Math.round(((rawMaxPrice - priceToCheck) / rawMaxPrice) * 100);
+
+      if (savingsPercent >= 10) {
+        matchScore += 15;
+        matchHighlights.push(`Excelente custo-benefício (${savingsPercent}% abaixo do orçamento máximo: ${formattedPrice} vs ${formattedMax})`);
+      } else {
+        matchScore += 10;
+        matchHighlights.push(`Dentro do orçamento planejado (${formattedPrice} de teto ${formattedMax})`);
+      }
+    }
+
+    // Highlight e bônus de localização
+    if (matchedNeighborhood) {
+      matchScore += 15;
+      matchHighlights.push(`Localizado no bairro de interesse: ${matchedNeighborhood}`);
+    } else if (item.location?.neighborhood) {
+      matchHighlights.push(`Bairro: ${item.location.neighborhood}`);
+    }
+
+    // Highlight e bônus de quartos/suítes/vagas adicionais
+    if (rawBedrooms > 0) {
+      if (item.bedrooms > rawBedrooms) {
+        matchScore += 5;
+        matchHighlights.push(`${item.bedrooms} dormitórios (${item.bedrooms - rawBedrooms} a mais que o solicitado)`);
+      } else {
+        matchHighlights.push(`${item.bedrooms} dormitórios`);
+      }
+    }
+    if (item.suites > 0) {
+      matchScore += Math.min(item.suites * 3, 6);
+      matchHighlights.push(`${item.suites} suíte(s)`);
+    }
+    if (item.garage > 0) {
+      matchScore += Math.min(item.garage * 3, 6);
+      matchHighlights.push(`${item.garage} vaga(s) de garagem`);
+    }
+
+    // Avaliação de comodidades / features desejadas
+    const itemFeaturesText = normalizeString((item.features || []).join(' '));
+    const matchedFeaturesList = [];
+    for (const feat of targetFeatures) {
+      if (itemFeaturesText.includes(feat)) {
+        matchedFeaturesList.push(feat);
+        matchScore += 6;
+      }
+    }
+    if (matchedFeaturesList.length > 0) {
+      matchHighlights.push(`Atende comodidades desejadas: ${matchedFeaturesList.join(', ')}`);
+    }
+
+    // Avaliação contextual por palavras-chave na descrição
+    const fullSearchableText = normalizeString(`${item.title} ${item.description || ''} ${item.features ? item.features.join(' ') : ''}`);
+    const matchedContextWords = [];
+    for (const kw of contextKeywords) {
+      if (fullSearchableText.includes(kw)) {
+        matchedContextWords.push(kw);
+        matchScore += 5;
+      }
+    }
+    if (matchedContextWords.length > 0) {
+      matchHighlights.push(`Termos contextuais encontrados: ${matchedContextWords.join(', ')}`);
+    }
+
+    // Limitar score a 100
+    matchScore = Math.min(100, Math.max(1, matchScore));
+
+    // Formatação do resultado (compacta para IA ou completa para CRM)
+    let outputItem;
+    if (format === 'compact' || format === 'ai') {
+      outputItem = {
+        id: item.id,
+        title: item.title,
+        transactionType: item.transactionType,
+        propertyType: item.propertyType,
+        usageType: item.usageType,
+        price: item.price || 0,
+        rentalPrice: item.rentalPrice || 0,
+        condo: item.condo || 0,
+        iptu: item.iptu || 0,
+        livingArea: item.livingArea || 0,
+        bedrooms: item.bedrooms || 0,
+        suites: item.suites || 0,
+        bathrooms: item.bathrooms || 0,
+        garage: item.garage || 0,
+        neighborhood: item.location?.neighborhood || '',
+        city: item.location?.city || '',
+        address: item.location?.address || '',
+        features: item.features || [],
+        description: item.description ? item.description.slice(0, 400) + (item.description.length > 400 ? '...' : '') : '',
+        primaryImage: item.primaryImage || (item.images && item.images[0]) || '',
+        websiteUrl: item.websiteUrl || '',
+        kanbanStage: item.kanbanStage || 'disponivel',
+        status: item.status || 'Vago / Disponível',
+        matchScore,
+        matchHighlights
+      };
+    } else {
+      outputItem = {
+        ...item,
+        matchScore,
+        matchHighlights
+      };
+    }
+
+    matchedItems.push(outputItem);
+  }
+
+  // Ordenar por maior afinidade / Match Score
+  matchedItems.sort((a, b) => b.matchScore - a.matchScore);
+
+  const paginated = matchedItems.slice(offset, offset + limit);
+
+  res.json({
+    success: true,
+    endpoint: '/api/leads/match',
+    contact: contactData ? {
+      id: contactData.id,
+      name: contactData.name,
+      phoneNumber: contactData.phoneNumber || contactData.phoneNumberFormatted,
+      email: contactData.email,
+      customFields: contactData.customFields || {},
+      annotation: contactData.annotation || null,
+      tags: contactData.tagNames || []
+    } : null,
+    leadProfile: {
+      tipo: rawPropertyType || 'Qualquer',
+      finalidade: rawTransactionType || 'Qualquer',
+      uso: rawUsageType || 'Qualquer',
+      orcamentoMax: rawMaxPrice || null,
+      orcamentoMin: rawMinPrice || null,
+      quartosMin: rawBedrooms || null,
+      suitesMin: rawSuites || null,
+      banheirosMin: rawBathrooms || null,
+      vagasMin: rawGarage || null,
+      regiao: rawNeighborhoods || 'Qualquer',
+      cidade: rawCity || 'Qualquer',
+      caracteristicas: targetFeatures,
+      contexto: rawContext || null,
+      somenteDisponiveis: onlyAvailable
+    },
+    totalMatches: matchedItems.length,
+    offset,
+    limit,
+    results: paginated
   });
 });
 

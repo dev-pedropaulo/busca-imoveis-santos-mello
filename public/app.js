@@ -1114,20 +1114,62 @@
     }
   });
 
+  // --- Busca por Perfil de Lead (Helena CRM / Menu Personalizado) ---
+  async function searchLeadProperties(contactId) {
+    showState('loading');
+    feedStatusText.textContent = `Consultando perfil do lead #${contactId} no Helena CRM...`;
+    try {
+      const res = await fetch(`${API_BASE}/api/leads/match?contactId=${encodeURIComponent(contactId)}`);
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Falha ao buscar imóveis para o lead.');
+      }
+
+      const results = data.results || [];
+      const total = data.totalMatches || results.length;
+      const contactName = data.contact ? data.contact.name : `Lead #${contactId}`;
+
+      feedStatusText.textContent = `🎯 Perfil carregado: ${contactName} • ${total} imóveis compatíveis`;
+
+      if (results.length === 0) {
+        notFoundTitle.textContent = `Nenhum imóvel compatível para ${contactName}`;
+        notFoundMsg.textContent = 'Não encontramos imóveis que atendam 100% aos critérios cadastrados no Helena CRM.';
+        showState('notFound');
+        return;
+      }
+
+      loadedPropertiesList = results;
+      lastSearchResults = loadedPropertiesList;
+      renderGrid(results, total, false);
+      showState('grid');
+
+      if (resultsCountText) {
+        resultsCountText.textContent = `🎯 ${total} imóveis recomendados para ${contactName}`;
+      }
+    } catch (err) {
+      console.error('Erro ao buscar perfil do lead:', err);
+      // Se falhar a consulta do lead, faz fallback para busca padrão
+      searchProperties();
+    }
+  }
+
   // --- Inicialização ao Carregar a Página ---
   initTheme();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const paramCode = urlParams.get('codigo') || urlParams.get('c') || urlParams.get('id');
+  const paramCode = urlParams.get('codigo') || urlParams.get('c') || (urlParams.get('id') && !urlParams.get('id').includes('-') ? urlParams.get('id') : null);
+  const paramContactId = urlParams.get('contactId') || urlParams.get('contact_id') || (urlParams.get('id') && urlParams.get('id').includes('-') ? urlParams.get('id') : null);
 
-  if (paramCode) {
+  if (paramContactId) {
+    loadFilterOptions();
+    searchLeadProperties(paramContactId);
+  } else if (paramCode) {
     searchInput.value = paramCode;
-    // Executa a busca por código imediatamente em paralelo para abertura instantânea
     searchProperties();
     loadFilterOptions();
   } else {
     loadFilterOptions().then(() => {
-      // Carrega catálogo inicial automaticamente
       searchProperties();
     });
   }
