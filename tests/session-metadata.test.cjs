@@ -45,4 +45,58 @@ test('Session Metadata - Validação dos endpoints e regras de negócio', async 
     assert.equal(body.success, false);
     assert.ok(body.error.includes('contactId ou sessionId'));
   });
+
+  await t.test('GET /visitas deve servir a página HTML de agendamento com permissão de iframe', async () => {
+    const res = await fetch(`${baseUrl}/visitas`);
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assert.ok(text.includes('Agendamento de Visitas'));
+    assert.ok(text.includes('visitas.js'));
+    assert.equal(res.headers.get('content-security-policy'), 'frame-ancestors *');
+    assert.equal(res.headers.get('x-frame-options'), null);
+  });
+
+  await t.test('POST /api/leads/schedule-visits deve rejeitar sem identificadores ou sem visitas', async () => {
+    const res1 = await fetch(`${baseUrl}/api/leads/schedule-visits`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visits: [{ propertyId: '100' }] })
+    });
+    assert.equal(res1.status, 400);
+
+    const res2 = await fetch(`${baseUrl}/api/leads/schedule-visits`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'sess-123', visits: [] })
+    });
+    assert.equal(res2.status, 400);
+  });
+
+  await t.test('POST /api/leads/schedule-visits deve agendar visitas e salvar no crmStore', async () => {
+    const res = await fetch(`${baseUrl}/api/leads/schedule-visits`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'sess-teste-visita',
+        contactId: 'contato-teste-visita',
+        clientName: 'Pedro Santos',
+        clientPhone: '11988887777',
+        visits: [
+          {
+            propertyId: '8713',
+            propertyTitle: 'Apartamento Jardim Jamaica',
+            date: '2026-10-18',
+            time: '14:30',
+            notes: 'Avisar portaria'
+          }
+        ]
+      })
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.success, true);
+    assert.ok(body.data.crmVisits.length >= 1);
+    assert.equal(body.data.crmVisits[0].propertyId, '8713');
+    assert.equal(body.data.crmVisits[0].time, '14:30');
+  });
 });

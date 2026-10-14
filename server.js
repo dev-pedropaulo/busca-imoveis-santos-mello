@@ -9,7 +9,8 @@ const {
   fetchHelenaContactSessions,
   fetchHelenaSession,
   updateHelenaSessionMetadata,
-  recordSentPropertiesInHelenaSession
+  recordSentPropertiesInHelenaSession,
+  recordScheduledVisitsInHelenaSession
 } = require('./lib/helena-crm');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
 const PORT = process.env.PORT || 3333;
@@ -31,6 +32,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Interface Dedicada para Agendamento de Visitas dos Imóveis Enviados (Helena CRM Menu Personalizado)
+app.get(['/visitas', '/agendar-visitas', '/visitas.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'visitas.html'));
 });
 
 // Estado em memória dos imóveis
@@ -1211,6 +1217,7 @@ app.get('/api/leads/session-metadata', async (req, res) => {
       contactId: session.contactId || contactId,
       totalImoveisEnviados: meta.totalImoveisEnviados || imoveisEnviados.length,
       imoveisEnviados,
+      visitasAgendadas: Array.isArray(meta.visitasAgendadas) ? meta.visitasAgendadas : [],
       metadata: meta
     });
   } catch (err) {
@@ -1219,6 +1226,76 @@ app.get('/api/leads/session-metadata', async (req, res) => {
       success: false,
       error: err.message
     });
+  }
+});
+
+/**
+ * POST /api/leads/schedule-visits
+ * Salva as visitas escolhidas pelo lead no Session Metadata do Helena CRM
+ * e no CRM Store Santos & Mello
+ */
+app.post('/api/leads/schedule-visits', async (req, res) => {
+  try {
+    const { sessionId, contactId, visits, clientName, clientPhone } = req.body;
+    const token = req.headers['x-helena-token'] || req.body.token || req.query.token || null;
+
+    if (!sessionId && !contactId) {
+      return res.status(400).json({ success: false, error: 'É obrigatório informar sessionId ou contactId.' });
+    }
+
+    const visitList = Array.isArray(visits) ? visits : [visits].filter(Boolean);
+    if (visitList.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhuma visita informada para agendamento.' });
+    }
+
+    // 1. Salva cada visita no crmStore
+    const savedCrmVisits = [];
+    visitList.forEach(v => {
+      if (v.propertyId && v.date && v.time) {
+        try {
+          const created = crmStore.createVisit({
+            propertyId: String(v.propertyId),
+            propertyTitle: v.propertyTitle || `Imóvel #${v.propertyId}`,
+            clientName: clientName || v.clientName || 'Lead Helena CRM',
+            clientPhone: clientPhone || v.clientPhone || '',
+            date: v.date,
+            time: v.time,
+            broker: v.broker || 'Corretor de Plantão',
+            notes: v.notes || '',
+            sessionId: sessionId || undefined,
+            contactId: contactId || undefined
+          });
+          savedCrmVisits.push(created);
+        } catch (crmErr) {
+          console.warn('Aviso ao salvar visita no crmStore:', crmErr.message);
+        }
+      }
+    });
+
+    // 2. Salva no session metadata do Helena CRM
+    let sessionResult = null;
+    try {
+      sessionResult = await recordScheduledVisitsInHelenaSession({
+        sessionId,
+        contactId,
+        visits: visitList,
+        tokenOverride: token
+      });
+    } catch (helenaErr) {
+      console.warn('Aviso ao salvar visitas no metadata da Helena:', helenaErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `${visitList.length} visita(s) agendada(s) com sucesso!`,
+      data: {
+        crmVisits: savedCrmVisits,
+        helenaSession: sessionResult
+      }
+    });
+  } catch (err) {
+    console.error('Erro ao processar agendamento de visitas:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

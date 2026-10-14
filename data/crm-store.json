@@ -148,11 +148,16 @@
       "keyTag": "CLAV-088",
       "updatedAt": "2026-09-30T12:16:23.612Z"
     },
+    "8713": {
+      "kanbanStage": "visita_agendada",
+      "status": "Visita Agendada",
+      "updatedAt": "2026-10-14T17:48:05.306Z"
+    },
     "8797": {
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
       "keyTag": "CLAV-012",
-      "updatedAt": "2026-10-14T17:33:54.344Z"
+      "updatedAt": "2026-10-14T17:47:53.386Z"
     },
     "8816": {
       "kanbanStage": "concluido",
@@ -170,7 +175,7 @@
       "kanbanStage": "disponivel",
       "status": "Vago / Disponível",
       "keyTag": "CLAV-TEST-99",
-      "updatedAt": "2026-10-14T17:33:54.348Z"
+      "updatedAt": "2026-10-14T17:47:53.389Z"
     },
     "test-1790771916676": {
       "kanbanStage": "excluido",
@@ -231,9 +236,49 @@
       "status": "Inativo / Excluído",
       "updatedAt": "2026-10-14T17:33:54.342Z",
       "deleted": true
+    },
+    "test-1792000073380": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T17:47:53.384Z",
+      "deleted": true
+    },
+    "test-101": {
+      "kanbanStage": "visita_agendada",
+      "status": "Visita Agendada",
+      "updatedAt": "2026-10-14T17:49:04.693Z"
     }
   },
   "visits": [
+    {
+      "id": "vis-1792000144693-921",
+      "status": "Agendada",
+      "createdAt": "2026-10-14T17:49:04.693Z",
+      "propertyId": "TEST-101",
+      "propertyTitle": "Apartamento Campestre com Varanda Gourmet",
+      "clientName": "Pedro Paulo",
+      "clientPhone": "11999998888",
+      "date": "2026-10-17",
+      "time": "15:00",
+      "broker": "Carlos Corretor",
+      "notes": "Cliente vai acompanhado da noiva. Retirar chave no plantão.",
+      "contactId": "a9f747f3-1cde-41a1-8c21-66b14bede7e9"
+    },
+    {
+      "id": "vis-1792000085306-443",
+      "status": "Agendada",
+      "createdAt": "2026-10-14T17:48:05.306Z",
+      "propertyId": "8713",
+      "propertyTitle": "Apartamento Jardim Jamaica",
+      "clientName": "Pedro Santos",
+      "clientPhone": "11988887777",
+      "date": "2026-10-18",
+      "time": "14:30",
+      "broker": "Corretor de Plantão",
+      "notes": "Avisar portaria",
+      "sessionId": "sess-teste-visita",
+      "contactId": "contato-teste-visita"
+    },
     {
       "id": "vis-101",
       "propertyId": "8797",
@@ -292,6 +337,16 @@
     }
   ],
   "keyMovements": [
+    {
+      "id": "km-1792000073388-625",
+      "takenAt": "2026-10-14T17:47:53.388Z",
+      "returnedAt": "2026-10-14T17:47:53.389Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
     {
       "id": "km-1791999234347-984",
       "takenAt": "2026-10-14T17:33:54.347Z",
