@@ -517,6 +517,37 @@
         </div>
       </section>
 
+      <!-- Floating Bulk Selection Bar (para copiar múltiplos imóveis selecionados no atendimento) -->
+      <div id="bulkActionsBar" class="bulk-actions-bar" style="display: none;">
+        <div class="bulk-actions-content">
+          <div class="bulk-selection-info">
+            <span class="bulk-badge-count" id="bulkSelectedCount">0</span>
+            <span class="bulk-selection-text" id="bulkSelectedText">imóveis selecionados</span>
+          </div>
+          <div class="bulk-buttons-group">
+            <button type="button" class="btn-bulk-action btn-bulk-copy-text" id="btnBulkCopyText" title="Copiar mensagem com todos os imóveis selecionados para o atendimento">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+              <span class="bulk-btn-label">Copiar Apresentação Completa</span>
+            </button>
+            <button type="button" class="btn-bulk-action btn-bulk-copy-links" id="btnBulkCopyLinks" title="Copiar apenas os links oficiais dos imóveis selecionados">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              <span>Copiar Links</span>
+            </button>
+            <button type="button" class="btn-bulk-action btn-bulk-clear" id="btnBulkClear" title="Desmarcar todos os imóveis">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Property Details Result Card (Single View) -->
       <section id="propertyResult" class="property-container" style="display: none;">
         
@@ -697,12 +728,21 @@
             <div class="action-buttons-grid">
               
               <!-- Copy Link Button -->
-              <button class="action-btn btn-primary" id="copyLinkBtn">
+              <button class="action-btn btn-primary" id="copyLinkBtn" title="Copiar link oficial do imóvel">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                 </svg>
                 <span class="btn-text">Copiar Link</span>
+              </button>
+
+              <!-- Copy Chat Presentation Button -->
+              <button class="action-btn btn-chat-copy" id="copyChatMsgBtn" title="Copiar mensagem completa formatada para atendimento / WhatsApp">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                </svg>
+                <span class="btn-text">Copiar p/ Atendimento</span>
               </button>
 
               <!-- Tour Virtual / Vídeo Button (quando disponível) -->

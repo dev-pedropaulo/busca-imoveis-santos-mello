@@ -107,6 +107,7 @@
 
   // Ações
   const copyLinkBtn = document.getElementById('copyLinkBtn');
+  const copyChatMsgBtn = document.getElementById('copyChatMsgBtn');
   const viewTourBtn = document.getElementById('viewTourBtn');
   const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
   const copySummaryBtn = document.getElementById('copySummaryBtn');
@@ -130,6 +131,9 @@
   let lastSearchResults = [];
   let isFiltersOpen = false;
   let savedScrollPosition = 0;
+
+  // Estado de Seleção Múltipla de Imóveis (para Atendimento no CRM)
+  const selectedPropertyIds = new Set();
 
   // Estado de Paginação
   const PAGE_SIZE = 40;
@@ -190,7 +194,166 @@
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       toast.classList.remove('show');
-    }, 3000);
+    }, 3200);
+  }
+
+  // --- Cópia Segura Universal com Fallback para Iframes (Helena CRM) ---
+  async function copyToClipboard(text) {
+    if (!text) return false;
+    let success = false;
+
+    // 1. Tenta API moderna do Clipboard
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        success = true;
+      } catch (err) {
+        console.warn('Clipboard API restrita no iframe, ativando fallback...', err);
+      }
+    }
+
+    // 2. Fallback universal via textarea temporário (funciona mesmo com restrição de permissão de iframe)
+    if (!success) {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '0';
+        textArea.setAttribute('readonly', '');
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        textArea.setSelectionRange(0, 99999);
+        success = document.execCommand('copy');
+        document.body.removeChild(textArea);
+      } catch (err) {
+        console.error('Falha no fallback de cópia execCommand:', err);
+      }
+    }
+
+    return success;
+  }
+
+  // Feedback Visual Instantâneo no Botão Clicado
+  function triggerCopiedFeedback(btn, feedbackText = '✅ Copiado!') {
+    if (!btn) return;
+    const originalHtml = btn.dataset.originalHtml || btn.innerHTML;
+    if (!btn.dataset.originalHtml) {
+      btn.dataset.originalHtml = originalHtml;
+    }
+    btn.classList.add('copied');
+    btn.innerHTML = feedbackText;
+
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = btn.dataset.originalHtml || originalHtml;
+    }, 2200);
+  }
+
+  // --- Formatadores de Mensagem para Atendimento / WhatsApp ---
+  function getPropertyShareData(prop) {
+    const isRental = prop.transactionType.toLowerCase().includes('locação');
+    const cleanType = prop.propertyType.replace('Residential / ', '').replace('Commercial / ', '');
+    const mainPrice = isRental ? (prop.rentalPrice || prop.price) : (prop.price || prop.rentalPrice);
+    const priceText = formatMoney(mainPrice) + (isRental ? '/mês' : '');
+    const linkImovel = prop.websiteUrl || `${window.location.origin}/?codigo=${prop.id}`;
+
+    let areaVal = '';
+    if (prop.livingArea > 0) areaVal = `${prop.livingArea} m² úteis`;
+    else if (prop.constructedArea > 0) areaVal = `${prop.constructedArea} m² const.`;
+    else if (prop.lotArea > 0) areaVal = `${prop.lotArea} m² lote`;
+
+    const specs = [];
+    if (prop.bedrooms > 0) specs.push(`🛏️ ${prop.bedrooms} dorms${prop.suites > 0 ? ` (${prop.suites} suíte${prop.suites > 1 ? 's' : ''})` : ''}`);
+    if (prop.garage > 0) specs.push(`🚗 ${prop.garage} vaga${prop.garage > 1 ? 's' : ''}`);
+    if (areaVal) specs.push(`📐 ${areaVal}`);
+
+    const custos = [];
+    if (prop.condo > 0) custos.push(`Cond.: ${formatMoney(prop.condo)}`);
+    if (prop.iptu > 0) custos.push(`IPTU: ${formatMoney(prop.iptu)}`);
+
+    return {
+      isRental,
+      cleanType,
+      priceText,
+      linkImovel,
+      specs,
+      custos,
+      neighborhood: prop.location?.neighborhood || 'Santo André',
+      city: prop.location?.city || 'SP',
+      highlights: Array.isArray(prop.matchHighlights) ? prop.matchHighlights : []
+    };
+  }
+
+  function formatSinglePropertyChatText(prop, leadName = '') {
+    const data = getPropertyShareData(prop);
+    const saudacao = leadName && !leadName.toLowerCase().includes('cliente') && !leadName.toLowerCase().includes('lead')
+      ? `Olá, ${leadName.split(' ')[0]}!`
+      : 'Olá!';
+
+    const lines = [
+      `${saudacao} 👋 Selecionei este imóvel na Santos & Mello que combina perfeitamente com você:`,
+      ``,
+      `🏠 *${data.cleanType} - ${data.neighborhood}* (Cód. #${prop.id})`,
+      `💰 *Valor:* ${data.priceText}${data.custos.length ? ` (${data.custos.join(' • ')})` : ''}`,
+      data.specs.length ? `✨ ${data.specs.join(' • ')}` : '',
+      data.highlights.length ? `🎯 *Destaques:* ${data.highlights.slice(0, 3).join(' • ')}` : '',
+      ``,
+      `🔗 *Veja fotos e ficha completa:*`,
+      data.linkImovel
+    ];
+
+    return lines.filter(Boolean).join('\n');
+  }
+
+  function formatBulkPropertiesChatText(propsList, leadName = '') {
+    const saudacao = leadName && !leadName.toLowerCase().includes('cliente') && !leadName.toLowerCase().includes('lead')
+      ? `Olá, ${leadName.split(' ')[0]}!`
+      : 'Olá!';
+
+    const lines = [
+      `${saudacao} 👋 Selecionei estas ${propsList.length} opções na Santos & Mello que combinam muito com você:`,
+      `----------------------------------------`
+    ];
+
+    propsList.forEach((prop, idx) => {
+      const data = getPropertyShareData(prop);
+      lines.push(
+        `🔹 *Opção ${idx + 1}: ${data.cleanType} em ${data.neighborhood}* (Cód. #${prop.id})`,
+        `💰 *Valor:* ${data.priceText}${data.custos.length ? ` (${data.custos.join(' • ')})` : ''}`,
+        data.specs.length ? `✨ ${data.specs.join(' • ')}` : '',
+        data.highlights.length ? `🎯 *Destaques:* ${data.highlights.slice(0, 2).join(' • ')}` : '',
+        `🔗 *Fotos & Ficha:* ${data.linkImovel}`,
+        `----------------------------------------`
+      );
+    });
+
+    lines.push(`Qual dessas opções você prefere para agendarmos uma visita? 😊`);
+    return lines.filter(Boolean).join('\n');
+  }
+
+  // Atualiza Barra Flutuante de Seleção em Lote
+  function updateBulkActionsBar() {
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const bulkCount = document.getElementById('bulkSelectedCount');
+    const bulkText = document.getElementById('bulkSelectedText');
+    const btnBulkCopyText = document.getElementById('btnBulkCopyText');
+    const bulkBtnLabel = btnBulkCopyText ? btnBulkCopyText.querySelector('.bulk-btn-label') : null;
+
+    if (!bulkBar) return;
+
+    const count = selectedPropertyIds.size;
+    if (count > 0) {
+      bulkBar.style.display = 'block';
+      if (bulkCount) bulkCount.textContent = count;
+      if (bulkText) bulkText.textContent = count === 1 ? 'imóvel selecionado' : 'imóveis selecionados';
+      if (bulkBtnLabel) {
+        bulkBtnLabel.textContent = count === 1 ? 'Copiar Apresentação p/ Atendimento' : `Copiar ${count} Opções p/ Atendimento`;
+      }
+    } else {
+      bulkBar.style.display = 'none';
+    }
   }
 
   // Determina base da API: se aberto via file:// aponta para localhost:3333; na web (Vercel ou servidor próprio), usa rota relativa
@@ -737,11 +900,15 @@
   function renderGrid(properties, total, append = false) {
     if (!append) {
       propertiesGrid.innerHTML = '';
+      selectedPropertyIds.clear();
+      updateBulkActionsBar();
     }
 
     properties.forEach(prop => {
       const card = document.createElement('div');
-      card.className = 'property-mini-card';
+      const isSelected = selectedPropertyIds.has(String(prop.id));
+      card.className = `property-mini-card ${isSelected ? 'is-selected' : ''}`;
+      card.dataset.id = prop.id;
 
       const isRental = prop.transactionType.toLowerCase().includes('locação');
       const isCommercial = prop.usageType === 'Comercial';
@@ -774,6 +941,17 @@
       card.innerHTML = `
         <div class="mini-card-thumb">
           <img src="${photo}" alt="${prop.title}" loading="lazy" />
+          
+          <!-- Checkbox de Seleção Rápida em Lote -->
+          <label class="mini-card-select-label" title="Selecionar este imóvel para envio conjunto" onclick="event.stopPropagation();">
+            <input type="checkbox" class="mini-card-checkbox" data-id="${prop.id}" ${isSelected ? 'checked' : ''}>
+            <span class="mini-card-checkbox-custom">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </span>
+          </label>
+
           <div class="mini-card-badges">
             ${matchBadge}
             <span class="badge ${isRental ? 'badge-rent' : 'badge-sale'}">${prop.transactionType}</span>
@@ -836,55 +1014,83 @@
             ` : ''}
           </div>
           ${highlightsHtml}
+          
           <div class="mini-card-actions">
-            <button type="button" class="btn-share-whatsapp" title="Copiar recomendação formatada para o WhatsApp">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            <!-- Botão 1: Copiar Link -->
+            <button type="button" class="btn-card-copy-link" title="Copiar link oficial do imóvel">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
               </svg>
-              <span>WhatsApp</span>
+              <span>Copiar Link</span>
             </button>
-            <button type="button" class="btn-card-quick-view">Detalhes</button>
+
+            <!-- Botão 2: Copiar Texto de Atendimento -->
+            <button type="button" class="btn-card-copy-text" title="Copiar informações formatadas para colar no atendimento">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+              <span>Copiar Texto</span>
+            </button>
+
+            <!-- Botão 3: Ver Detalhes -->
+            <button type="button" class="btn-card-quick-view" title="Abrir ficha completa">Detalhes</button>
           </div>
         </div>
       `;
 
-      // Ação do Botão Copiar WhatsApp
-      const shareBtn = card.querySelector('.btn-share-whatsapp');
-      if (shareBtn) {
-        shareBtn.addEventListener('click', (e) => {
+      // 1. Ação do Botão Copiar Link
+      const copyLinkCardBtn = card.querySelector('.btn-card-copy-link');
+      if (copyLinkCardBtn) {
+        copyLinkCardBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const leadNameEl = document.getElementById('leadProfileName');
-          const leadName = leadNameEl ? leadNameEl.textContent.trim() : '';
-          const saudacao = leadName && !leadName.toLowerCase().includes('cliente') ? `Olá, ${leadName.split(' ')[0]}!` : 'Olá!';
-          const linkImovel = `${window.location.origin}/?codigo=${prop.id}`;
-          const specsList = [];
-          if (prop.bedrooms) specsList.push(`🛏️ ${prop.bedrooms} dorms`);
-          if (prop.suites) specsList.push(`🚿 ${prop.suites} suíte(s)`);
-          if (prop.garage) specsList.push(`🚗 ${prop.garage} vaga(s)`);
-          if (areaVal) specsList.push(`📐 ${areaVal}`);
-
-          const msg = [
-            `${saudacao} 👋 Selecionei este imóvel na Santos & Mello que combina perfeitamente com o seu perfil:`,
-            ``,
-            `🏠 *${cleanType} - ${prop.location?.neighborhood || 'Santos & Mello'}*`,
-            `💰 *Valor:* ${priceText}`,
-            specsList.length ? `✨ ${specsList.join(' • ')}` : '',
-            prop.matchHighlights && prop.matchHighlights.length ? `🎯 *Destaques:* ${prop.matchHighlights.slice(0, 2).join(' • ')}` : '',
-            ``,
-            `🔗 *Veja fotos e ficha completa aqui:*`,
-            linkImovel
-          ].filter(Boolean).join('\n');
-
-          navigator.clipboard.writeText(msg).then(() => {
-            showToast('📋 Mensagem de recomendação copiada! Cole na conversa com o lead no Helena CRM.');
-          }).catch(() => {
-            showToast('Link do imóvel: ' + linkImovel);
-          });
+          const link = prop.websiteUrl || `${window.location.origin}/?codigo=${prop.id}`;
+          await copyToClipboard(link);
+          triggerCopiedFeedback(copyLinkCardBtn, '✅ Link Copiado!');
+          showToast(`🔗 Link do imóvel #${prop.id} copiado para a área de transferência!`);
         });
       }
 
+      // 2. Ação do Botão Copiar Texto para Atendimento
+      const copyTextCardBtn = card.querySelector('.btn-card-copy-text');
+      if (copyTextCardBtn) {
+        copyTextCardBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const leadNameEl = document.getElementById('leadProfileName');
+          const leadName = leadNameEl ? leadNameEl.textContent.trim() : '';
+          const msg = formatSinglePropertyChatText(prop, leadName);
+          await copyToClipboard(msg);
+          triggerCopiedFeedback(copyTextCardBtn, '✅ Texto Copiado!');
+          showToast(`📋 Informações do imóvel #${prop.id} copiadas! Cole no atendimento do Helena CRM.`);
+        });
+      }
+
+      // 3. Ação do Checkbox de Seleção
+      const checkbox = card.querySelector('.mini-card-checkbox');
+      if (checkbox) {
+        checkbox.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const id = String(prop.id);
+          if (checkbox.checked) {
+            selectedPropertyIds.add(id);
+            card.classList.add('is-selected');
+          } else {
+            selectedPropertyIds.delete(id);
+            card.classList.remove('is-selected');
+          }
+          updateBulkActionsBar();
+        });
+      }
+
+      // 4. Clique Geral no Card (Abre detalhes se não for botão ou checkbox)
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.mini-card-newtab-btn') || e.target.closest('.btn-share-whatsapp')) return;
+        if (
+          e.target.closest('.mini-card-newtab-btn') || 
+          e.target.closest('.btn-card-copy-link') || 
+          e.target.closest('.btn-card-copy-text') || 
+          e.target.closest('.mini-card-select-label')
+        ) return;
 
         savedScrollPosition = window.scrollY || document.documentElement.scrollTop || 0;
         backToGridBtn.style.display = 'inline-flex';
@@ -1065,90 +1271,144 @@
     }
   });
 
-  // --- Ações de Link e Compartilhamento ---
+  // --- Ações de Link e Compartilhamento na Ficha Única ---
 
-  // 1. Copiar Link do Imóvel
-  copyLinkBtn.addEventListener('click', async () => {
-    if (!currentProperty) return;
-    const link = currentProperty.websiteUrl || `https://www.santosemello.com.br/imovel/${currentProperty.id}`;
-    try {
-      await navigator.clipboard.writeText(link);
-      showToast('🔗 Link do imóvel copiado para a área de transferência!');
-    } catch (e) {
-      showToast(`Link: ${link}`);
-    }
-  });
+  // 1. Copiar Link Oficial do Imóvel
+  if (copyLinkBtn) {
+    copyLinkBtn.addEventListener('click', async () => {
+      if (!currentProperty) return;
+      const link = currentProperty.websiteUrl || `https://www.santosemello.com.br/imovel/${currentProperty.id}`;
+      await copyToClipboard(link);
+      triggerCopiedFeedback(copyLinkBtn, '✅ Link Copiado!');
+      showToast(`🔗 Link do imóvel #${currentProperty.id} copiado para a área de transferência!`);
+    });
+  }
 
-  // 2. Compartilhar no WhatsApp
-  shareWhatsAppBtn.addEventListener('click', () => {
-    if (!currentProperty) return;
+  // 2. Copiar Mensagem Pronta de Atendimento
+  if (copyChatMsgBtn) {
+    copyChatMsgBtn.addEventListener('click', async () => {
+      if (!currentProperty) return;
+      const leadNameEl = document.getElementById('leadProfileName');
+      const leadName = leadNameEl ? leadNameEl.textContent.trim() : '';
+      const msg = formatSinglePropertyChatText(currentProperty, leadName);
+      await copyToClipboard(msg);
+      triggerCopiedFeedback(copyChatMsgBtn, '✅ Mensagem Copiada!');
+      showToast(`📋 Apresentação do imóvel #${currentProperty.id} copiada! Cole no atendimento do Helena CRM.`);
+    });
+  }
 
-    const p = currentProperty;
-    const isRental = p.transactionType.toLowerCase().includes('locação');
-    const priceText = formatMoney(isRental ? (p.rentalPrice || p.price) : (p.price || p.rentalPrice));
-    const link = p.websiteUrl || `https://www.santosemello.com.br/imovel/${p.id}`;
+  // 3. Compartilhar no WhatsApp
+  if (shareWhatsAppBtn) {
+    shareWhatsAppBtn.addEventListener('click', () => {
+      if (!currentProperty) return;
 
-    let msg = `🏠 *${p.title}*\n`;
-    msg += `🔖 *Código:* #${p.id}\n`;
-    msg += `📍 *Localização:* ${p.location.neighborhood || 'Santo André'} - ${p.location.city || 'SP'}\n`;
-    msg += `🏢 *Uso:* ${p.usageType} • *Tipo:* ${p.propertyType}\n`;
-    msg += `💰 *Valor (${p.transactionType}):* ${priceText}\n`;
-    
-    const detailsArr = [];
-    if (p.livingArea > 0) detailsArr.push(`📐 Área: ${p.livingArea}m²`);
-    if (p.lotArea > 0) detailsArr.push(`🌱 Terreno: ${p.lotArea}m²`);
-    if (p.constructedArea > 0) detailsArr.push(`🏗️ Constr.: ${p.constructedArea}m²`);
-    if (p.bedrooms > 0) detailsArr.push(`🛏️ ${p.bedrooms} dorms`);
-    if (p.garage > 0) detailsArr.push(`🚗 ${p.garage} vagas`);
-    if (detailsArr.length > 0) {
-      msg += `📌 *Detalhes:* ${detailsArr.join(' • ')}\n`;
-    }
-    
-    if (p.virtualTourLink) {
-      msg += `🎥 *Tour Virtual / Vídeo:* ${p.virtualTourLink}\n`;
-    }
+      const p = currentProperty;
+      const isRental = p.transactionType.toLowerCase().includes('locação');
+      const priceText = formatMoney(isRental ? (p.rentalPrice || p.price) : (p.price || p.rentalPrice));
+      const link = p.websiteUrl || `https://www.santosemello.com.br/imovel/${p.id}`;
 
-    msg += `\n🔗 *Veja fotos e ficha completa aqui:* \n${link}`;
+      let msg = `🏠 *${p.title}*\n`;
+      msg += `🔖 *Código:* #${p.id}\n`;
+      msg += `📍 *Localização:* ${p.location.neighborhood || 'Santo André'} - ${p.location.city || 'SP'}\n`;
+      msg += `🏢 *Uso:* ${p.usageType} • *Tipo:* ${p.propertyType}\n`;
+      msg += `💰 *Valor (${p.transactionType}):* ${priceText}\n`;
+      
+      const detailsArr = [];
+      if (p.livingArea > 0) detailsArr.push(`📐 Área: ${p.livingArea}m²`);
+      if (p.lotArea > 0) detailsArr.push(`🌱 Terreno: ${p.lotArea}m²`);
+      if (p.constructedArea > 0) detailsArr.push(`🏗️ Constr.: ${p.constructedArea}m²`);
+      if (p.bedrooms > 0) detailsArr.push(`🛏️ ${p.bedrooms} dorms`);
+      if (p.garage > 0) detailsArr.push(`🚗 ${p.garage} vagas`);
+      if (detailsArr.length > 0) {
+        msg += `📌 *Detalhes:* ${detailsArr.join(' • ')}\n`;
+      }
+      
+      if (p.virtualTourLink) {
+        msg += `🎥 *Tour Virtual / Vídeo:* ${p.virtualTourLink}\n`;
+      }
 
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-    window.open(whatsappUrl, '_blank');
-  });
+      msg += `\n🔗 *Veja fotos e ficha completa aqui:* \n${link}`;
 
-  // 3. Copiar Ficha Técnica Completa em Texto
-  copySummaryBtn.addEventListener('click', async () => {
-    if (!currentProperty) return;
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+      window.open(whatsappUrl, '_blank');
+    });
+  }
 
-    const p = currentProperty;
-    const isRental = p.transactionType.toLowerCase().includes('locação');
-    const priceText = formatMoney(isRental ? (p.rentalPrice || p.price) : (p.price || p.rentalPrice));
-    const link = p.websiteUrl || `https://www.santosemello.com.br/imovel/${p.id}`;
+  // 4. Copiar Ficha Técnica Completa em Texto
+  if (copySummaryBtn) {
+    copySummaryBtn.addEventListener('click', async () => {
+      if (!currentProperty) return;
 
-    let summary = `FICHA DO IMÓVEL #${p.id}\n`;
-    summary += `------------------------------\n`;
-    summary += `Título: ${p.title}\n`;
-    summary += `Finalidade: ${p.transactionType}\n`;
-    summary += `Uso: ${p.usageType}\n`;
-    summary += `Tipo: ${p.propertyType}\n`;
-    summary += `Valor: ${priceText}\n`;
-    if (p.condo > 0) summary += `Condomínio: ${formatMoney(p.condo)}/mês\n`;
-    if (p.iptu > 0) summary += `IPTU: ${formatMoney(p.iptu)}/mês\n`;
-    summary += `Área Útil: ${p.livingArea || '--'} m²\n`;
-    if (p.lotArea > 0) summary += `Área do Terreno: ${p.lotArea} m²\n`;
-    if (p.constructedArea > 0) summary += `Área Construída: ${p.constructedArea} m²\n`;
-    summary += `Quartos: ${p.bedrooms} (Suítes: ${p.suites})\n`;
-    summary += `Banheiros: ${p.bathrooms}\n`;
-    summary += `Vagas de Garagem: ${p.garage}\n`;
-    summary += `Endereço: ${p.location.address || ''}, ${p.location.streetNumber || ''} - ${p.location.neighborhood || ''}, ${p.location.city || 'Santo André'}/${p.location.state || 'SP'}\n`;
-    if (p.virtualTourLink) summary += `Tour Virtual / Vídeo: ${p.virtualTourLink}\n`;
-    summary += `Link Direto: ${link}\n`;
+      const p = currentProperty;
+      const isRental = p.transactionType.toLowerCase().includes('locação');
+      const priceText = formatMoney(isRental ? (p.rentalPrice || p.price) : (p.price || p.rentalPrice));
+      const link = p.websiteUrl || `https://www.santosemello.com.br/imovel/${p.id}`;
 
-    try {
-      await navigator.clipboard.writeText(summary);
-      showToast('📋 Ficha técnica copiada!');
-    } catch (e) {
-      showToast('Erro ao copiar ficha.');
-    }
-  });
+      let summary = `FICHA DO IMÓVEL #${p.id}\n`;
+      summary += `------------------------------\n`;
+      summary += `Título: ${p.title}\n`;
+      summary += `Finalidade: ${p.transactionType}\n`;
+      summary += `Uso: ${p.usageType}\n`;
+      summary += `Tipo: ${p.propertyType}\n`;
+      summary += `Valor: ${priceText}\n`;
+      if (p.condo > 0) summary += `Condomínio: ${formatMoney(p.condo)}/mês\n`;
+      if (p.iptu > 0) summary += `IPTU: ${formatMoney(p.iptu)}/mês\n`;
+      summary += `Área Útil: ${p.livingArea || '--'} m²\n`;
+      if (p.lotArea > 0) summary += `Área do Terreno: ${p.lotArea} m²\n`;
+      if (p.constructedArea > 0) summary += `Área Construída: ${p.constructedArea} m²\n`;
+      summary += `Quartos: ${p.bedrooms} (Suítes: ${p.suites})\n`;
+      summary += `Banheiros: ${p.bathrooms}\n`;
+      summary += `Vagas de Garagem: ${p.garage}\n`;
+      summary += `Endereço: ${p.location.address || ''}, ${p.location.streetNumber || ''} - ${p.location.neighborhood || ''}, ${p.location.city || 'Santo André'}/${p.location.state || 'SP'}\n`;
+      if (p.virtualTourLink) summary += `Tour Virtual / Vídeo: ${p.virtualTourLink}\n`;
+      summary += `Link Direto: ${link}\n`;
+
+      await copyToClipboard(summary);
+      triggerCopiedFeedback(copySummaryBtn, '✅ Ficha Copiada!');
+      showToast('📋 Ficha técnica completa copiada para a área de transferência!');
+    });
+  }
+
+  // --- Handlers da Barra de Ações em Lote (Seleção Múltipla no Atendimento) ---
+  const btnBulkCopyText = document.getElementById('btnBulkCopyText');
+  if (btnBulkCopyText) {
+    btnBulkCopyText.addEventListener('click', async () => {
+      const selectedProps = loadedPropertiesList.filter(p => selectedPropertyIds.has(String(p.id)));
+      if (selectedProps.length === 0) return;
+
+      const leadNameEl = document.getElementById('leadProfileName');
+      const leadName = leadNameEl ? leadNameEl.textContent.trim() : '';
+      const compiledMsg = formatBulkPropertiesChatText(selectedProps, leadName);
+
+      await copyToClipboard(compiledMsg);
+      triggerCopiedFeedback(btnBulkCopyText, '✅ Apresentação Copiada!');
+      showToast(`📋 Apresentação com ${selectedProps.length} opções copiada! Cole no chat do Helena CRM.`);
+    });
+  }
+
+  const btnBulkCopyLinks = document.getElementById('btnBulkCopyLinks');
+  if (btnBulkCopyLinks) {
+    btnBulkCopyLinks.addEventListener('click', async () => {
+      const selectedProps = loadedPropertiesList.filter(p => selectedPropertyIds.has(String(p.id)));
+      if (selectedProps.length === 0) return;
+
+      const links = selectedProps.map(p => p.websiteUrl || `${window.location.origin}/?codigo=${p.id}`).join('\n');
+      await copyToClipboard(links);
+      triggerCopiedFeedback(btnBulkCopyLinks, '✅ Links Copiados!');
+      showToast(`🔗 ${selectedProps.length} links copiados para a área de transferência!`);
+    });
+  }
+
+  const btnBulkClear = document.getElementById('btnBulkClear');
+  if (btnBulkClear) {
+    btnBulkClear.addEventListener('click', () => {
+      selectedPropertyIds.clear();
+      document.querySelectorAll('.mini-card-checkbox').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('.property-mini-card.is-selected').forEach(c => { c.classList.remove('is-selected'); });
+      updateBulkActionsBar();
+      showToast('Seleção de imóveis limpa.');
+    });
+  }
 
   // Expansão da Descrição
   expandDescBtn.addEventListener('click', () => {

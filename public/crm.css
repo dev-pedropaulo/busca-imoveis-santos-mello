@@ -1624,43 +1624,84 @@ body.helena-embedded .property-mini-card {
 .mini-card-actions {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   margin-top: 0.65rem;
   padding-top: 0.55rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.btn-share-whatsapp {
+/* Botão Copiar Link no Card */
+.btn-card-copy-link {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  background: #25d366;
-  color: #0b1e13;
-  border: none;
+  gap: 0.3rem;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
   border-radius: var(--radius-sm);
-  padding: 0.45rem 0.65rem;
-  font-size: 0.78rem;
+  padding: 0.42rem 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-card-copy-link:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+/* Botão Copiar Texto para Atendimento no Card */
+.btn-card-copy-text {
+  flex: 1.25;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  background: #4f46e5;
+  color: #ffffff;
+  border: 1px solid #4338ca;
+  border-radius: var(--radius-sm);
+  padding: 0.42rem 0.55rem;
+  font-size: 0.74rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
 }
 
-.btn-share-whatsapp:hover {
-  background: #20ba5a;
-  color: #fff;
+.btn-card-copy-text:hover {
+  background: #4338ca;
+  border-color: #3730a3;
   transform: translateY(-1px);
-  box-shadow: 0 2px 10px rgba(37, 211, 102, 0.35);
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
+}
+
+/* Estado de Feedback de Cópia (Sucesso Instantâneo) */
+.btn-card-copy-link.copied,
+.btn-card-copy-text.copied,
+.action-btn.copied,
+.btn-bulk-action.copied {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.25) !important;
+  transform: scale(1.02);
 }
 
 .btn-card-quick-view {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: var(--text-primary);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
   border-radius: var(--radius-sm);
-  padding: 0.45rem 0.65rem;
-  font-size: 0.78rem;
+  padding: 0.42rem 0.55rem;
+  font-size: 0.74rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -1668,7 +1709,192 @@ body.helena-embedded .property-mini-card {
 }
 
 .btn-card-quick-view:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* Checkbox de Seleção no Thumb do Mini-Card */
+.mini-card-select-label {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 6;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mini-card-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.mini-card-checkbox-custom {
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+
+.mini-card-select-label:hover .mini-card-checkbox-custom {
+  border-color: #6366f1;
+  transform: scale(1.08);
+}
+
+.mini-card-checkbox:checked + .mini-card-checkbox-custom {
+  background: #4f46e5;
+  border-color: #4338ca;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+.property-mini-card.is-selected {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35), 0 8px 24px rgba(99, 102, 241, 0.12) !important;
+  background: #f8fafc !important;
+}
+
+/* Barra Flutuante de Ações em Lote */
+.bulk-actions-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: 95vw;
+  width: max-content;
+  animation: slideUpBulk 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpBulk {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.bulk-actions-content {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08);
+  border-radius: 9999px;
+  padding: 0.5rem 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bulk-selection-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0f172a;
+  padding-left: 0.25rem;
+}
+
+.bulk-badge-count {
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.1rem 0.5rem;
+  border-radius: 9999px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.bulk-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-bulk-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-bulk-copy-text {
+  background: #4f46e5;
+  border: 1px solid #4338ca;
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.45rem 0.95rem;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+.btn-bulk-copy-text:hover {
+  background: #4338ca;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-bulk-copy-links {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+}
+
+.btn-bulk-copy-links:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.btn-bulk-clear {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.btn-bulk-clear:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+/* Botão de Copiar Atendimento na Ficha Única */
+.action-btn.btn-chat-copy {
+  background: #4f46e5;
+  color: #ffffff;
+  border: 1px solid #4338ca;
+}
+
+.action-btn.btn-chat-copy:hover {
+  background: #4338ca;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  transform: translateY(-1px);
 }
 
 /* ========================================================
