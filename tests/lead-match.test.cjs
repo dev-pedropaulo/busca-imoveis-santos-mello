@@ -57,13 +57,13 @@ test('GET /api/leads/match - Validação do endpoint com filtros e Helena CRM', 
     server.close();
   });
 
-  await t.test('Deve retornar erro informativo caso contactId seja passado sem token configurado', async () => {
+  await t.test('Deve retornar status 200 com aviso caso contactId seja passado sem token configurado', async () => {
     const res = await fetch(`${baseUrl}/api/leads/match?contactId=contato-invalido-123`);
-    assert.equal(res.status, 502);
+    assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.success, false);
-    assert.ok(body.error.includes('Helena CRM'));
-    assert.equal(body.contactId, 'contato-invalido-123');
+    assert.equal(body.success, true);
+    assert.ok(body.contactWarning.includes('Helena CRM'));
+    assert.ok(Array.isArray(body.results));
   });
 
   await t.test('Deve filtrar e pontuar por tipo, orçamento e quartos diretamente via query', async () => {

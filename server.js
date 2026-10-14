@@ -16,10 +16,7 @@ app.use(express.json());
 // Permite incorporação segura no Helena CRM (flw.chat / wts.chat) em Menus Personalizados e Iframes
 app.use((req, res, next) => {
   res.removeHeader('X-Frame-Options');
-  res.setHeader(
-    'Content-Security-Policy',
-    "frame-ancestors 'self' https://*.flw.chat https://*.helenacrm.com https://*.wts.chat https://app.flw.chat *"
-  );
+  res.setHeader('Content-Security-Policy', 'frame-ancestors *');
   next();
 });
 
@@ -595,6 +592,7 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
   // Se for informado o ID do contato (ex: dashboard enviando contactId), consulta no Helena CRM
   const contactId = (req.query.contactId || req.query.contact_id || req.query.id || req.query.leadId || req.query.contatoId || '').trim();
   let contactData = null;
+  let contactWarning = null;
   let criteriaFromContact = {};
 
   if (contactId) {
@@ -603,12 +601,9 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
       contactData = await fetchHelenaContact(contactId, customToken);
       criteriaFromContact = extractLeadCriteriaFromContact(contactData);
     } catch (err) {
-      console.error(`⚠️ Erro ao consultar contato #${contactId} no Helena CRM:`, err.message);
-      return res.status(502).json({
-        success: false,
-        error: `Falha ao consultar contato #${contactId} no Helena CRM: ${err.message}`,
-        contactId
-      });
+      console.warn(`⚠️ Aviso ao consultar contato #${contactId} no Helena CRM:`, err.message);
+      contactWarning = `Aviso Helena CRM: ${err.message}`;
+      // Não aborta com 502: segue como fallback para permitir que o Menu Personalizado valide a URL com HTTP 200
     }
   }
 
@@ -898,6 +893,7 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
       annotation: contactData.annotation || null,
       tags: contactData.tagNames || []
     } : null,
+    contactWarning: contactWarning || undefined,
     leadProfile: {
       tipo: rawPropertyType || 'Qualquer',
       finalidade: rawTransactionType || 'Qualquer',
