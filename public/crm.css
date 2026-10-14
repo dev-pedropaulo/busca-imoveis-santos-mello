@@ -1029,3 +1029,376 @@ textarea.form-control {
     grid-template-columns: 1fr;
   }
 }
+
+/* ========================================================
+   BANNER DO PERFIL DE QUALIFICAÇÃO & MODO SIMPLIFICADO
+   ======================================================== */
+.lead-profile-banner {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.18) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.3rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.lead-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.lead-profile-header-main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.lead-avatar-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+}
+
+.lead-profile-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a5b4fc;
+  margin-bottom: 0.15rem;
+}
+
+.lead-profile-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lead-profile-sub {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.criterios-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.criterios-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.criterios-count-pill {
+  background: #6366f1;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.criterios-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+  transition: all 0.3s ease;
+}
+
+.criterios-grid.collapsed {
+  display: none !important;
+}
+
+.criterio-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 175px;
+  flex: 1 1 180px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.criterio-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+.criterio-card.nao-informado {
+  opacity: 0.6;
+  background: rgba(15, 23, 42, 0.35);
+  border-style: dashed;
+}
+
+.criterio-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.criterio-label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.criterio-icon {
+  font-size: 0.95rem;
+}
+
+.criterio-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f8fafc;
+  word-break: break-word;
+}
+
+.criterio-impact {
+  font-size: 0.72rem;
+  color: #10b981;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.lead-profile-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.lead-crm-tag {
+  color: #818cf8;
+  font-weight: 800;
+}
+
+.lead-badge-sep {
+  opacity: 0.5;
+}
+
+.lead-whatsapp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(37, 211, 102, 0.15);
+  border: 1px solid rgba(37, 211, 102, 0.35);
+  color: #25d366;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.lead-whatsapp-chip:hover {
+  background: rgba(37, 211, 102, 0.25);
+  color: #fff;
+  transform: scale(1.02);
+}
+
+.lead-profile-annotation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  border-left: 3px solid #6366f1;
+}
+
+/* Botão de Alternância de Modo no Header */
+.simplified-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.simplified-mode-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  color: #fff;
+  border-color: #818cf8;
+}
+
+body.simplified-view .simplified-mode-btn,
+body.helena-embedded .simplified-mode-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+}
+
+/* ========================================================
+   MODO SIMPLIFICADO & EMBEDDED (HELENA CRM)
+   ======================================================== */
+body.simplified-view .header,
+body.helena-embedded .header {
+  padding: 0.45rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.simplified-view .brand-logo,
+body.helena-embedded .brand-logo {
+  height: 28px;
+}
+
+body.simplified-view .header-brand .brand-text h1,
+body.helena-embedded .header-brand .brand-text h1 {
+  font-size: 0.95rem;
+}
+
+body.simplified-view .header-brand .brand-sub,
+body.helena-embedded .header-brand .brand-sub {
+  display: none;
+}
+
+body.simplified-view .main-nav-container,
+body.helena-embedded .main-nav-container {
+  display: none !important;
+}
+
+body.simplified-view .search-section,
+body.helena-embedded .search-section {
+  display: none !important;
+}
+
+body.simplified-view .app-container,
+body.helena-embedded .app-container {
+  max-width: 100% !important;
+  padding: 0.35rem 0.6rem !important;
+}
+
+body.simplified-view .properties-grid,
+body.helena-embedded .properties-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+  gap: 0.85rem !important;
+}
+
+body.simplified-view .property-mini-card,
+body.helena-embedded .property-mini-card {
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Badges e Destaques de Compatibilidade nos Cards */
+.badge-match-score {
+  background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+}
+
+.mini-card-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.45rem 0;
+  padding: 0.4rem 0.55rem;
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 2px solid #10b981;
+  border-radius: var(--radius-xs);
+}
+
+.mini-highlight-item {
+  font-size: 0.72rem;
+  color: #34d399;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.mini-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-share-whatsapp {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: #25d366;
+  color: #0b1e13;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-share-whatsapp:hover {
+  background: #20ba5a;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 10px rgba(37, 211, 102, 0.35);
+}
+
+.btn-card-quick-view {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-card-quick-view:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+

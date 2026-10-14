@@ -152,7 +152,7 @@
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
       "keyTag": "CLAV-012",
-      "updatedAt": "2026-10-14T11:06:06.139Z"
+      "updatedAt": "2026-10-14T11:57:10.368Z"
     },
     "8816": {
       "kanbanStage": "concluido",
@@ -170,7 +170,7 @@
       "kanbanStage": "disponivel",
       "status": "Vago / Disponível",
       "keyTag": "CLAV-TEST-99",
-      "updatedAt": "2026-10-14T11:06:06.142Z"
+      "updatedAt": "2026-10-14T11:57:10.371Z"
     },
     "test-1790771916676": {
       "kanbanStage": "excluido",
@@ -194,6 +194,18 @@
       "kanbanStage": "excluido",
       "status": "Inativo / Excluído",
       "updatedAt": "2026-10-14T11:06:06.137Z",
+      "deleted": true
+    },
+    "test-1791978519606": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T11:48:39.609Z",
+      "deleted": true
+    },
+    "test-1791979030363": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T11:57:10.366Z",
       "deleted": true
     }
   },
@@ -256,6 +268,26 @@
     }
   ],
   "keyMovements": [
+    {
+      "id": "km-1791979030370-214",
+      "takenAt": "2026-10-14T11:57:10.370Z",
+      "returnedAt": "2026-10-14T11:57:10.371Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1791978519613-689",
+      "takenAt": "2026-10-14T11:48:39.613Z",
+      "returnedAt": "2026-10-14T11:48:39.614Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
     {
       "id": "km-1791975966141-256",
       "takenAt": "2026-10-14T11:06:06.141Z",

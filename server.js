@@ -594,12 +594,15 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
   let contactData = null;
   let contactWarning = null;
   let criteriaFromContact = {};
+  let criteriosConsiderados = [];
 
   if (contactId) {
     try {
       const customToken = req.headers['x-helena-token'] || req.headers['x-crm-token'] || req.query.token;
       contactData = await fetchHelenaContact(contactId, customToken);
-      criteriaFromContact = extractLeadCriteriaFromContact(contactData);
+      const extracted = extractLeadCriteriaFromContact(contactData);
+      criteriaFromContact = extracted.criteria || {};
+      criteriosConsiderados = extracted.criteriosConsiderados || [];
     } catch (err) {
       console.warn(`⚠️ Aviso ao consultar contato #${contactId} no Helena CRM:`, err.message);
       contactWarning = `Aviso Helena CRM: ${err.message}`;
@@ -910,6 +913,7 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
       contexto: rawContext || null,
       somenteDisponiveis: onlyAvailable
     },
+    criteriosConsiderados: criteriosConsiderados || [],
     totalMatches: matchedItems.length,
     offset,
     limit,

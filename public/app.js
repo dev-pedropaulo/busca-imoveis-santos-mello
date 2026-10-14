@@ -750,10 +750,21 @@
         areaVal = `${prop.lotArea} m² lote`;
       }
 
+      const matchBadge = prop.matchScore ? `<span class="badge badge-match-score">🔥 ${prop.matchScore}% Match</span>` : '';
+      let highlightsHtml = '';
+      if (Array.isArray(prop.matchHighlights) && prop.matchHighlights.length > 0) {
+        highlightsHtml = `
+          <div class="mini-card-highlights">
+            ${prop.matchHighlights.slice(0, 2).map(h => `<div class="mini-highlight-item">✓ ${h}</div>`).join('')}
+          </div>
+        `;
+      }
+
       card.innerHTML = `
         <div class="mini-card-thumb">
           <img src="${photo}" alt="${prop.title}" loading="lazy" />
           <div class="mini-card-badges">
+            ${matchBadge}
             <span class="badge ${isRental ? 'badge-rent' : 'badge-sale'}">${prop.transactionType}</span>
             <span class="badge badge-usage ${isCommercial ? 'commercial' : ''}">${prop.usageType}</span>
             <span class="badge badge-category">${cleanType}</span>
@@ -813,11 +824,56 @@
               </span>
             ` : ''}
           </div>
+          ${highlightsHtml}
+          <div class="mini-card-actions">
+            <button type="button" class="btn-share-whatsapp" title="Copiar recomendação formatada para o WhatsApp">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+              </svg>
+              <span>WhatsApp</span>
+            </button>
+            <button type="button" class="btn-card-quick-view">Detalhes</button>
+          </div>
         </div>
       `;
 
+      // Ação do Botão Copiar WhatsApp
+      const shareBtn = card.querySelector('.btn-share-whatsapp');
+      if (shareBtn) {
+        shareBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const leadNameEl = document.getElementById('leadProfileName');
+          const leadName = leadNameEl ? leadNameEl.textContent.trim() : '';
+          const saudacao = leadName && !leadName.toLowerCase().includes('cliente') ? `Olá, ${leadName.split(' ')[0]}!` : 'Olá!';
+          const linkImovel = `${window.location.origin}/?codigo=${prop.id}`;
+          const specsList = [];
+          if (prop.bedrooms) specsList.push(`🛏️ ${prop.bedrooms} dorms`);
+          if (prop.suites) specsList.push(`🚿 ${prop.suites} suíte(s)`);
+          if (prop.garage) specsList.push(`🚗 ${prop.garage} vaga(s)`);
+          if (areaVal) specsList.push(`📐 ${areaVal}`);
+
+          const msg = [
+            `${saudacao} 👋 Selecionei este imóvel na Santos & Mello que combina perfeitamente com o seu perfil:`,
+            ``,
+            `🏠 *${cleanType} - ${prop.location?.neighborhood || 'Santos & Mello'}*`,
+            `💰 *Valor:* ${priceText}`,
+            specsList.length ? `✨ ${specsList.join(' • ')}` : '',
+            prop.matchHighlights && prop.matchHighlights.length ? `🎯 *Destaques:* ${prop.matchHighlights.slice(0, 2).join(' • ')}` : '',
+            ``,
+            `🔗 *Veja fotos e ficha completa aqui:*`,
+            linkImovel
+          ].filter(Boolean).join('\n');
+
+          navigator.clipboard.writeText(msg).then(() => {
+            showToast('📋 Mensagem de recomendação copiada! Cole na conversa com o lead no Helena CRM.');
+          }).catch(() => {
+            showToast('Link do imóvel: ' + linkImovel);
+          });
+        });
+      }
+
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.mini-card-newtab-btn')) return;
+        if (e.target.closest('.mini-card-newtab-btn') || e.target.closest('.btn-share-whatsapp')) return;
 
         savedScrollPosition = window.scrollY || document.documentElement.scrollTop || 0;
         backToGridBtn.style.display = 'inline-flex';
@@ -1114,10 +1170,71 @@
     }
   });
 
+  // --- Controle do Modo Simplificado (Menu Helena CRM) ---
+  const toggleSimplifiedModeBtn = document.getElementById('toggleSimplifiedModeBtn');
+  const simplifiedBtnText = document.getElementById('simplifiedBtnText');
+  const btnToggleProfileDetails = document.getElementById('btnToggleProfileDetails');
+  const criteriosConsideradosGrid = document.getElementById('criteriosConsideradosGrid');
+  const criteriosArrow = document.getElementById('criteriosArrow');
+
+  function setSimplifiedMode(enable) {
+    if (enable) {
+      document.body.classList.add('simplified-view', 'helena-embedded');
+      if (simplifiedBtnText) simplifiedBtnText.textContent = 'Modo Completo';
+    } else {
+      document.body.classList.remove('simplified-view', 'helena-embedded');
+      if (simplifiedBtnText) simplifiedBtnText.textContent = 'Modo Simplificado';
+    }
+  }
+
+  if (toggleSimplifiedModeBtn) {
+    toggleSimplifiedModeBtn.addEventListener('click', () => {
+      const isSimplified = document.body.classList.contains('simplified-view') || document.body.classList.contains('helena-embedded');
+      setSimplifiedMode(!isSimplified);
+    });
+  }
+
+  if (btnToggleProfileDetails && criteriosConsideradosGrid) {
+    btnToggleProfileDetails.addEventListener('click', () => {
+      const isCollapsed = criteriosConsideradosGrid.classList.toggle('collapsed');
+      if (criteriosArrow) {
+        criteriosArrow.textContent = isCollapsed ? '▸' : '▾';
+      }
+    });
+  }
+
+  function getFieldIcon(campo) {
+    const norm = (campo || '').toLowerCase();
+    if (norm.includes('destina') || norm.includes('finalidade')) return '🎯';
+    if (norm.includes('tipo')) return '🏠';
+    if (norm.includes('bairro') || norm.includes('regiao') || norm.includes('local')) return '📍';
+    if (norm.includes('orçamento') || norm.includes('orcamento') || norm.includes('preco') || norm.includes('valor')) return '💰';
+    if (norm.includes('morador') || norm.includes('pessoa')) return '👨‍👩‍👧';
+    if (norm.includes('pet') || norm.includes('animal')) return '🐾';
+    if (norm.includes('particularidade') || norm.includes('comodidade') || norm.includes('diferencial')) return '✨';
+    if (norm.includes('motivo') || norm.includes('razao')) return '💡';
+    if (norm.includes('tempo') || norm.includes('prazo') || norm.includes('urgencia')) return '⏳';
+    if (norm.includes('garantia') || norm.includes('fianca')) return '🛡️';
+    if (norm.includes('quarto') || norm.includes('dorm')) return '🛏️';
+    if (norm.includes('vaga') || norm.includes('garagem')) return '🚗';
+    if (norm.includes('suite')) return '🚿';
+    return '📌';
+  }
+
   // --- Busca por Perfil de Lead (Helena CRM / Menu Personalizado) ---
   async function searchLeadProperties(contactId) {
+    setSimplifiedMode(true);
     showState('loading');
     feedStatusText.textContent = `Consultando perfil do lead #${contactId} no Helena CRM...`;
+
+    const leadProfileBanner = document.getElementById('leadProfileBanner');
+    const leadProfileName = document.getElementById('leadProfileName');
+    const leadProfileContact = document.getElementById('leadProfileContact');
+    const leadProfileWhatsAppBtn = document.getElementById('leadProfileWhatsAppBtn');
+    const leadProfileAnnotation = document.getElementById('leadProfileAnnotation');
+    const leadProfileAnnotationText = document.getElementById('leadProfileAnnotationText');
+    const criteriosCountBadge = document.getElementById('criteriosCountBadge');
+
     try {
       const res = await fetch(`${API_BASE}/api/leads/match?contactId=${encodeURIComponent(contactId)}`);
       const data = await res.json();
@@ -1128,13 +1245,75 @@
 
       const results = data.results || [];
       const total = data.totalMatches || results.length;
-      const contactName = data.contact ? data.contact.name : `Lead #${contactId}`;
+      const contact = data.contact;
+      const contactName = contact && contact.name ? contact.name : `Lead #${contactId}`;
+      const contactPhone = contact && contact.phoneNumber ? contact.phoneNumber : '';
+
+      // Preenche o Banner de Perfil
+      if (leadProfileBanner) {
+        leadProfileBanner.style.display = 'block';
+        if (leadProfileName) leadProfileName.textContent = contactName;
+        if (leadProfileContact) {
+          const contactParts = [];
+          if (contactPhone) contactParts.push(`📱 ${contactPhone}`);
+          if (contact && contact.email) contactParts.push(`✉️ ${contact.email}`);
+          leadProfileContact.textContent = contactParts.join(' • ') || 'Contato Helena CRM';
+        }
+        if (leadProfileWhatsAppBtn) {
+          if (contactPhone) {
+            const cleanPhone = contactPhone.replace(/\D/g, '');
+            leadProfileWhatsAppBtn.href = `https://wa.me/${cleanPhone}`;
+            leadProfileWhatsAppBtn.style.display = 'inline-flex';
+          } else {
+            leadProfileWhatsAppBtn.style.display = 'none';
+          }
+        }
+        if (leadProfileAnnotation && leadProfileAnnotationText) {
+          if (contact && contact.annotation) {
+            leadProfileAnnotationText.textContent = contact.annotation;
+            leadProfileAnnotation.style.display = 'flex';
+          } else {
+            leadProfileAnnotation.style.display = 'none';
+          }
+        }
+      }
+
+      // Renderiza os critérios considerados no Perfil de Qualificação
+      const criterios = Array.isArray(data.criteriosConsiderados) ? data.criteriosConsiderados : [];
+      if (criteriosCountBadge) {
+        criteriosCountBadge.textContent = criterios.length;
+      }
+      if (criteriosConsideradosGrid) {
+        criteriosConsideradosGrid.innerHTML = '';
+        if (criterios.length === 0) {
+          criteriosConsideradosGrid.innerHTML = `
+            <div style="font-size: 0.82rem; color: var(--text-secondary); padding: 0.4rem;">
+              Nenhum critério específico preenchido no Perfil de Qualificação. Exibindo catálogo geral de disponíveis.
+            </div>
+          `;
+        } else {
+          criterios.forEach(crit => {
+            const cardEl = document.createElement('div');
+            cardEl.className = `criterio-card ${crit.status === 'nao_informado' ? 'nao-informado' : ''}`;
+            const icon = crit.icone || getFieldIcon(crit.campo);
+            cardEl.innerHTML = `
+              <div class="criterio-card-top">
+                <span class="criterio-label">${crit.campo}</span>
+                <span class="criterio-icon">${icon}</span>
+              </div>
+              <div class="criterio-value">${crit.valorOriginal || '-'}</div>
+              <div class="criterio-impact">✓ ${crit.impacto || 'Considerado na afinidade'}</div>
+            `;
+            criteriosConsideradosGrid.appendChild(cardEl);
+          });
+        }
+      }
 
       feedStatusText.textContent = `🎯 Perfil carregado: ${contactName} • ${total} imóveis compatíveis`;
 
       if (results.length === 0) {
         notFoundTitle.textContent = `Nenhum imóvel compatível para ${contactName}`;
-        notFoundMsg.textContent = 'Não encontramos imóveis que atendam 100% aos critérios cadastrados no Helena CRM.';
+        notFoundMsg.textContent = 'Não encontramos imóveis no momento que atendam simultaneamente aos critérios cadastrados no Helena CRM.';
         showState('notFound');
         return;
       }
@@ -1149,7 +1328,8 @@
       }
     } catch (err) {
       console.error('Erro ao buscar perfil do lead:', err);
-      // Se falhar a consulta do lead, faz fallback para busca padrão
+      feedStatusText.textContent = `⚠️ Não foi possível sincronizar com o lead #${contactId}`;
+      showToast('Aviso: Não foi possível obter dados do lead no Helena CRM. Exibindo busca padrão.');
       searchProperties();
     }
   }
@@ -1160,6 +1340,12 @@
   const urlParams = new URLSearchParams(window.location.search);
   const paramCode = urlParams.get('codigo') || urlParams.get('c') || (urlParams.get('id') && !urlParams.get('id').includes('-') ? urlParams.get('id') : null);
   const paramContactId = urlParams.get('contactId') || urlParams.get('contact_id') || (urlParams.get('id') && urlParams.get('id').includes('-') ? urlParams.get('id') : null);
+  const paramMode = urlParams.get('mode') || urlParams.get('view') || '';
+  const isSimplifiedReq = paramMode === 'simple' || paramMode === 'simplificado' || urlParams.get('simplified') === 'true' || urlParams.get('embedded') === 'true';
+
+  if (isSimplifiedReq) {
+    setSimplifiedMode(true);
+  }
 
   if (paramContactId) {
     loadFilterOptions();

@@ -36,6 +36,12 @@
           <span id="feedStatusText">Carregando feed...</span>
         </div>
 
+        <!-- Botão de Alternância do Modo Simplificado (Menu Helena CRM) -->
+        <button type="button" class="simplified-mode-btn" id="toggleSimplifiedModeBtn" title="Alternar entre visualização completa e simplificada (ideal para Menu Lateral do Helena CRM)">
+          <span class="simplified-btn-icon">⚡</span>
+          <span class="simplified-btn-text" id="simplifiedBtnText">Modo Simplificado</span>
+        </button>
+
         <button class="theme-toggle" id="themeToggle" title="Alternar tema">
           <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="4"/>
@@ -85,6 +91,46 @@
     <!-- Main Content Area -->
     <main class="main-content">
       
+      <!-- Banner Dinâmico: Perfil de Qualificação do Lead (Helena CRM) -->
+      <section id="leadProfileBanner" class="lead-profile-banner" style="display: none;">
+        <div class="lead-profile-header">
+          <div class="lead-profile-header-main">
+            <div class="lead-avatar-icon" id="leadAvatarIcon">👤</div>
+            <div class="lead-profile-info">
+              <div class="lead-profile-badge">
+                <span class="lead-crm-tag">Helena CRM</span>
+                <span class="lead-badge-sep">•</span>
+                <span>Perfil de Qualificação</span>
+              </div>
+              <h2 id="leadProfileName" class="lead-profile-name">Nome do Cliente</h2>
+              <div class="lead-profile-meta">
+                <span id="leadProfileContact" class="lead-profile-sub">Telefone / WhatsApp</span>
+                <a href="#" id="leadProfileWhatsAppBtn" class="lead-whatsapp-chip" target="_blank" rel="noopener noreferrer" style="display: none;">
+                  <span>💬 Conversar no WhatsApp</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="lead-profile-actions">
+            <button type="button" id="btnToggleProfileDetails" class="criterios-toggle-btn" title="Exibir/Ocultar campos considerados">
+              <span>Campos Considerados</span>
+              <span id="criteriosCountBadge" class="criterios-count-pill">0</span>
+              <span id="criteriosArrow">▾</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Grade de Campos Considerados (Perfil de Qualificação) -->
+        <div id="criteriosConsideradosGrid" class="criterios-grid" style="display: flex;">
+          <!-- Itens gerados dinamicamente via JS -->
+        </div>
+
+        <div id="leadProfileAnnotation" class="lead-profile-annotation" style="display: none;">
+          <span class="annotation-icon">📌</span>
+          <span id="leadProfileAnnotationText" class="annotation-text"></span>
+        </div>
+      </section>
+
       <!-- PAINEL 1: CATÁLOGO DE IMÓVEIS (BUSCA ATUAL) -->
       <div class="crm-tab-panel active" id="catalogSection">
       
