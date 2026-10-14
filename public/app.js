@@ -1236,7 +1236,10 @@
     const criteriosCountBadge = document.getElementById('criteriosCountBadge');
 
     try {
-      const res = await fetch(`${API_BASE}/api/leads/match?contactId=${encodeURIComponent(contactId)}`);
+      const pageParams = new URLSearchParams(window.location.search);
+      const tokenInQuery = pageParams.get('token') || pageParams.get('helenaToken') || '';
+      const tokenQuery = tokenInQuery ? `&token=${encodeURIComponent(tokenInQuery)}` : '';
+      const res = await fetch(`${API_BASE}/api/leads/match?contactId=${encodeURIComponent(contactId)}${tokenQuery}`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
