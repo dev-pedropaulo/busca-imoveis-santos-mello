@@ -45,6 +45,35 @@ test('Helena CRM - Parser e Extração de Campos Personalizados', () => {
   assert.ok(criteria.caracteristicas.includes('Piscina'));
   assert.ok(criteria.contexto.includes('home office'));
   assert.ok(criteria.contexto.includes('Casal com 1 filho'));
+
+  // Teste com os 10 slugs reais gerados pela API do Helena CRM
+  const helenaRealContact = {
+    id: 'a9f747f3-1cde-41a1-8c21-66b14bede7e9',
+    name: 'Pedro Paulo Oliveira',
+    customFields: {
+      "destina-o": "Locação",
+      "tipo-do-im-vel": "Apartamento",
+      "or-amento": 4500,
+      "moradores-68": 3,
+      "bairros": ["Casa Branca", "Jardim Jamaica"],
+      "pet": "Sim, 1 gato",
+      "particularidades": "Varanda gourmet, sol da manhã",
+      "motivo": "Mudança para Santos / Trabalho Home Office",
+      "tempo": "30 dias",
+      "garantia": "Seguro Fiança"
+    }
+  };
+
+  const helenaCriteria = extractLeadCriteriaFromContact(helenaRealContact);
+  assert.equal(helenaCriteria.finalidade, 'Locação');
+  assert.equal(helenaCriteria.tipo, 'Apartamento');
+  assert.equal(helenaCriteria.orcamentoMax, 4500);
+  assert.equal(helenaCriteria.quartos, 2); // 3 moradores deduz 2 quartos
+  assert.equal(helenaCriteria.regiao, 'Casa Branca, Jardim Jamaica');
+  assert.ok(helenaCriteria.caracteristicas.includes('Aceita Pets'));
+  assert.ok(helenaCriteria.caracteristicas.includes('Varanda gourmet'));
+  assert.ok(helenaCriteria.contexto.includes('Seguro Fiança'));
+  assert.equal(helenaCriteria.criteriosConsiderados.length, 10);
 });
 
 test('GET /api/leads/match - Validação do endpoint com filtros e Helena CRM', async (t) => {
