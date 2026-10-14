@@ -135,6 +135,9 @@
   // Estado de Seleção Múltipla de Imóveis (para Atendimento no CRM)
   const selectedPropertyIds = new Set();
 
+  // Imóveis registrados no Session Metadata do Helena CRM para o atendimento atual
+  const sentPropertiesInSession = new Set();
+
   // Estado de Paginação
   const PAGE_SIZE = 40;
   let currentOffset = 0;
@@ -331,6 +334,99 @@
 
     lines.push(`Qual dessas opções você prefere para agendarmos uma visita? 😊`);
     return lines.filter(Boolean).join('\n');
+  }
+
+  // --- Atualização Visual de Imóveis Enviados na Sessão (Badges e Contadores) ---
+  function updateSentBadgesInUI() {
+    sentPropertiesInSession.forEach(id => {
+      const card = document.querySelector(`.property-mini-card[data-id="${id}"]`);
+      if (card) {
+        const badgesContainer = card.querySelector('.mini-card-badges');
+        if (badgesContainer && !badgesContainer.querySelector('.badge-sent-helena')) {
+          const sentBadge = document.createElement('span');
+          sentBadge.className = 'badge badge-sent-helena';
+          sentBadge.dataset.id = id;
+          sentBadge.innerHTML = '📤 Enviado';
+          sentBadge.title = 'Registrado na sessão de atendimento do Helena CRM';
+          badgesContainer.prepend(sentBadge);
+        }
+      }
+    });
+
+    const toolbarBadge = document.getElementById('toolbarSessionSavedBadge');
+    if (toolbarBadge) {
+      if (sentPropertiesInSession.size > 0) {
+        toolbarBadge.style.display = 'inline-flex';
+        toolbarBadge.textContent = `📤 ${sentPropertiesInSession.size} salvo${sentPropertiesInSession.size > 1 ? 's' : ''} no atendimento`;
+      } else {
+        toolbarBadge.style.display = 'none';
+      }
+    }
+  }
+
+  // --- Gravação Automática no Session Metadata do Helena CRM ---
+  async function recordPropertiesSentToHelena(propsList) {
+    const pageParams = new URLSearchParams(window.location.search);
+    const contactId = (leadSimulationState && leadSimulationState.contactId) || pageParams.get('contactId') || pageParams.get('contact_id');
+    const sessionId = pageParams.get('sessionId') || pageParams.get('session_id') || window.__helenaSessionId || null;
+    const tokenInQuery = pageParams.get('token') || pageParams.get('helenaToken') || '';
+
+    // Apenas grava se estiver no contexto de um atendimento Helena CRM
+    if (!contactId && !sessionId) return;
+
+    const items = (Array.isArray(propsList) ? propsList : [propsList]).filter(Boolean);
+    if (items.length === 0) return;
+
+    // Feedback visual imediato na UI
+    items.forEach(p => {
+      const pId = String(p.id || p.codigo || '');
+      if (pId) sentPropertiesInSession.add(pId);
+    });
+    updateSentBadgesInUI();
+
+    try {
+      const payload = {
+        contactId,
+        sessionId,
+        token: tokenInQuery || undefined,
+        properties: items.map(p => {
+          const share = getPropertyShareData(p);
+          return {
+            id: String(p.id),
+            codigo: String(p.id),
+            titulo: p.title || p.titulo || `${p.propertyType || ''} em ${p.location?.neighborhood || ''}`,
+            tipo: p.propertyType || p.tipo || '',
+            bairro: p.location?.neighborhood || p.bairro || '',
+            cidade: p.location?.city || p.cidade || 'Santo André',
+            valor: p.rentalPrice || p.price || p.valor || 0,
+            valorFormatado: share.priceText || '',
+            finalidade: p.transactionType || p.finalidade || '',
+            url: p.websiteUrl || `${window.location.origin}/?codigo=${p.id}`,
+            matchScore: p.matchScore || null
+          };
+        })
+      };
+
+      const res = await fetch(`${API_BASE}/api/leads/session-metadata`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.data && resData.data.sessionId) {
+          window.__helenaSessionId = resData.data.sessionId;
+        }
+        if (resData.data && Array.isArray(resData.data.imoveisEnviados)) {
+          resData.data.imoveisEnviados.forEach(i => sentPropertiesInSession.add(String(i.id)));
+          updateSentBadgesInUI();
+        }
+        console.log(`✅ [Helena CRM] ${items.length} imóvel(is) registrado(s) no Session Metadata.`);
+      }
+    } catch (err) {
+      console.warn('⚠️ Falha ao registrar session metadata em segundo plano:', err.message);
+    }
   }
 
   // Atualiza Barra Flutuante de Seleção em Lote
@@ -928,6 +1024,8 @@
         areaVal = `${prop.lotArea} m² lote`;
       }
 
+      const isSent = sentPropertiesInSession.has(String(prop.id));
+      const sentBadge = isSent ? `<span class="badge badge-sent-helena" data-id="${prop.id}" title="Salvo no metadata da sessão de atendimento">📤 Enviado</span>` : '';
       const matchBadge = prop.matchScore ? `<span class="badge badge-match-score">🔥 ${prop.matchScore}% Match</span>` : '';
       let highlightsHtml = '';
       if (Array.isArray(prop.matchHighlights) && prop.matchHighlights.length > 0) {
@@ -953,6 +1051,7 @@
           </label>
 
           <div class="mini-card-badges">
+            ${sentBadge}
             ${matchBadge}
             <span class="badge ${isRental ? 'badge-rent' : 'badge-sale'}">${prop.transactionType}</span>
             <span class="badge badge-usage ${isCommercial ? 'commercial' : ''}">${prop.usageType}</span>
@@ -1048,7 +1147,8 @@
           const link = prop.websiteUrl || `${window.location.origin}/?codigo=${prop.id}`;
           await copyToClipboard(link);
           triggerCopiedFeedback(copyLinkCardBtn, '✅ Link Copiado!');
-          showToast(`🔗 Link do imóvel #${prop.id} copiado para a área de transferência!`);
+          showToast(`🔗 Link do imóvel #${prop.id} copiado e salvo no atendimento!`);
+          recordPropertiesSentToHelena(prop);
         });
       }
 
@@ -1062,7 +1162,8 @@
           const msg = formatSinglePropertyChatText(prop, leadName);
           await copyToClipboard(msg);
           triggerCopiedFeedback(copyTextCardBtn, '✅ Texto Copiado!');
-          showToast(`📋 Informações do imóvel #${prop.id} copiadas! Cole no atendimento do Helena CRM.`);
+          showToast(`📋 Informações do imóvel #${prop.id} copiadas e salvas no atendimento!`);
+          recordPropertiesSentToHelena(prop);
         });
       }
 
@@ -1280,7 +1381,8 @@
       const link = currentProperty.websiteUrl || `https://www.santosemello.com.br/imovel/${currentProperty.id}`;
       await copyToClipboard(link);
       triggerCopiedFeedback(copyLinkBtn, '✅ Link Copiado!');
-      showToast(`🔗 Link do imóvel #${currentProperty.id} copiado para a área de transferência!`);
+      showToast(`🔗 Link do imóvel #${currentProperty.id} copiado e salvo no atendimento!`);
+      recordPropertiesSentToHelena(currentProperty);
     });
   }
 
@@ -1293,7 +1395,8 @@
       const msg = formatSinglePropertyChatText(currentProperty, leadName);
       await copyToClipboard(msg);
       triggerCopiedFeedback(copyChatMsgBtn, '✅ Mensagem Copiada!');
-      showToast(`📋 Apresentação do imóvel #${currentProperty.id} copiada! Cole no atendimento do Helena CRM.`);
+      showToast(`📋 Apresentação do imóvel #${currentProperty.id} copiada e salva no atendimento!`);
+      recordPropertiesSentToHelena(currentProperty);
     });
   }
 
@@ -1365,7 +1468,8 @@
 
       await copyToClipboard(summary);
       triggerCopiedFeedback(copySummaryBtn, '✅ Ficha Copiada!');
-      showToast('📋 Ficha técnica completa copiada para a área de transferência!');
+      showToast('📋 Ficha técnica copiada e salva no atendimento!');
+      recordPropertiesSentToHelena(currentProperty);
     });
   }
 
@@ -1382,7 +1486,8 @@
 
       await copyToClipboard(compiledMsg);
       triggerCopiedFeedback(btnBulkCopyText, '✅ Apresentação Copiada!');
-      showToast(`📋 Apresentação com ${selectedProps.length} opções copiada! Cole no chat do Helena CRM.`);
+      showToast(`📋 Apresentação com ${selectedProps.length} opções copiada e salva no atendimento!`);
+      recordPropertiesSentToHelena(selectedProps);
     });
   }
 
@@ -1395,7 +1500,8 @@
       const links = selectedProps.map(p => p.websiteUrl || `${window.location.origin}/?codigo=${p.id}`).join('\n');
       await copyToClipboard(links);
       triggerCopiedFeedback(btnBulkCopyLinks, '✅ Links Copiados!');
-      showToast(`🔗 ${selectedProps.length} links copiados para a área de transferência!`);
+      showToast(`🔗 ${selectedProps.length} links copiados e salvos no atendimento!`);
+      recordPropertiesSentToHelena(selectedProps);
     });
   }
 
@@ -1863,6 +1969,25 @@
       lastSearchResults = loadedPropertiesList;
       renderGrid(results, total, false);
       showState('grid');
+
+      // Consulta session metadata do Helena CRM para identificar imóveis já enviados previamente nesta conversa
+      (async () => {
+        try {
+          const metaRes = await fetch(`${API_BASE}/api/leads/session-metadata?contactId=${encodeURIComponent(contactId)}${tokenQuery}`);
+          if (metaRes.ok) {
+            const metaData = await metaRes.json();
+            if (metaData.sessionId) window.__helenaSessionId = metaData.sessionId;
+            if (Array.isArray(metaData.imoveisEnviados) && metaData.imoveisEnviados.length > 0) {
+              metaData.imoveisEnviados.forEach(item => {
+                if (item && item.id) sentPropertiesInSession.add(String(item.id));
+              });
+              updateSentBadgesInUI();
+            }
+          }
+        } catch (mErr) {
+          console.warn('Consulta de session metadata em segundo plano:', mErr.message);
+        }
+      })();
 
       if (resultsCountText) {
         resultsCountText.textContent = `🎯 ${total} imóveis recomendados (afinidade >= 60%) para ${contactName}`;

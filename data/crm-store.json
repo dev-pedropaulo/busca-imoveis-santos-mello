@@ -152,7 +152,7 @@
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
       "keyTag": "CLAV-012",
-      "updatedAt": "2026-10-14T11:57:10.368Z"
+      "updatedAt": "2026-10-14T17:33:54.344Z"
     },
     "8816": {
       "kanbanStage": "concluido",
@@ -170,7 +170,7 @@
       "kanbanStage": "disponivel",
       "status": "Vago / Disponível",
       "keyTag": "CLAV-TEST-99",
-      "updatedAt": "2026-10-14T11:57:10.371Z"
+      "updatedAt": "2026-10-14T17:33:54.348Z"
     },
     "test-1790771916676": {
       "kanbanStage": "excluido",
@@ -206,6 +206,30 @@
       "kanbanStage": "excluido",
       "status": "Inativo / Excluído",
       "updatedAt": "2026-10-14T11:57:10.366Z",
+      "deleted": true
+    },
+    "test-1791998506041": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T17:21:46.044Z",
+      "deleted": true
+    },
+    "test-1791998528222": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T17:22:08.225Z",
+      "deleted": true
+    },
+    "test-1791998872277": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T17:27:52.280Z",
+      "deleted": true
+    },
+    "test-1791999234339": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T17:33:54.342Z",
       "deleted": true
     }
   },
@@ -268,6 +292,46 @@
     }
   ],
   "keyMovements": [
+    {
+      "id": "km-1791999234347-984",
+      "takenAt": "2026-10-14T17:33:54.347Z",
+      "returnedAt": "2026-10-14T17:33:54.348Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1791998872284-147",
+      "takenAt": "2026-10-14T17:27:52.284Z",
+      "returnedAt": "2026-10-14T17:27:52.285Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1791998528229-340",
+      "takenAt": "2026-10-14T17:22:08.229Z",
+      "returnedAt": "2026-10-14T17:22:08.230Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1791998506047-140",
+      "takenAt": "2026-10-14T17:21:46.047Z",
+      "returnedAt": "2026-10-14T17:21:46.048Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
     {
       "id": "km-1791979030370-214",
       "takenAt": "2026-10-14T11:57:10.370Z",

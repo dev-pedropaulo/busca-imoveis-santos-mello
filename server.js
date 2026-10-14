@@ -3,12 +3,19 @@ const cors = require('cors');
 const path = require('path');
 const { XMLParser } = require('fast-xml-parser');
 const { buildPropertyWebsiteUrl } = require('./lib/property-website-url');
+const { 
+  fetchHelenaContact, 
+  extractLeadCriteriaFromContact,
+  fetchHelenaContactSessions,
+  fetchHelenaSession,
+  updateHelenaSessionMetadata,
+  recordSentPropertiesInHelenaSession
+} = require('./lib/helena-crm');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
-const { fetchHelenaContact, extractLeadCriteriaFromContact } = require('./lib/helena-crm');
-
-const app = express();
 const PORT = process.env.PORT || 3333;
 const XML_URL = 'https://universal-ftp2.s3.us-west-2.amazonaws.com/vr/santosemello-vivareal-8835-ambos.xml';
+
+const app = express();
 
 app.use(cors());
 app.use(express.json());
@@ -1106,6 +1113,113 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
     limit,
     results: paginated
   });
+});
+
+// --- ROTAS DE SESSION METADATA DO HELENA CRM ---
+
+/**
+ * POST /api/leads/session-metadata (ou /api/leads/record-sent)
+ * Registra os imóveis enviados na sessão de atendimento ativa no Helena CRM
+ * Recebe: { contactId, sessionId, properties, token }
+ */
+app.post(['/api/leads/session-metadata', '/api/leads/record-sent'], async (req, res) => {
+  try {
+    const contactId = req.body.contactId || req.query.contactId;
+    const sessionId = req.body.sessionId || req.query.sessionId;
+    const properties = req.body.properties || req.body.imoveis || [];
+    const token = req.headers['x-helena-token'] || req.body.token || req.query.token || null;
+
+    if (!contactId && !sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'É obrigatório informar contactId ou sessionId.'
+      });
+    }
+
+    const propList = Array.isArray(properties) ? properties : [properties].filter(Boolean);
+    if (propList.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nenhum imóvel fornecido para registro.'
+      });
+    }
+
+    const result = await recordSentPropertiesInHelenaSession({
+      sessionId,
+      contactId,
+      properties: propList,
+      tokenOverride: token
+    });
+
+    res.json({
+      success: true,
+      message: `${propList.length} imóvel(is) registrado(s) no session metadata do Helena CRM com sucesso!`,
+      data: result
+    });
+  } catch (err) {
+    console.error('⚠️ Falha ao registrar imóveis no session metadata do Helena CRM:', err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+/**
+ * GET /api/leads/session-metadata
+ * Obtém os imóveis já enviados e o metadata da sessão atual do atendimento
+ * Recebe: ?contactId=... ou ?sessionId=...
+ */
+app.get('/api/leads/session-metadata', async (req, res) => {
+  try {
+    const contactId = req.query.contactId || req.query.contact_id;
+    const sessionId = req.query.sessionId || req.query.session_id;
+    const token = req.headers['x-helena-token'] || req.query.token || null;
+
+    if (!contactId && !sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'É obrigatório informar contactId ou sessionId.'
+      });
+    }
+
+    let session = null;
+    let targetSessionId = sessionId;
+
+    if (targetSessionId) {
+      session = await fetchHelenaSession(targetSessionId, token);
+    } else if (contactId) {
+      const sessionResult = await fetchHelenaContactSessions(contactId, token);
+      session = sessionResult.activeSession;
+      targetSessionId = session ? session.id : null;
+    }
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        error: 'Nenhuma sessão de atendimento encontrada para este contato no Helena CRM.'
+      });
+    }
+
+    const meta = session.metadata || {};
+    const imoveisEnviados = Array.isArray(meta.imoveisEnviados) ? meta.imoveisEnviados : [];
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      sessionStatus: session.status,
+      contactId: session.contactId || contactId,
+      totalImoveisEnviados: meta.totalImoveisEnviados || imoveisEnviados.length,
+      imoveisEnviados,
+      metadata: meta
+    });
+  } catch (err) {
+    console.error('⚠️ Erro ao consultar session metadata do Helena CRM:', err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
 });
 
 // --- ROTAS DO CRM & GESTÃO DE IMÓVEIS (CRUD) ---
