@@ -1671,3 +1671,267 @@ body.helena-embedded .property-mini-card {
   background: rgba(255, 255, 255, 0.18);
 }
 
+/* ========================================================
+   TEMA CLARO EXCLUSIVO & POLIDO PARA VISUALIZAÇÃO DO LEAD / HELENA
+   ======================================================== */
+[data-theme="light"] .lead-profile-banner,
+body.helena-embedded .lead-profile-banner,
+body.simplified-view .lead-profile-banner {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-top: 3.5px solid #4f46e5;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .lead-profile-name,
+body.helena-embedded .lead-profile-name,
+body.simplified-view .lead-profile-name {
+  color: #0f172a;
+}
+
+[data-theme="light"] .lead-profile-badge,
+body.helena-embedded .lead-profile-badge,
+body.simplified-view .lead-profile-badge {
+  color: #4f46e5;
+}
+
+[data-theme="light"] .lead-crm-tag,
+body.helena-embedded .lead-crm-tag,
+body.simplified-view .lead-crm-tag {
+  color: #4338ca;
+  background: #e0e7ff;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+
+[data-theme="light"] .lead-profile-sub,
+body.helena-embedded .lead-profile-sub,
+body.simplified-view .lead-profile-sub {
+  color: #475569;
+}
+
+[data-theme="light"] .criterios-toggle-btn,
+body.helena-embedded .criterios-toggle-btn,
+body.simplified-view .criterios-toggle-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+[data-theme="light"] .criterios-toggle-btn:hover,
+body.helena-embedded .criterios-toggle-btn:hover,
+body.simplified-view .criterios-toggle-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+[data-theme="light"] .lead-filters-toolbar,
+body.helena-embedded .lead-filters-toolbar,
+body.simplified-view .lead-filters-toolbar {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .toolbar-pill,
+body.helena-embedded .toolbar-pill,
+body.simplified-view .toolbar-pill {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+[data-theme="light"] .toolbar-pill.pill-active,
+body.helena-embedded .toolbar-pill.pill-active,
+body.simplified-view .toolbar-pill.pill-active {
+  background: #e0e7ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+[data-theme="light"] .toolbar-pill.pill-score,
+body.helena-embedded .toolbar-pill.pill-score,
+body.simplified-view .toolbar-pill.pill-score {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+[data-theme="light"] .toolbar-note,
+body.helena-embedded .toolbar-note,
+body.simplified-view .toolbar-note {
+  color: #64748b;
+}
+
+[data-theme="light"] .btn-reset-filters,
+body.helena-embedded .btn-reset-filters,
+body.simplified-view .btn-reset-filters {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+[data-theme="light"] .btn-reset-filters:hover,
+body.helena-embedded .btn-reset-filters:hover,
+body.simplified-view .btn-reset-filters:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Cards de Critério no Tema Claro */
+[data-theme="light"] .criterio-card,
+body.helena-embedded .criterio-card,
+body.simplified-view .criterio-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .criterio-card:hover,
+body.helena-embedded .criterio-card:hover,
+body.simplified-view .criterio-card:hover {
+  border-color: #818cf8;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+}
+
+[data-theme="light"] .criterio-label,
+body.helena-embedded .criterio-label,
+body.simplified-view .criterio-label {
+  color: #64748b;
+}
+
+[data-theme="light"] .criterio-value,
+body.helena-embedded .criterio-value,
+body.simplified-view .criterio-value {
+  color: #0f172a;
+}
+
+[data-theme="light"] .criterio-impact,
+body.helena-embedded .criterio-impact,
+body.simplified-view .criterio-impact {
+  color: #059669;
+}
+
+[data-theme="light"] .criterio-card.desativado,
+body.helena-embedded .criterio-card.desativado,
+body.simplified-view .criterio-card.desativado {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  opacity: 0.65;
+}
+
+[data-theme="light"] .criterio-card.desativado .criterio-value,
+body.helena-embedded .criterio-card.desativado .criterio-value,
+body.simplified-view .criterio-card.desativado .criterio-value {
+  color: #94a3b8;
+}
+
+[data-theme="light"] .criterio-card.desativado .criterio-impact,
+body.helena-embedded .criterio-card.desativado .criterio-impact,
+body.simplified-view .criterio-card.desativado .criterio-impact {
+  color: #dc2626;
+}
+
+[data-theme="light"] .criterio-card.editado,
+body.helena-embedded .criterio-card.editado,
+body.simplified-view .criterio-card.editado {
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+[data-theme="light"] .criterio-badge-editado,
+body.helena-embedded .criterio-badge-editado,
+body.simplified-view .criterio-badge-editado {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+[data-theme="light"] .toggle-slider,
+body.helena-embedded .toggle-slider,
+body.simplified-view .toggle-slider {
+  background-color: #cbd5e1;
+}
+
+[data-theme="light"] .criterio-edit-btn,
+body.helena-embedded .criterio-edit-btn,
+body.simplified-view .criterio-edit-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+[data-theme="light"] .criterio-edit-btn:hover,
+body.helena-embedded .criterio-edit-btn:hover,
+body.simplified-view .criterio-edit-btn:hover {
+  background: #e0e7ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+[data-theme="light"] .criterio-input,
+body.helena-embedded .criterio-input,
+body.simplified-view .criterio-input {
+  background: #ffffff;
+  border: 1px solid #6366f1;
+  color: #0f172a;
+}
+
+[data-theme="light"] .lead-profile-annotation,
+body.helena-embedded .lead-profile-annotation,
+body.simplified-view .lead-profile-annotation {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-left: 4px solid #3b82f6;
+  color: #1e40af;
+}
+
+/* Imóveis na Grade do Modo Simplificado / Helena no Tema Claro */
+[data-theme="light"] .property-mini-card,
+body.helena-embedded .property-mini-card,
+body.simplified-view .property-mini-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .property-mini-card:hover,
+body.helena-embedded .property-mini-card:hover,
+body.simplified-view .property-mini-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .mini-card-highlights,
+body.helena-embedded .mini-card-highlights,
+body.simplified-view .mini-card-highlights {
+  background: #f0fdf4;
+  border-left: 3px solid #10b981;
+}
+
+[data-theme="light"] .mini-highlight-item,
+body.helena-embedded .mini-highlight-item,
+body.simplified-view .mini-highlight-item {
+  color: #065f46;
+}
+
+[data-theme="light"] .mini-card-actions,
+body.helena-embedded .mini-card-actions,
+body.simplified-view .mini-card-actions {
+  border-top: 1px solid #f1f5f9;
+}
+
+[data-theme="light"] .btn-card-quick-view,
+body.helena-embedded .btn-card-quick-view,
+body.simplified-view .btn-card-quick-view {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+[data-theme="light"] .btn-card-quick-view:hover,
+body.helena-embedded .btn-card-quick-view:hover,
+body.simplified-view .btn-card-quick-view:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+

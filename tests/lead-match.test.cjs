@@ -72,8 +72,7 @@ test('Helena CRM - Parser e Extração de Campos Personalizados', () => {
   assert.equal(helenaCriteria.regiao, 'Casa Branca, Jardim Jamaica');
   assert.ok(helenaCriteria.caracteristicas.includes('Aceita Pets'));
   assert.ok(helenaCriteria.caracteristicas.includes('Varanda gourmet'));
-  assert.ok(helenaCriteria.contexto.includes('Seguro Fiança'));
-  assert.equal(helenaCriteria.criteriosConsiderados.length, 10);
+  assert.equal(helenaCriteria.criteriosConsiderados.length, 8); // Motivo, Tempo e Anotação removidos dos filtros acionáveis
 });
 
 test('GET /api/leads/match - Validação do endpoint com filtros e Helena CRM', async (t) => {

@@ -1479,7 +1479,7 @@ app.post('/api/sync', async (req, res) => {
 
 // Configuração de sincronização periódica automática a cada 6 horas
 const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
-setInterval(async () => {
+const syncCron = setInterval(async () => {
   console.log('⏰ [Cron] Executando sincronização periódica do feed XML...');
   try {
     await syncFeed();
@@ -1487,9 +1487,10 @@ setInterval(async () => {
     console.error('⚠️ [Cron] Falha na sincronização periódica:', err.message);
   }
 }, SYNC_INTERVAL_MS);
+if (syncCron && syncCron.unref) syncCron.unref();
 
-// Inicialização
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+// Inicialização (apenas se executado diretamente, não quando importado por testes)
+if (require.main === module && (!process.env.VERCEL || process.env.NODE_ENV !== 'production')) {
   app.listen(PORT, async () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
     console.log(`⏱️ Sincronização periódica configurada a cada 6 horas.`);

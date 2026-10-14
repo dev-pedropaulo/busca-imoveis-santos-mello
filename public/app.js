@@ -160,16 +160,27 @@
 
   // --- Tema Claro / Escuro ---
   function initTheme() {
-    const savedTheme = localStorage.getItem('app-theme') || 'dark';
+    const urlParams = new URLSearchParams(window.location.search);
+    const isLeadView = urlParams.has('contactId') || urlParams.has('contact_id') || urlParams.has('leadId') || window.location.pathname.includes('simplificada');
+
+    if (isLeadView) {
+      document.documentElement.setAttribute('data-theme', 'light');
+      if (themeToggle) themeToggle.style.display = 'none';
+      return;
+    }
+
+    const savedTheme = localStorage.getItem('app-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
   }
 
-  themeToggle.addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('app-theme', next);
-  });
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('app-theme', next);
+    });
+  }
 
   // --- Toast Notification ---
   let toastTimer = null;
@@ -1180,6 +1191,8 @@
   function setSimplifiedMode(enable) {
     if (enable) {
       document.body.classList.add('simplified-view', 'helena-embedded');
+      document.documentElement.setAttribute('data-theme', 'light');
+      if (themeToggle) themeToggle.style.display = 'none';
       if (simplifiedBtnText) simplifiedBtnText.textContent = 'Modo Completo';
     } else {
       document.body.classList.remove('simplified-view', 'helena-embedded');
@@ -1556,19 +1569,24 @@
         };
       }
 
-      // Popula o estado de simulação e renderiza os cards
+      // Popula o estado de simulação e renderiza os cards (excluindo Motivo, Tempo e Anotação dos filtros conforme solicitado)
       leadSimulationState.contactId = contactId;
       leadSimulationState.contactData = contact;
-      leadSimulationState.criteria = (data.criteriosConsiderados || []).map(c => ({
-        campo: c.campo,
-        campoOriginal: c.campoOriginal || c.campo,
-        icone: c.icone || getFieldIcon(c.campo),
-        valorOriginal: c.valorOriginal || '',
-        valorAtual: c.valorEfetivo || c.valorOriginal || '',
-        ativo: c.ativo !== undefined ? c.ativo : true,
-        isEditing: false,
-        impacto: c.impacto || ''
-      }));
+      leadSimulationState.criteria = (data.criteriosConsiderados || [])
+        .filter(c => {
+          const kNorm = (c.campoOriginal || c.campo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+          return !kNorm.includes('motivo') && !kNorm.includes('tempo') && !kNorm.includes('prazo') && !kNorm.includes('anotacao');
+        })
+        .map(c => ({
+          campo: c.campo,
+          campoOriginal: c.campoOriginal || c.campo,
+          icone: c.icone || getFieldIcon(c.campo),
+          valorOriginal: c.valorOriginal || '',
+          valorAtual: c.valorEfetivo || c.valorOriginal || '',
+          ativo: c.ativo !== undefined ? c.ativo : true,
+          isEditing: false,
+          impacto: c.impacto || ''
+        }));
 
       renderLeadCriteriaCards();
 
