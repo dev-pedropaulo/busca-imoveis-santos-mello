@@ -154,12 +154,51 @@
     }
   }
 
+  // Constrói ou valida a URL oficial funcional do site Santos & Mello (com slug do título)
+  function resolvePropertyWebsiteUrl(prop) {
+    const pId = String(prop.id || prop.codigo || '').trim();
+    const candidateUrl = prop.websiteUrl || prop.url || '';
+
+    // Se já tiver slug válido no padrão do site oficial (ex: https://www.santosemello.com.br/imovel/slug-do-titulo/1234)
+    if (candidateUrl.includes('santosemello.com.br/imovel/') && candidateUrl.replace(/\/+$/, '').split('/').length >= 6) {
+      return candidateUrl;
+    }
+
+    const title = prop.titulo || prop.title || '';
+    if (title && pId) {
+      const slug = title
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[.,]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      return `https://www.santosemello.com.br/imovel/${slug}/${encodeURIComponent(pId)}`;
+    }
+
+    return candidateUrl || `https://www.santosemello.com.br/imovel/${encodeURIComponent(pId)}`;
+  }
+
   // --- Renderização dos Cards de Imóveis Enviados ---
   function renderPropertiesList(properties) {
     visitasPropertiesList.innerHTML = '';
     const defaultDate = getDefaultSuggestedDate();
 
-    properties.forEach((prop, index) => {
+    // Filtra IDs de teste ou mocks
+    const validProperties = properties.filter(p => {
+      const pId = String(p.id || p.codigo || '').toUpperCase();
+      return !pId.startsWith('TEST') && pId !== 'MOCK';
+    });
+
+    if (validProperties.length === 0) {
+      visitasLoadingState.style.display = 'none';
+      visitasEmptyState.style.display = 'block';
+      visitasPropertiesList.style.display = 'none';
+      updateSummaryUI();
+      return;
+    }
+
+    validProperties.forEach((prop, index) => {
       const pId = String(prop.id || prop.codigo);
       const isSelected = selectedVisitsMap.has(pId);
       const visitData = selectedVisitsMap.get(pId) || {
@@ -173,19 +212,19 @@
       card.className = `visit-card ${isSelected ? 'is-selected' : ''}`;
       card.dataset.id = pId;
 
-      const photo = prop.primaryImage || prop.foto || (prop.images && prop.images[0]) || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80';
+      const photo = prop.primaryImage || prop.foto || (Array.isArray(prop.images) && prop.images[0]) || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80';
       const cleanType = (prop.tipo || prop.propertyType || 'Imóvel').replace('Residential / ', '').replace('Commercial / ', '');
       const transType = prop.finalidade || prop.transactionType || 'Imóvel';
       const title = prop.titulo || prop.title || `${cleanType} em ${prop.bairro || 'Santo André'}`;
       const location = [prop.bairro, prop.cidade].filter(Boolean).join(', ') || 'Santo André - SP';
       const priceFormatted = prop.valorFormatado || prop.priceText || (prop.valor ? `R$ ${Number(prop.valor).toLocaleString('pt-BR')}` : 'Sob Consulta');
-      const url = prop.url || prop.websiteUrl || `/?codigo=${pId}`;
+      const url = resolvePropertyWebsiteUrl(prop);
       const matchScore = prop.matchScore ? `<span class="visit-card-match-pill">🔥 ${prop.matchScore}% Match</span>` : '';
 
       card.innerHTML = `
         <div class="visit-card-main">
           <div class="visit-card-thumb-wrap">
-            <img src="${photo}" alt="${title}" loading="lazy">
+            <img src="${photo}" alt="${title}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80';">
             <span class="visit-card-thumb-tag">${transType}</span>
           </div>
 
@@ -199,7 +238,7 @@
             <div class="visit-card-sub-row">
               <span class="visit-card-location">📍 ${location}</span>
               <span class="visit-card-price">${priceFormatted}</span>
-              <a href="${url}" target="_blank" rel="noopener noreferrer" class="visit-card-link-ext" title="Ver ficha completa">
+              <a href="${url}" target="_blank" rel="noopener noreferrer" class="visit-card-link-ext" title="Ver ficha completa no site da imobiliária">
                 <span>Ver Imóvel ↗</span>
               </a>
             </div>

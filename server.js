@@ -284,6 +284,80 @@ function getAllPropertiesMerged() {
   return merged;
 }
 
+/**
+ * Enriquece um objeto de imóvel com os dados oficiais do catálogo (foto real, título e URL com slug)
+ * Filtra dados mock ou de teste (ex: TEST-101)
+ */
+function enrichPropertyWithCatalog(prop) {
+  if (!prop) return null;
+  const pId = String(prop.id || prop.codigo || '').trim();
+  if (!pId) return null;
+
+  // Descarta estritamente IDs de teste ou mocks
+  if (pId.toUpperCase().startsWith('TEST') || pId.toUpperCase() === 'MOCK') {
+    return null;
+  }
+
+  // Busca o imóvel real no mapa de listagens ou no catálogo mesclado
+  let catalogItem = listingsMap.get(pId);
+  if (!catalogItem) {
+    const pIdLower = pId.toLowerCase();
+    catalogItem = getAllPropertiesMerged().find(item => String(item.id).toLowerCase() === pIdLower);
+  }
+
+  if (catalogItem) {
+    const isRental = (catalogItem.transactionType || '').toLowerCase().includes('locação');
+    const mainPrice = isRental ? (catalogItem.rentalPrice || catalogItem.price) : (catalogItem.price || catalogItem.rentalPrice);
+    const priceFormatted = mainPrice > 0 
+      ? `R$ ${mainPrice.toLocaleString('pt-BR')}${isRental ? '/mês' : ''}` 
+      : (prop.valorFormatado || 'Sob Consulta');
+    
+    // Constrói a URL oficial e funcional com o slug do título
+    const realWebsiteUrl = buildPropertyWebsiteUrl(catalogItem.title, catalogItem.id);
+    const photo = catalogItem.primaryImage || (catalogItem.images && catalogItem.images[0]) || prop.primaryImage || prop.foto || '';
+
+    return {
+      ...prop,
+      id: catalogItem.id,
+      codigo: catalogItem.id,
+      titulo: catalogItem.title,
+      title: catalogItem.title,
+      tipo: catalogItem.propertyType,
+      propertyType: catalogItem.propertyType,
+      finalidade: catalogItem.transactionType,
+      transactionType: catalogItem.transactionType,
+      bairro: catalogItem.location?.neighborhood || prop.bairro || 'Santo André',
+      cidade: catalogItem.location?.city || prop.cidade || 'Santo André',
+      valor: mainPrice || prop.valor || 0,
+      valorFormatado: priceFormatted,
+      primaryImage: photo,
+      foto: photo,
+      images: catalogItem.images || [],
+      url: realWebsiteUrl,
+      websiteUrl: realWebsiteUrl,
+      visitaAgendada: prop.visitaAgendada || false,
+      dataVisita: prop.dataVisita || null,
+      horarioVisita: prop.horarioVisita || null,
+      obsVisita: prop.obsVisita || ''
+    };
+  }
+
+  // Fallback caso não seja encontrado no catálogo atual mas possua título ou ID numérico válido
+  const fallbackTitle = prop.titulo || prop.title || `Imóvel #${pId}`;
+  const realWebsiteUrl = buildPropertyWebsiteUrl(fallbackTitle, pId);
+  return {
+    ...prop,
+    id: pId,
+    codigo: pId,
+    titulo: fallbackTitle,
+    title: fallbackTitle,
+    url: realWebsiteUrl,
+    websiteUrl: realWebsiteUrl,
+    primaryImage: prop.primaryImage || prop.foto || '',
+    foto: prop.primaryImage || prop.foto || ''
+  };
+}
+
 // Rotas da API
 app.get('/api/imovel/:id', (req, res) => {
   const code = (req.params.id || '').trim().toLowerCase();
@@ -1150,10 +1224,15 @@ app.post(['/api/leads/session-metadata', '/api/leads/record-sent'], async (req, 
       });
     }
 
+    // Enriquece com dados oficiais do catálogo (foto real, título e URL com slug) e descarta mocks
+    const enrichedList = propList
+      .map(enrichPropertyWithCatalog)
+      .filter(Boolean);
+
     const result = await recordSentPropertiesInHelenaSession({
       sessionId,
       contactId,
-      properties: propList,
+      properties: enrichedList.length > 0 ? enrichedList : propList,
       tokenOverride: token
     });
 
@@ -1208,17 +1287,42 @@ app.get('/api/leads/session-metadata', async (req, res) => {
     }
 
     const meta = session.metadata || {};
-    const imoveisEnviados = Array.isArray(meta.imoveisEnviados) ? meta.imoveisEnviados : [];
+    const rawImoveis = Array.isArray(meta.imoveisEnviados) ? meta.imoveisEnviados : [];
+
+    // Enriquece cada imóvel com foto real e URL oficial funcional do catálogo, filtrando mocks
+    const imoveisEnviados = rawImoveis
+      .map(enrichPropertyWithCatalog)
+      .filter(Boolean);
+
+    const rawVisitas = Array.isArray(meta.visitasAgendadas) ? meta.visitasAgendadas : [];
+    const visitasAgendadas = rawVisitas
+      .filter(v => {
+        const id = String(v.propertyId || '').toUpperCase();
+        return !id.startsWith('TEST') && id !== 'MOCK';
+      })
+      .map(v => {
+        const enriched = enrichPropertyWithCatalog({ id: v.propertyId, titulo: v.propertyTitle });
+        return {
+          ...v,
+          propertyTitle: enriched?.titulo || v.propertyTitle,
+          propertyPhoto: enriched?.primaryImage || v.propertyPhoto || '',
+          propertyUrl: enriched?.websiteUrl || v.propertyUrl
+        };
+      });
 
     res.json({
       success: true,
       sessionId: session.id,
       sessionStatus: session.status,
       contactId: session.contactId || contactId,
-      totalImoveisEnviados: meta.totalImoveisEnviados || imoveisEnviados.length,
+      totalImoveisEnviados: imoveisEnviados.length,
       imoveisEnviados,
-      visitasAgendadas: Array.isArray(meta.visitasAgendadas) ? meta.visitasAgendadas : [],
-      metadata: meta
+      visitasAgendadas,
+      metadata: {
+        ...meta,
+        imoveisEnviados,
+        visitasAgendadas
+      }
     });
   } catch (err) {
     console.error('⚠️ Erro ao consultar session metadata do Helena CRM:', err.message);

@@ -151,13 +151,13 @@
     "8713": {
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
-      "updatedAt": "2026-10-14T17:48:05.306Z"
+      "updatedAt": "2026-10-14T18:05:53.367Z"
     },
     "8797": {
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
       "keyTag": "CLAV-012",
-      "updatedAt": "2026-10-14T17:47:53.386Z"
+      "updatedAt": "2026-10-14T18:05:48.277Z"
     },
     "8816": {
       "kanbanStage": "concluido",
@@ -175,7 +175,7 @@
       "kanbanStage": "disponivel",
       "status": "Vago / Disponível",
       "keyTag": "CLAV-TEST-99",
-      "updatedAt": "2026-10-14T17:47:53.389Z"
+      "updatedAt": "2026-10-14T18:05:48.281Z"
     },
     "test-1790771916676": {
       "kanbanStage": "excluido",
@@ -247,9 +247,30 @@
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
       "updatedAt": "2026-10-14T17:49:04.693Z"
+    },
+    "test-1792001148272": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-14T18:05:48.275Z",
+      "deleted": true
     }
   },
   "visits": [
+    {
+      "id": "vis-1792001153367-96",
+      "status": "Agendada",
+      "createdAt": "2026-10-14T18:05:53.367Z",
+      "propertyId": "8713",
+      "propertyTitle": "Apartamento Jardim Jamaica",
+      "clientName": "Pedro Santos",
+      "clientPhone": "11988887777",
+      "date": "2026-10-18",
+      "time": "14:30",
+      "broker": "Corretor de Plantão",
+      "notes": "Avisar portaria",
+      "sessionId": "sess-teste-visita",
+      "contactId": "contato-teste-visita"
+    },
     {
       "id": "vis-1792000144693-921",
       "status": "Agendada",
@@ -337,6 +358,16 @@
     }
   ],
   "keyMovements": [
+    {
+      "id": "km-1792001148280-522",
+      "takenAt": "2026-10-14T18:05:48.280Z",
+      "returnedAt": "2026-10-14T18:05:48.281Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
     {
       "id": "km-1792000073388-625",
       "takenAt": "2026-10-14T17:47:53.388Z",

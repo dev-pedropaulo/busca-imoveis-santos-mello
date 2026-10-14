@@ -402,6 +402,9 @@
             valorFormatado: share.priceText || '',
             finalidade: p.transactionType || p.finalidade || '',
             url: p.websiteUrl || `${window.location.origin}/?codigo=${p.id}`,
+            websiteUrl: p.websiteUrl || `${window.location.origin}/?codigo=${p.id}`,
+            primaryImage: p.primaryImage || (p.images && p.images[0]) || '',
+            foto: p.primaryImage || (p.images && p.images[0]) || '',
             matchScore: p.matchScore || null
           };
         })
