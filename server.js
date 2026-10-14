@@ -610,20 +610,133 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
     }
   }
 
-  // Parâmetros do Lead: mescla os campos personalizados do Helena CRM com possíveis overrides passados na query
-  const rawPropertyType = (req.query.tipo || req.query.propertyType || criteriaFromContact.tipo || '').trim();
-  const rawTransactionType = (req.query.finalidade || req.query.transacao || req.query.transactionType || req.query.type || criteriaFromContact.finalidade || '').trim();
-  const rawUsageType = (req.query.uso || req.query.usageType || criteriaFromContact.uso || '').trim();
-  const rawMaxPrice = parseFloat(req.query.orcamento || req.query.orcamentoMax || req.query.maxPrice || req.query.precoMax || criteriaFromContact.orcamentoMax || 0);
-  const rawMinPrice = parseFloat(req.query.orcamentoMin || req.query.minPrice || req.query.precoMin || criteriaFromContact.orcamentoMin || 0);
-  const rawBedrooms = parseInt(req.query.quartos || req.query.minBedrooms || req.query.dormitorios || criteriaFromContact.quartos || 0);
-  const rawSuites = parseInt(req.query.suites || req.query.minSuites || criteriaFromContact.suites || 0);
-  const rawBathrooms = parseInt(req.query.banheiros || req.query.minBathrooms || criteriaFromContact.banheiros || 0);
-  const rawGarage = parseInt(req.query.vagas || req.query.minGarage || req.query.garagem || criteriaFromContact.vagas || 0);
-  const rawCity = (req.query.cidade || req.query.city || criteriaFromContact.cidade || '').trim();
-  const rawNeighborhoods = (req.query.regiao || req.query.bairro || req.query.neighborhood || req.query.bairros || criteriaFromContact.regiao || '').trim();
-  const rawFeatures = (req.query.caracteristicas || req.query.features || req.query.comodidades || criteriaFromContact.caracteristicas || '').trim();
-  const rawContext = (req.query.contexto || req.query.q || req.query.perfil || req.query.observacoes || req.query.obs || criteriaFromContact.contexto || '').trim();
+  // Helper para resolver parâmetros com suporte a desativação (ignore*) e edição explícita
+  function isIgnored(flag) {
+    const v = req.query[flag];
+    return v === 'true' || v === '1' || v === true;
+  }
+
+  // 1. Tipo do Imóvel
+  let rawPropertyType = '';
+  if (!isIgnored('ignoreTipo') && !isIgnored('ignorePropertyType')) {
+    if (req.query.tipo !== undefined) rawPropertyType = req.query.tipo;
+    else if (req.query.propertyType !== undefined) rawPropertyType = req.query.propertyType;
+    else rawPropertyType = criteriaFromContact.tipo || '';
+  }
+  rawPropertyType = rawPropertyType.trim();
+
+  // 2. Destinação / Finalidade
+  let rawTransactionType = '';
+  if (!isIgnored('ignoreFinalidade') && !isIgnored('ignoreDestinacao') && !isIgnored('ignoreTransacao')) {
+    if (req.query.finalidade !== undefined) rawTransactionType = req.query.finalidade;
+    else if (req.query.destinacao !== undefined) rawTransactionType = req.query.destinacao;
+    else if (req.query.transacao !== undefined) rawTransactionType = req.query.transacao;
+    else if (req.query.transactionType !== undefined) rawTransactionType = req.query.transactionType;
+    else if (req.query.type !== undefined) rawTransactionType = req.query.type;
+    else rawTransactionType = criteriaFromContact.finalidade || '';
+  }
+  rawTransactionType = rawTransactionType.trim();
+
+  // 3. Uso
+  let rawUsageType = '';
+  if (!isIgnored('ignoreUso')) {
+    if (req.query.uso !== undefined) rawUsageType = req.query.uso;
+    else if (req.query.usageType !== undefined) rawUsageType = req.query.usageType;
+    else rawUsageType = criteriaFromContact.uso || '';
+  }
+  rawUsageType = rawUsageType.trim();
+
+  // 4. Orçamento Máximo
+  let rawMaxPrice = 0;
+  if (!isIgnored('ignoreOrcamento') && !isIgnored('ignorePreco') && !isIgnored('ignoreValor')) {
+    if (req.query.orcamento !== undefined && req.query.orcamento !== '') rawMaxPrice = parseFloat(req.query.orcamento) || 0;
+    else if (req.query.orcamentoMax !== undefined && req.query.orcamentoMax !== '') rawMaxPrice = parseFloat(req.query.orcamentoMax) || 0;
+    else if (req.query.maxPrice !== undefined && req.query.maxPrice !== '') rawMaxPrice = parseFloat(req.query.maxPrice) || 0;
+    else if (req.query.precoMax !== undefined && req.query.precoMax !== '') rawMaxPrice = parseFloat(req.query.precoMax) || 0;
+    else rawMaxPrice = parseFloat(criteriaFromContact.orcamentoMax) || 0;
+  }
+
+  // 5. Orçamento Mínimo
+  let rawMinPrice = 0;
+  if (!isIgnored('ignoreOrcamentoMin')) {
+    if (req.query.orcamentoMin !== undefined && req.query.orcamentoMin !== '') rawMinPrice = parseFloat(req.query.orcamentoMin) || 0;
+    else if (req.query.minPrice !== undefined && req.query.minPrice !== '') rawMinPrice = parseFloat(req.query.minPrice) || 0;
+    else rawMinPrice = parseFloat(criteriaFromContact.orcamentoMin) || 0;
+  }
+
+  // 6. Quartos / Moradores
+  let rawBedrooms = 0;
+  if (!isIgnored('ignoreQuartos') && !isIgnored('ignoreMoradores') && !isIgnored('ignoreDormitorios')) {
+    if (req.query.quartos !== undefined && req.query.quartos !== '') rawBedrooms = parseInt(req.query.quartos, 10) || 0;
+    else if (req.query.minBedrooms !== undefined && req.query.minBedrooms !== '') rawBedrooms = parseInt(req.query.minBedrooms, 10) || 0;
+    else if (req.query.dormitorios !== undefined && req.query.dormitorios !== '') rawBedrooms = parseInt(req.query.dormitorios, 10) || 0;
+    else if (req.query.moradores !== undefined && req.query.moradores !== '') {
+      const m = parseInt(req.query.moradores, 10) || 0;
+      rawBedrooms = m >= 4 ? 3 : (m === 3 ? 2 : (m >= 1 ? 1 : 0));
+    } else {
+      rawBedrooms = parseInt(criteriaFromContact.quartos, 10) || 0;
+    }
+  }
+
+  // 7. Suítes / Banheiros / Vagas
+  let rawSuites = isIgnored('ignoreSuites') ? 0 : (req.query.suites !== undefined && req.query.suites !== '' ? parseInt(req.query.suites, 10) || 0 : (criteriaFromContact.suites || 0));
+  let rawBathrooms = isIgnored('ignoreBanheiros') ? 0 : (req.query.banheiros !== undefined && req.query.banheiros !== '' ? parseInt(req.query.banheiros, 10) || 0 : (criteriaFromContact.banheiros || 0));
+  let rawGarage = (isIgnored('ignoreVagas') || isIgnored('ignoreGaragem')) ? 0 : (req.query.vagas !== undefined && req.query.vagas !== '' ? parseInt(req.query.vagas, 10) || 0 : (criteriaFromContact.vagas || 0));
+
+  // 8. Bairros / Região
+  let rawNeighborhoods = '';
+  if (!isIgnored('ignoreBairros') && !isIgnored('ignoreRegiao')) {
+    if (req.query.regiao !== undefined) rawNeighborhoods = req.query.regiao;
+    else if (req.query.bairro !== undefined) rawNeighborhoods = req.query.bairro;
+    else if (req.query.neighborhood !== undefined) rawNeighborhoods = req.query.neighborhood;
+    else if (req.query.bairros !== undefined) rawNeighborhoods = req.query.bairros;
+    else rawNeighborhoods = criteriaFromContact.regiao || '';
+  }
+  rawNeighborhoods = rawNeighborhoods.trim();
+
+  // 9. Cidade
+  let rawCity = '';
+  if (!isIgnored('ignoreCidade')) {
+    if (req.query.cidade !== undefined) rawCity = req.query.cidade;
+    else if (req.query.city !== undefined) rawCity = req.query.city;
+    else rawCity = criteriaFromContact.cidade || '';
+  }
+  rawCity = rawCity.trim();
+
+  // 10. Características / Pet / Particularidades
+  let rawFeatures = '';
+  if (!isIgnored('ignoreCaracteristicas') && !isIgnored('ignoreComodidades') && !isIgnored('ignoreParticularidades')) {
+    if (req.query.caracteristicas !== undefined) rawFeatures = req.query.caracteristicas;
+    else if (req.query.features !== undefined) rawFeatures = req.query.features;
+    else if (req.query.comodidades !== undefined) rawFeatures = req.query.comodidades;
+    else rawFeatures = criteriaFromContact.caracteristicas || '';
+  }
+  if (isIgnored('ignorePet') && rawFeatures) {
+    rawFeatures = rawFeatures.split(',').map(f => f.trim()).filter(f => !f.toLowerCase().includes('pet')).join(', ');
+  }
+  if (req.query.pet !== undefined) {
+    const pLow = String(req.query.pet).toLowerCase();
+    if (pLow.includes('sim') || pLow === 'true' || pLow === '1') {
+      if (!rawFeatures.toLowerCase().includes('pet')) {
+        rawFeatures = rawFeatures ? `${rawFeatures}, Aceita Pets` : 'Aceita Pets';
+      }
+    } else if (pLow.includes('nao') || pLow === 'false' || pLow === '0') {
+      rawFeatures = rawFeatures.split(',').map(f => f.trim()).filter(f => !f.toLowerCase().includes('pet')).join(', ');
+    }
+  }
+
+  // 11. Contexto / Motivo / Tempo / Garantia
+  let rawContext = '';
+  if (!isIgnored('ignoreContexto')) {
+    if (req.query.contexto !== undefined) rawContext = req.query.contexto;
+    else if (req.query.q !== undefined) rawContext = req.query.q;
+    else if (req.query.perfil !== undefined) rawContext = req.query.perfil;
+    else if (req.query.observacoes !== undefined) rawContext = req.query.observacoes;
+    else rawContext = criteriaFromContact.contexto || '';
+  }
+
+  // Limiar mínimo de afinidade: padrão 60% (requisito de negócio: mostrar imóveis com matching >= 60%)
+  const minScoreThreshold = req.query.minScore !== undefined ? Math.max(0, parseInt(req.query.minScore, 10) || 0) : 60;
   const onlyAvailable = req.query.somenteDisponiveis !== 'false' && req.query.onlyAvailable !== 'false';
   const format = (req.query.formato || req.query.format || 'full').toLowerCase();
   const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
@@ -838,6 +951,11 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
     // Limitar score a 100
     matchScore = Math.min(100, Math.max(1, matchScore));
 
+    // Regra: Sempre mostrar imóveis com matching acima de 60% (ou minScoreThreshold configurado)
+    if (matchScore < minScoreThreshold) {
+      continue;
+    }
+
     // Formatação do resultado (compacta para IA ou completa para CRM)
     let outputItem;
     if (format === 'compact' || format === 'ai') {
@@ -879,14 +997,83 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
     matchedItems.push(outputItem);
   }
 
-  // Ordenar por maior afinidade / Match Score
+  // Ordenar por maior afinidade / Match Score em ordem rigorosamente decrescente
   matchedItems.sort((a, b) => b.matchScore - a.matchScore);
 
   const paginated = matchedItems.slice(offset, offset + limit);
 
+  // Enriquecer critérios considerados com status de ativo e editado para exibição dinâmica no painel
+  const criteriosEnriquecidos = (criteriosConsiderados || []).map(c => {
+    const kNorm = normalizeString((c.campoOriginal || '') + ' ' + (c.campo || '')).replace(/[^a-z0-9]/g, '');
+    let ativo = true;
+    let valorEfetivo = c.valorOriginal;
+
+    if (kNorm.includes('destina') || kNorm.includes('finalidade')) {
+      if (isIgnored('ignoreFinalidade') || isIgnored('ignoreDestinacao') || isIgnored('ignoreTransacao')) {
+        ativo = false;
+      } else if (rawTransactionType) {
+        valorEfetivo = rawTransactionType;
+      }
+    } else if (kNorm.includes('tipo')) {
+      if (isIgnored('ignoreTipo') || isIgnored('ignorePropertyType')) {
+        ativo = false;
+      } else if (rawPropertyType) {
+        valorEfetivo = rawPropertyType;
+      }
+    } else if (kNorm.includes('orcam') || kNorm.includes('oram') || kNorm.includes('preco')) {
+      if (isIgnored('ignoreOrcamento') || isIgnored('ignorePreco') || isIgnored('ignoreValor')) {
+        ativo = false;
+      } else if (rawMaxPrice > 0) {
+        valorEfetivo = String(rawMaxPrice);
+      }
+    } else if (kNorm.includes('bairro') || kNorm.includes('regiao')) {
+      if (isIgnored('ignoreBairros') || isIgnored('ignoreRegiao')) {
+        ativo = false;
+      } else if (rawNeighborhoods) {
+        valorEfetivo = rawNeighborhoods;
+      }
+    } else if (kNorm.includes('morador') || kNorm.includes('quarto')) {
+      if (isIgnored('ignoreQuartos') || isIgnored('ignoreMoradores')) {
+        ativo = false;
+      } else if (rawBedrooms > 0) {
+        valorEfetivo = `${rawBedrooms} quartos`;
+      }
+    } else if (kNorm.includes('pet')) {
+      if (isIgnored('ignorePet')) {
+        ativo = false;
+      } else if (req.query.pet !== undefined) {
+        valorEfetivo = req.query.pet;
+      }
+    } else if (kNorm.includes('particularidade') || kNorm.includes('comodidade')) {
+      if (isIgnored('ignoreParticularidades') || isIgnored('ignoreComodidades')) {
+        ativo = false;
+      }
+    } else if (kNorm.includes('motivo')) {
+      if (isIgnored('ignoreMotivo') || isIgnored('ignoreContexto')) {
+        ativo = false;
+      }
+    } else if (kNorm.includes('tempo') || kNorm.includes('prazo')) {
+      if (isIgnored('ignoreTempo')) {
+        ativo = false;
+      }
+    } else if (kNorm.includes('garantia')) {
+      if (isIgnored('ignoreGarantia')) {
+        ativo = false;
+      }
+    }
+
+    return {
+      ...c,
+      ativo,
+      editado: String(valorEfetivo).trim() !== String(c.valorOriginal).trim(),
+      valorEfetivo
+    };
+  });
+
   res.json({
     success: true,
     endpoint: '/api/leads/match',
+    minScoreThreshold,
     contact: contactData ? {
       id: contactData.id,
       name: contactData.name,
@@ -913,7 +1100,7 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
       contexto: rawContext || null,
       somenteDisponiveis: onlyAvailable
     },
-    criteriosConsiderados: criteriosConsiderados || [],
+    criteriosConsiderados: criteriosEnriquecidos,
     totalMatches: matchedItems.length,
     offset,
     limit,

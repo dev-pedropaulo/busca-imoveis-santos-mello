@@ -120,6 +120,23 @@
           </div>
         </div>
 
+        <!-- Barra de Simulação e Controle de Filtros do Painel -->
+        <div class="lead-filters-toolbar" id="leadFiltersToolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-pill pill-active" id="toolbarActiveFiltersBadge">Filtros Ativos: 0</span>
+            <span class="toolbar-pill pill-score" title="Apenas imóveis com compatibilidade de 60% ou superior em ordem decrescente">⭐ Mínimo 60% afinidade</span>
+            <span class="toolbar-note">💡 Simule habilitando/desabilitando ou editando os filtros (não altera o CRM)</span>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" class="btn-toolbar btn-reset-filters" id="btnResetLeadFilters" title="Restaurar critérios originais do Helena CRM">
+              ↩️ Restaurar Originais
+            </button>
+            <button type="button" class="btn-toolbar btn-recalc-match" id="btnRecalcMatch" title="Recalcular imóveis compatíveis com os filtros selecionados">
+              🔄 Recalcular Match
+            </button>
+          </div>
+        </div>
+
         <!-- Grade de Campos Considerados (Perfil de Qualificação) -->
         <div id="criteriosConsideradosGrid" class="criterios-grid" style="display: flex;">
           <!-- Itens gerados dinamicamente via JS -->

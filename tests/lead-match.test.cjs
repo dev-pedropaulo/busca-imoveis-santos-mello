@@ -113,13 +113,19 @@ test('GET /api/leads/match - Validação do endpoint com filtros e Helena CRM', 
     assert.equal(body.leadProfile.orcamentoMax, 5000);
     assert.equal(body.leadProfile.quartosMin, 2);
 
-    for (const item of body.results) {
-      assert.ok(item.matchScore > 0, 'Score deve ser maior que zero');
+    assert.equal(body.minScoreThreshold, 60);
+
+    for (let i = 0; i < body.results.length; i++) {
+      const item = body.results[i];
+      assert.ok(item.matchScore >= 60, `Score ${item.matchScore} deve ser >= 60%`);
       assert.ok(Array.isArray(item.matchHighlights), 'Deve conter destaques do match');
       assert.ok((item.bedrooms || 0) >= 2, 'Deve respeitar o mínimo de 2 quartos');
       const price = item.rentalPrice || item.price || 0;
       if (price > 0) {
         assert.ok(price <= 5000, `Preço ${price} deve ser menor ou igual a 5000`);
+      }
+      if (i < body.results.length - 1) {
+        assert.ok(item.matchScore >= body.results[i + 1].matchScore, 'Resultados devem estar em ordem decrescente de afinidade');
       }
     }
   });
