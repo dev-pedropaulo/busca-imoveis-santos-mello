@@ -70,9 +70,10 @@ test('Helena CRM - Parser e Extração de Campos Personalizados', () => {
   assert.equal(helenaCriteria.orcamentoMax, 4500);
   assert.equal(helenaCriteria.quartos, 2); // 3 moradores deduz 2 quartos
   assert.equal(helenaCriteria.regiao, 'Casa Branca, Jardim Jamaica');
-  assert.ok(helenaCriteria.caracteristicas.includes('Aceita Pets'));
+  assert.ok(!helenaCriteria.caracteristicas.includes('Aceita Pets'));
   assert.ok(helenaCriteria.caracteristicas.includes('Varanda gourmet'));
-  assert.equal(helenaCriteria.criteriosConsiderados.length, 8); // Motivo, Tempo e Anotação removidos dos filtros acionáveis
+  assert.ok(helenaCriteria.contexto.includes('Pet: Sim, 1 gato'));
+  assert.equal(helenaCriteria.criteriosConsiderados.length, 7); // Motivo, Tempo, Anotação e Pet removidos dos filtros acionáveis
 });
 
 test('GET /api/leads/match - Validação do endpoint com filtros e Helena CRM', async (t) => {

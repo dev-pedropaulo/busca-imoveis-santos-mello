@@ -423,7 +423,6 @@ app.get('/api/filter-options', (req, res) => {
     { id: 'piscina', label: 'Piscina', icon: '🏊' },
     { id: 'churrasqueira', label: 'Churrasqueira', icon: '🍖' },
     { id: 'elevador', label: 'Elevador', icon: '🛗' },
-    { id: 'pets', label: 'Aceita Pets', icon: '🐾' },
     { id: 'varanda', label: 'Varanda / Sacada', icon: '🌅' },
     { id: 'mobiliado', label: 'Mobiliado', icon: '🛋️' },
     { id: 'academia', label: 'Academia', icon: '🏋️' },

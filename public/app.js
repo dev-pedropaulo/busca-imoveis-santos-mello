@@ -1938,13 +1938,13 @@
         };
       }
 
-      // Popula o estado de simulação e renderiza os cards (excluindo Motivo, Tempo e Anotação dos filtros conforme solicitado)
+      // Popula o estado de simulação e renderiza os cards (excluindo Motivo, Tempo, Anotação e Pets conforme solicitado)
       leadSimulationState.contactId = contactId;
       leadSimulationState.contactData = contact;
       leadSimulationState.criteria = (data.criteriosConsiderados || [])
         .filter(c => {
           const kNorm = (c.campoOriginal || c.campo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-          return !kNorm.includes('motivo') && !kNorm.includes('tempo') && !kNorm.includes('prazo') && !kNorm.includes('anotacao');
+          return !kNorm.includes('motivo') && !kNorm.includes('tempo') && !kNorm.includes('prazo') && !kNorm.includes('anotacao') && !kNorm.includes('pet') && !kNorm.includes('animal');
         })
         .map(c => ({
           campo: c.campo,
