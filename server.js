@@ -13,6 +13,7 @@ const {
   recordScheduledVisitsInHelenaSession
 } = require('./lib/helena-crm');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
+const { getOperationalPropertyData } = require('./lib/imoview-api');
 const PORT = process.env.PORT || 3333;
 const XML_URL = 'https://universal-ftp2.s3.us-west-2.amazonaws.com/vr/santosemello-vivareal-8835-ambos.xml';
 
@@ -1325,6 +1326,44 @@ app.get('/api/leads/session-metadata', async (req, res) => {
     });
   } catch (err) {
     console.error('⚠️ Erro ao consultar session metadata do Helena CRM:', err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+/**
+ * GET /api/imoveis/:id/detalhes-operacionais
+ * Consulta os dados operacionais do Imoview: localização da chave, captadores e locador/proprietário
+ */
+app.get(['/api/imoveis/:id/detalhes-operacionais', '/api/imovel/:id/operacional'], async (req, res) => {
+  try {
+    const propertyId = req.params.id;
+    if (!propertyId) {
+      return res.status(400).json({ success: false, error: 'Código do imóvel não informado.' });
+    }
+
+    const opData = await getOperationalPropertyData(propertyId);
+
+    // Se o catálogo em memória tiver o imóvel, complementa com foto e link oficial
+    const cleanId = String(propertyId).toLowerCase();
+    const catalogItem = listingsMap.get(cleanId);
+    const enriched = catalogItem ? enrichPropertyWithCatalog(catalogItem) : null;
+
+    res.json({
+      ...opData,
+      catalogInfo: enriched ? {
+        title: enriched.titulo || enriched.title,
+        neighborhood: enriched.bairro,
+        city: enriched.cidade,
+        photo: enriched.primaryImage,
+        websiteUrl: enriched.websiteUrl,
+        priceText: enriched.priceText || enriched.valorFormatado
+      } : null
+    });
+  } catch (err) {
+    console.error(`⚠️ Erro ao consultar dados operacionais do imóvel #${req.params.id}:`, err.message);
     res.status(500).json({
       success: false,
       error: err.message

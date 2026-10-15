@@ -45,6 +45,179 @@
   let currentSessionData = null;
   let sentProperties = [];
   const selectedVisitsMap = new Map(); // key: propertyId, value: { date, time, notes, broker }
+  const operationalDataMap = new Map(); // key: propertyId, value: { loading, data, error }
+
+  // --- Consulta de Dados Operacionais Imoview (Chave, Captador, Locador) ---
+  async function fetchOperationalData(pId, force = false) {
+    if (!pId) return;
+
+    if (!force && operationalDataMap.has(pId)) {
+      const cached = operationalDataMap.get(pId);
+      if (!cached.loading) {
+        renderOperationalPanel(pId);
+        return;
+      }
+    }
+
+    operationalDataMap.set(pId, { loading: true, data: null, error: null });
+    renderOperationalPanel(pId);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/imoveis/${encodeURIComponent(pId)}/detalhes-operacionais`);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro na consulta do Imoview');
+      }
+      operationalDataMap.set(pId, { loading: false, data, error: null });
+    } catch (err) {
+      console.warn(`Aviso ao consultar Imoview para imóvel #${pId}:`, err.message);
+      operationalDataMap.set(pId, { loading: false, data: null, error: err.message });
+    }
+
+    renderOperationalPanel(pId);
+  }
+
+  // --- Renderização do Painel Operacional Imoview ---
+  function renderOperationalPanel(pId) {
+    const panel = document.getElementById(`op-panel-${pId}`);
+    if (!panel) return;
+
+    const state = operationalDataMap.get(pId);
+    if (!state || state.loading) {
+      panel.innerHTML = `
+        <div class="op-loading-state">
+          <div class="op-mini-spinner"></div>
+          <span>Consultando localização da chave, captador e locador no Imoview...</span>
+        </div>
+      `;
+      return;
+    }
+
+    if (state.error && !state.data) {
+      panel.innerHTML = `
+        <div class="op-loading-state" style="color: #b91c1c;">
+          <span>⚠️ Não foi possível obter os dados do Imoview: ${state.error}</span>
+        </div>
+      `;
+      return;
+    }
+
+    const d = state.data || {};
+    const chave = d.chave || { local: 'Não informada', formatado: 'Não informada' };
+    const captadores = Array.isArray(d.captadores) && d.captadores.length > 0 ? d.captadores : [];
+    const proprietarios = Array.isArray(d.proprietarios) && d.proprietarios.length > 0 ? d.proprietarios : [];
+
+    const keyNumberBadge = (chave.numero !== null && chave.numero !== undefined && String(chave.numero).trim() !== '' && String(chave.numero) !== '0')
+      ? `<span class="op-key-badge">Chave nº ${chave.numero}</span>`
+      : '';
+
+    // Bloco Captador
+    let captadorHtml = '<span class="op-sub-val" style="color: #94a3b8;">Não informado</span>';
+    if (captadores.length > 0) {
+      const c = captadores[0];
+      const telClean = (c.telefone || '').replace(/\\D/g, '');
+      const telLink = c.telefone ? `<a href="tel:${telClean}" class="op-contact-link">📞 ${c.telefone}</a>` : '';
+      const emailText = c.email ? ` • ✉️ ${c.email}` : '';
+      captadorHtml = `
+        <div class="op-main-val">${c.nome}</div>
+        <div class="op-sub-val">${telLink}${emailText}</div>
+      `;
+    }
+
+    // Bloco Proprietário / Locador
+    let propHtml = '';
+    if (proprietarios.length > 0) {
+      const p = proprietarios[0];
+      const percText = p.percentual && p.percentual !== '100,00' ? ` (${p.percentual}%)` : '';
+      const telClean = (p.telefone || '').replace(/\\D/g, '');
+      const telLink = p.telefone ? `<a href="https://wa.me/55${telClean}" target="_blank" rel="noopener" class="op-contact-link">📱 ${p.telefone}</a>` : '';
+      const emailText = p.email ? ` • ✉️ ${p.email}` : '';
+      propHtml = `
+        <div class="op-main-val">${p.nome}${percText}</div>
+        <div class="op-sub-val">${telLink || 'Telefone não cadastrado'}${emailText}</div>
+      `;
+    } else {
+      const subMsg = d.ownersInfo?.notConfigured
+        ? 'Sessão interna do app Imoview não configurada'
+        : (d.ownersInfo?.sessionExpired ? 'Sessão do app Imoview expirou' : 'Não informado na API pública');
+      propHtml = `
+        <div class="op-main-val" style="color: #64748b; font-size: 0.84rem;">Não informado</div>
+        <div class="op-sub-val" style="font-size: 0.72rem; color: #94a3b8;">(${subMsg})</div>
+      `;
+    }
+
+    // Bloco de Notas Internas
+    const notesHtml = d.anotacoes ? `
+      <div class="op-notes-banner">
+        <span>📌</span>
+        <div><strong>Nota interna Imoview:</strong> ${d.anotacoes.replace(/\\r?\\n/g, ' • ')}</div>
+      </div>
+    ` : '';
+
+    panel.innerHTML = `
+      <div class="op-panel-header">
+        <div class="op-panel-title-group">
+          <span class="op-panel-title">🔑 Logística da Visita • Imoview</span>
+          <span class="op-source-badge">${d.codigoAuxiliar ? `Ref: ${d.codigoAuxiliar}` : `#${pId}`}</span>
+          ${d.situacao ? `<span class="op-source-badge" style="background: #dcfce7; color: #166534;">${d.situacao}</span>` : ''}
+        </div>
+        <button type="button" class="btn-op-refresh" data-id="${pId}" title="Atualizar dados do Imoview">
+          <span>🔄 Atualizar</span>
+        </button>
+      </div>
+
+      <div class="op-grid-cards">
+        <!-- Caixa da Chave -->
+        <div class="op-box">
+          <div class="op-box-header">
+            <span class="op-box-title">🔑 Local da Chave</span>
+            ${keyNumberBadge}
+          </div>
+          <div class="op-main-val">${chave.local || 'Imobiliária'}</div>
+          <div class="op-sub-val">${chave.identificador ? `Unidade: ${chave.identificador}` : 'Identificação no chaveiro da imobiliária'}</div>
+        </div>
+
+        <!-- Caixa do Captador -->
+        <div class="op-box">
+          <div class="op-box-header">
+            <span class="op-box-title">🤝 Captador do Imóvel</span>
+          </div>
+          ${captadorHtml}
+        </div>
+
+        <!-- Caixa do Locador / Proprietário -->
+        <div class="op-box">
+          <div class="op-box-header">
+            <span class="op-box-title">👤 Locador / Proprietário</span>
+          </div>
+          ${propHtml}
+        </div>
+      </div>
+
+      ${notesHtml}
+    `;
+
+    // Botão de refresh individual
+    const btnRefresh = panel.querySelector('.btn-op-refresh');
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fetchOperationalData(pId, true);
+      });
+    }
+  }
+
+  // Pré-carrega dados operacionais em segundo plano assim que a tela abre
+  function preloadOperationalData(properties) {
+    if (!Array.isArray(properties)) return;
+    properties.forEach((prop, idx) => {
+      const pId = String(prop.id || prop.codigo);
+      if (!pId || pId.startsWith('TEST')) return;
+      setTimeout(() => {
+        fetchOperationalData(pId);
+      }, idx * 120);
+    });
+  }
 
   // --- Utilitário de Notificação Toast ---
   let toastTimer = null;
@@ -242,12 +415,27 @@
                 <span>Ver Imóvel ↗</span>
               </a>
             </div>
+            <!-- Botão de Expandir Chave, Captador e Locador -->
+            <div class="visit-card-actions-row">
+              <button type="button" class="btn-toggle-logistics" data-id="${pId}" title="Consultar localização da chave, captador e locador no Imoview">
+                <span>🔑 Chave, Captador e Locador</span>
+                <span class="logistics-chevron">▼</span>
+              </button>
+            </div>
           </div>
 
           <label class="visit-card-toggle" title="Marcar este imóvel para visita">
             <input type="checkbox" class="visit-toggle-checkbox" data-id="${pId}" ${isSelected ? 'checked' : ''}>
             <span class="visit-toggle-label">${isSelected ? '✓ Selecionado' : 'Agendar Visita'}</span>
           </label>
+        </div>
+
+        <!-- Painel Operacional Imoview (Chave, Captador, Locador) -->
+        <div class="visit-operational-panel" id="op-panel-${pId}">
+          <div class="op-loading-state">
+            <div class="op-mini-spinner"></div>
+            <span>Consultando localização da chave, captador e locador no Imoview...</span>
+          </div>
         </div>
 
         <!-- Painel Expansível de Agendamento da Visita -->
@@ -278,6 +466,19 @@
         </div>
       `;
 
+      // Eventos de Logística Operacional (Chave, Captador, Locador)
+      const btnLogistics = card.querySelector('.btn-toggle-logistics');
+      const opPanel = card.querySelector(`#op-panel-${pId}`);
+
+      btnLogistics.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = opPanel.classList.toggle('is-open');
+        btnLogistics.classList.toggle('is-active', isOpen);
+        if (isOpen) {
+          fetchOperationalData(pId);
+        }
+      });
+
       // Evento de Toggle do Checkbox
       const checkbox = card.querySelector('.visit-toggle-checkbox');
       const toggleLabel = card.querySelector('.visit-toggle-label');
@@ -289,6 +490,12 @@
         if (checkbox.checked) {
           card.classList.add('is-selected');
           toggleLabel.textContent = '✓ Selecionado';
+
+          // Ao marcar para agendar, abre automaticamente o painel de logística e busca os dados
+          opPanel.classList.add('is-open');
+          btnLogistics.classList.add('is-active');
+          fetchOperationalData(pId);
+
           selectedVisitsMap.set(pId, {
             propertyId: pId,
             propertyTitle: title,
@@ -341,6 +548,9 @@
 
       visitasPropertiesList.appendChild(card);
     });
+
+    // Pré-carrega os dados do Imoview em background assim que a tela abre
+    preloadOperationalData(validProperties);
 
     visitasLoadingState.style.display = 'none';
     visitasEmptyState.style.display = 'none';
@@ -559,19 +769,29 @@
       leadName: leadNameTitle.textContent || null,
       leadPhone: leadPhoneText.textContent.replace('📱 ', '') || null,
       totalVisitas: visits.length,
-      visitas: visits.map(v => ({
-        propertyId: v.propertyId,
-        titulo: v.propertyTitle,
-        bairro: v.propertyNeighborhood,
-        tipo: v.propertyType,
-        valor: v.propertyPrice,
-        data: v.date,
-        dataPtBr: formatDatePtBr(v.date),
-        horario: v.time,
-        observacoes: v.notes,
-        corretor: v.broker,
-        url: v.propertyUrl
-      }))
+      visitas: visits.map(v => {
+        const op = operationalDataMap.get(v.propertyId)?.data;
+        return {
+          propertyId: v.propertyId,
+          codigoAuxiliar: op?.codigoAuxiliar || null,
+          titulo: v.propertyTitle,
+          bairro: v.propertyNeighborhood,
+          tipo: v.propertyType,
+          valor: v.propertyPrice,
+          data: v.date,
+          dataPtBr: formatDatePtBr(v.date),
+          horario: v.time,
+          observacoes: v.notes,
+          corretor: v.broker,
+          url: v.propertyUrl,
+          logistica: {
+            chave: op?.chave || null,
+            captadores: op?.captadores || [],
+            proprietarios: op?.proprietarios || [],
+            anotacoesInternas: op?.anotacoes || null
+          }
+        };
+      })
     };
 
     await copyToClipboard(JSON.stringify(payload, null, 2));
