@@ -173,8 +173,27 @@ function normalizeListing(raw) {
       state: cleanText(location.State) || 'SP',
       postalCode: cleanText(location.PostalCode),
       latitude: cleanText(location.Latitude),
-      longitude: cleanText(location.Longitude)
+      longitude: cleanText(location.Longitude),
+      enderecoCompleto: [
+        cleanText(location.Address) ? `${cleanText(location.Address)}${cleanText(location.StreetNumber) && !cleanText(location.StreetNumber).includes('*') ? `, ${cleanText(location.StreetNumber)}` : ''}${cleanText(location.Complement) && !cleanText(location.Complement).includes('*') ? ` - ${cleanText(location.Complement)}` : ''}` : '',
+        cleanText(location.Neighborhood),
+        (cleanText(location.City) || 'Santo André') + (cleanText(location.State) ? ` - ${cleanText(location.State)}` : ' - SP'),
+        cleanText(location.PostalCode) && cleanText(location.PostalCode) !== '00000-000' ? `CEP ${cleanText(location.PostalCode)}` : ''
+      ].filter(Boolean).join(', ')
     },
+    endereco: cleanText(location.Address),
+    numero: cleanText(location.StreetNumber),
+    complemento: cleanText(location.Complement),
+    bairro: cleanText(location.Neighborhood) || 'Santo André',
+    cidade: cleanText(location.City) || 'Santo André',
+    estado: cleanText(location.State) || 'SP',
+    cep: cleanText(location.PostalCode),
+    enderecoCompleto: [
+      cleanText(location.Address) ? `${cleanText(location.Address)}${cleanText(location.StreetNumber) && !cleanText(location.StreetNumber).includes('*') ? `, ${cleanText(location.StreetNumber)}` : ''}${cleanText(location.Complement) && !cleanText(location.Complement).includes('*') ? ` - ${cleanText(location.Complement)}` : ''}` : '',
+      cleanText(location.Neighborhood),
+      (cleanText(location.City) || 'Santo André') + (cleanText(location.State) ? ` - ${cleanText(location.State)}` : ' - SP'),
+      cleanText(location.PostalCode) && cleanText(location.PostalCode) !== '00000-000' ? `CEP ${cleanText(location.PostalCode)}` : ''
+    ].filter(Boolean).join(', '),
     images,
     primaryImage: images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80',
     websiteUrl: buildPropertyWebsiteUrl(title, listingId),
@@ -317,6 +336,16 @@ function enrichPropertyWithCatalog(prop) {
     const realWebsiteUrl = buildPropertyWebsiteUrl(catalogItem.title, catalogItem.id);
     const photo = catalogItem.primaryImage || (catalogItem.images && catalogItem.images[0]) || prop.primaryImage || prop.foto || '';
 
+    const loc = catalogItem.location || {};
+    const logradouro = loc.address ? `${loc.address}${loc.streetNumber ? `, ${loc.streetNumber}` : ''}${loc.complement ? ` - ${loc.complement}` : ''}` : '';
+    const partesEnd = [];
+    if (logradouro) partesEnd.push(logradouro);
+    if (loc.neighborhood) partesEnd.push(loc.neighborhood);
+    if (loc.city && loc.state) partesEnd.push(`${loc.city} - ${loc.state}`);
+    else if (loc.city) partesEnd.push(loc.city);
+    if (loc.postalCode) partesEnd.push(`CEP ${loc.postalCode}`);
+    const enderecoCompleto = partesEnd.join(', ');
+
     return {
       ...prop,
       id: catalogItem.id,
@@ -327,8 +356,14 @@ function enrichPropertyWithCatalog(prop) {
       propertyType: catalogItem.propertyType,
       finalidade: catalogItem.transactionType,
       transactionType: catalogItem.transactionType,
-      bairro: catalogItem.location?.neighborhood || prop.bairro || 'Santo André',
-      cidade: catalogItem.location?.city || prop.cidade || 'Santo André',
+      endereco: loc.address || prop.endereco || '',
+      numero: loc.streetNumber || prop.numero || '',
+      complemento: loc.complement || prop.complemento || '',
+      bairro: loc.neighborhood || prop.bairro || 'Santo André',
+      cidade: loc.city || prop.cidade || 'Santo André',
+      estado: loc.state || prop.estado || 'SP',
+      cep: loc.postalCode || prop.cep || '',
+      enderecoCompleto: enderecoCompleto || prop.enderecoCompleto || '',
       valor: mainPrice || prop.valor || 0,
       valorFormatado: priceFormatted,
       primaryImage: photo,
@@ -346,6 +381,23 @@ function enrichPropertyWithCatalog(prop) {
   // Fallback caso não seja encontrado no catálogo atual mas possua título ou ID numérico válido
   const fallbackTitle = prop.titulo || prop.title || `Imóvel #${pId}`;
   const realWebsiteUrl = buildPropertyWebsiteUrl(fallbackTitle, pId);
+  const endereco = prop.endereco || '';
+  const numero = (prop.numero && !String(prop.numero).includes('*')) ? prop.numero : '';
+  const complemento = (prop.complemento && !String(prop.complemento).includes('*')) ? prop.complemento : '';
+  const bairro = prop.bairro || 'Santo André';
+  const cidade = prop.cidade || 'Santo André';
+  const estado = prop.estado || 'SP';
+  const cep = (prop.cep && prop.cep !== '00000-000') ? prop.cep : '';
+
+  const logradouro = endereco ? `${endereco}${numero ? `, ${numero}` : ''}${complemento ? ` - ${complemento}` : ''}` : '';
+  const partesEnd = [];
+  if (logradouro) partesEnd.push(logradouro);
+  if (bairro) partesEnd.push(bairro);
+  if (cidade && estado) partesEnd.push(`${cidade} - ${estado}`);
+  else if (cidade) partesEnd.push(cidade);
+  if (cep) partesEnd.push(`CEP ${cep}`);
+  const fallbackEnderecoCompleto = prop.enderecoCompleto || partesEnd.join(', ') || [bairro, cidade].filter(Boolean).join(', ') || 'Santo André - SP';
+
   return {
     ...prop,
     id: pId,
@@ -354,6 +406,14 @@ function enrichPropertyWithCatalog(prop) {
     title: fallbackTitle,
     url: realWebsiteUrl,
     websiteUrl: realWebsiteUrl,
+    endereco,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    estado,
+    cep,
+    enderecoCompleto: fallbackEnderecoCompleto,
     primaryImage: prop.primaryImage || prop.foto || '',
     foto: prop.primaryImage || prop.foto || ''
   };
@@ -1061,9 +1121,17 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
         suites: item.suites || 0,
         bathrooms: item.bathrooms || 0,
         garage: item.garage || 0,
-        neighborhood: item.location?.neighborhood || '',
-        city: item.location?.city || '',
-        address: item.location?.address || '',
+        neighborhood: item.location?.neighborhood || item.bairro || '',
+        city: item.location?.city || item.cidade || '',
+        address: item.location?.address || item.endereco || '',
+        endereco: item.endereco || item.location?.address || '',
+        numero: item.numero || item.location?.streetNumber || '',
+        complemento: item.complemento || item.location?.complement || '',
+        bairro: item.bairro || item.location?.neighborhood || '',
+        cidade: item.cidade || item.location?.city || '',
+        estado: item.estado || item.location?.state || '',
+        cep: item.cep || item.location?.postalCode || '',
+        enderecoCompleto: item.enderecoCompleto || item.location?.enderecoCompleto || '',
         features: item.features || [],
         description: item.description ? item.description.slice(0, 400) + (item.description.length > 400 ? '...' : '') : '',
         primaryImage: item.primaryImage || (item.images && item.images[0]) || '',
@@ -1306,7 +1374,9 @@ app.get('/api/leads/session-metadata', async (req, res) => {
           ...v,
           propertyTitle: enriched?.titulo || v.propertyTitle,
           propertyPhoto: enriched?.primaryImage || v.propertyPhoto || '',
-          propertyUrl: enriched?.websiteUrl || v.propertyUrl
+          propertyUrl: enriched?.websiteUrl || v.propertyUrl,
+          propertyAddress: enriched?.enderecoCompleto || v.propertyAddress || '',
+          enderecoCompleto: enriched?.enderecoCompleto || v.enderecoCompleto || ''
         };
       });
 
@@ -1346,20 +1416,58 @@ app.get(['/api/imoveis/:id/detalhes-operacionais', '/api/imovel/:id/operacional'
 
     const opData = await getOperationalPropertyData(propertyId);
 
-    // Se o catálogo em memória tiver o imóvel, complementa com foto e link oficial
+    // Se o catálogo em memória tiver o imóvel, complementa com foto, link oficial e endereço
     const cleanId = String(propertyId).toLowerCase();
     const catalogItem = listingsMap.get(cleanId);
     const enriched = catalogItem ? enrichPropertyWithCatalog(catalogItem) : null;
 
+    // Consolida o melhor endereço combinando dados do Imoview e do catálogo XML
+    const bestStreet = opData.endereco || enriched?.endereco || '';
+    const bestNum = (!String(opData.numero || '').includes('*') && opData.numero) 
+      ? opData.numero 
+      : ((!String(enriched?.numero || '').includes('*') && enriched?.numero) ? enriched.numero : '');
+    const bestComp = (!String(opData.complemento || '').includes('*') && opData.complemento) 
+      ? opData.complemento 
+      : ((!String(enriched?.complemento || '').includes('*') && enriched?.complemento) ? enriched.complemento : '');
+    const bestBairro = opData.bairro || enriched?.bairro || 'Santo André';
+    const bestCidade = opData.cidade || enriched?.cidade || 'Santo André';
+    const bestEstado = opData.estado || enriched?.estado || 'SP';
+    const bestCep = (opData.cep && opData.cep !== '00000-000') ? opData.cep : (enriched?.cep || '');
+    const bestRef = opData.pontoReferencia || '';
+
+    const partes = [];
+    const logradouro = bestStreet ? `${bestStreet}${bestNum ? `, ${bestNum}` : ''}${bestComp ? ` - ${bestComp}` : ''}` : '';
+    if (logradouro) partes.push(logradouro);
+    if (bestBairro) partes.push(bestBairro);
+    if (bestCidade && bestEstado) partes.push(`${bestCidade} - ${bestEstado}`);
+    else if (bestCidade) partes.push(bestCidade);
+    if (bestCep && bestCep !== '00000-000') partes.push(`CEP ${bestCep}`);
+    let enderecoConsolidado = partes.join(', ');
+    if (bestRef) {
+      enderecoConsolidado = enderecoConsolidado ? `${enderecoConsolidado} (Ref: ${bestRef})` : `Ref: ${bestRef}`;
+    }
+
+    const enderecoFinal = enderecoConsolidado || opData.enderecoCompleto || enriched?.enderecoCompleto || 'Endereço sob consulta';
+
     res.json({
       ...opData,
+      enderecoCompleto: enderecoFinal,
+      endereco: bestStreet,
+      numero: bestNum,
+      complemento: bestComp,
+      bairro: bestBairro,
+      cidade: bestCidade,
+      estado: bestEstado,
+      cep: bestCep,
+      pontoReferencia: bestRef,
       catalogInfo: enriched ? {
         title: enriched.titulo || enriched.title,
         neighborhood: enriched.bairro,
         city: enriched.cidade,
         photo: enriched.primaryImage,
         websiteUrl: enriched.websiteUrl,
-        priceText: enriched.priceText || enriched.valorFormatado
+        priceText: enriched.priceText || enriched.valorFormatado,
+        enderecoCompleto: enderecoFinal
       } : null
     });
   } catch (err) {

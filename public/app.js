@@ -276,6 +276,25 @@
     if (prop.condo > 0) custos.push(`Cond.: ${formatMoney(prop.condo)}`);
     if (prop.iptu > 0) custos.push(`IPTU: ${formatMoney(prop.iptu)}`);
 
+    const loc = prop.location || {};
+    const street = loc.address || prop.endereco || '';
+    const num = (loc.streetNumber || prop.numero) && !String(loc.streetNumber || prop.numero).includes('*') ? `, ${loc.streetNumber || prop.numero}` : '';
+    const comp = (loc.complement || prop.complemento) && !String(loc.complement || prop.complemento).includes('*') ? ` - ${loc.complement || prop.complemento}` : '';
+    const logradouro = street ? `${street}${num}${comp}` : '';
+    const bairro = loc.neighborhood || prop.bairro || 'Santo André';
+    const cid = loc.city || prop.cidade || 'Santo André';
+    const uf = loc.state || prop.estado || 'SP';
+    const cep = loc.postalCode || prop.cep || '';
+
+    const parts = [];
+    if (logradouro) parts.push(logradouro);
+    if (bairro) parts.push(bairro);
+    if (cid && uf) parts.push(`${cid} - ${uf}`);
+    else if (cid) parts.push(cid);
+    if (cep && cep !== '00000-000') parts.push(`CEP ${cep}`);
+
+    const fullAddress = prop.enderecoCompleto || (parts.length > 0 ? parts.join(', ') : `${bairro} - ${cid}`);
+
     return {
       isRental,
       cleanType,
@@ -283,8 +302,9 @@
       linkImovel,
       specs,
       custos,
-      neighborhood: prop.location?.neighborhood || 'Santo André',
-      city: prop.location?.city || 'SP',
+      neighborhood: bairro,
+      city: cid,
+      fullAddress,
       highlights: Array.isArray(prop.matchHighlights) ? prop.matchHighlights : []
     };
   }
@@ -299,12 +319,15 @@
       `${saudacao} 👋 Selecionei este imóvel na Santos & Mello que combina perfeitamente com você:`,
       ``,
       `🏠 *${data.cleanType} - ${data.neighborhood}* (Cód. #${prop.id})`,
+      data.fullAddress ? `📍 *Endereço Completo:* ${data.fullAddress}` : '',
       `💰 *Valor:* ${data.priceText}${data.custos.length ? ` (${data.custos.join(' • ')})` : ''}`,
       data.specs.length ? `✨ ${data.specs.join(' • ')}` : '',
       data.highlights.length ? `🎯 *Destaques:* ${data.highlights.slice(0, 3).join(' • ')}` : '',
       ``,
       `🔗 *Veja fotos e ficha completa:*`,
-      data.linkImovel
+      data.linkImovel,
+      ``,
+      `Podemos conversar sobre este imóvel? Estou à disposição para tirar dúvidas ou agendarmos uma visita! 😊`
     ];
 
     return lines.filter(Boolean).join('\n');
@@ -324,6 +347,7 @@
       const data = getPropertyShareData(prop);
       lines.push(
         `🔹 *Opção ${idx + 1}: ${data.cleanType} em ${data.neighborhood}* (Cód. #${prop.id})`,
+        data.fullAddress ? `📍 *Endereço:* ${data.fullAddress}` : '',
         `💰 *Valor:* ${data.priceText}${data.custos.length ? ` (${data.custos.join(' • ')})` : ''}`,
         data.specs.length ? `✨ ${data.specs.join(' • ')}` : '',
         data.highlights.length ? `🎯 *Destaques:* ${data.highlights.slice(0, 2).join(' • ')}` : '',
@@ -332,7 +356,7 @@
       );
     });
 
-    lines.push(`Qual dessas opções você prefere para agendarmos uma visita? 😊`);
+    lines.push(`Qual dessas opções você prefere para conversarmos e agendarmos uma visita? 😊`);
     return lines.filter(Boolean).join('\n');
   }
 
@@ -1242,11 +1266,8 @@
 
     propTitle.textContent = prop.title;
     
-    const addressParts = [
-      prop.location.neighborhood,
-      prop.location.city ? `${prop.location.city} - ${prop.location.state}` : ''
-    ].filter(Boolean);
-    propAddress.textContent = addressParts.join(' • ') || 'Localização não informada';
+    const shareData = getPropertyShareData(prop);
+    propAddress.textContent = shareData.fullAddress || 'Localização não informada';
 
     // Link oficial
     viewWebsiteBtn.href = prop.websiteUrl || `https://www.santosemello.com.br/imovel/${prop.id}`;
@@ -1409,13 +1430,14 @@
       if (!currentProperty) return;
 
       const p = currentProperty;
+      const shareData = getPropertyShareData(p);
       const isRental = p.transactionType.toLowerCase().includes('locação');
       const priceText = formatMoney(isRental ? (p.rentalPrice || p.price) : (p.price || p.rentalPrice));
       const link = p.websiteUrl || `https://www.santosemello.com.br/imovel/${p.id}`;
 
       let msg = `🏠 *${p.title}*\n`;
       msg += `🔖 *Código:* #${p.id}\n`;
-      msg += `📍 *Localização:* ${p.location.neighborhood || 'Santo André'} - ${p.location.city || 'SP'}\n`;
+      msg += `📍 *Endereço Completo:* ${shareData.fullAddress}\n`;
       msg += `🏢 *Uso:* ${p.usageType} • *Tipo:* ${p.propertyType}\n`;
       msg += `💰 *Valor (${p.transactionType}):* ${priceText}\n`;
       
@@ -1433,9 +1455,13 @@
         msg += `🎥 *Tour Virtual / Vídeo:* ${p.virtualTourLink}\n`;
       }
 
-      msg += `\n🔗 *Veja fotos e ficha completa aqui:* \n${link}`;
+      msg += `\n🔗 *Veja fotos e ficha completa aqui:* \n${link}\n\nPodemos conversar sobre este imóvel? 😊`;
 
-      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+      const leadPhone = (leadSimulationState && leadSimulationState.contactPhone) || '';
+      const cleanPhone = leadPhone.replace(/\D/g, '');
+      const whatsappUrl = cleanPhone 
+        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}&text=${encodeURIComponent(msg)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, '_blank');
     });
   }
@@ -1900,7 +1926,14 @@
         if (leadProfileWhatsAppBtn) {
           if (contactPhone) {
             const cleanPhone = contactPhone.replace(/\D/g, '');
-            leadProfileWhatsAppBtn.href = `https://wa.me/${cleanPhone}`;
+            const firstName = contactName.split(' ')[0] || '';
+            const topMatch = results[0];
+            let initialMsg = `Olá${firstName ? `, ${firstName}` : ''}! Sou da Santos & Mello. Vi seu interesse em imóveis e separei opções sob medida.`;
+            if (topMatch) {
+              const topData = getPropertyShareData(topMatch);
+              initialMsg += `\n\nPor exemplo, este ${topData.cleanType} (Cód. #${topMatch.id}) em ${topData.fullAddress || topData.neighborhood}:\n${topData.linkImovel}\n\nPodemos conversar a respeito?`;
+            }
+            leadProfileWhatsAppBtn.href = `https://api.whatsapp.com/send?phone=55${cleanPhone}&text=${encodeURIComponent(initialMsg)}`;
             leadProfileWhatsAppBtn.style.display = 'inline-flex';
           } else {
             leadProfileWhatsAppBtn.style.display = 'none';

@@ -69,6 +69,18 @@
         throw new Error(data.error || 'Erro na consulta do Imoview');
       }
       operationalDataMap.set(pId, { loading: false, data, error: null });
+
+      // Atualiza o endereço completo no card visível da visita
+      if (data.enderecoCompleto && data.enderecoCompleto !== 'Endereço sob consulta') {
+        const cardLoc = document.querySelector(`.visit-card[data-id="${pId}"] .visit-card-location`);
+        if (cardLoc) {
+          cardLoc.innerHTML = `📍 ${data.enderecoCompleto}`;
+          cardLoc.title = data.enderecoCompleto;
+        }
+        if (selectedVisitsMap.has(pId)) {
+          selectedVisitsMap.get(pId).propertyAddress = data.enderecoCompleto;
+        }
+      }
     } catch (err) {
       console.warn(`Aviso ao consultar Imoview para imóvel #${pId}:`, err.message);
       operationalDataMap.set(pId, { loading: false, data: null, error: err.message });
@@ -154,6 +166,18 @@
       </div>
     ` : '';
 
+    // Bloco de Endereço Completo
+    const enderecoFormatado = d.enderecoCompleto || [d.endereco, d.bairro, d.cidade].filter(Boolean).join(', ');
+    const addressBannerHtml = (enderecoFormatado && enderecoFormatado !== 'Endereço sob consulta') ? `
+      <div class="op-address-banner">
+        <span class="op-address-icon">📍</span>
+        <div class="op-address-info">
+          <span class="op-address-label">Endereço Completo da Visita:</span>
+          <strong class="op-address-val">${enderecoFormatado}</strong>
+        </div>
+      </div>
+    ` : '';
+
     panel.innerHTML = `
       <div class="op-panel-header">
         <div class="op-panel-title-group">
@@ -165,6 +189,8 @@
           <span>🔄 Atualizar</span>
         </button>
       </div>
+
+      ${addressBannerHtml}
 
       <div class="op-grid-cards">
         <!-- Caixa da Chave -->
@@ -373,6 +399,10 @@
 
     validProperties.forEach((prop, index) => {
       const pId = String(prop.id || prop.codigo);
+      if (pId) {
+        // Dispara busca dos dados operacionais e endereço completo imediatamente em segundo plano
+        setTimeout(() => fetchOperationalData(pId), index * 50);
+      }
       const isSelected = selectedVisitsMap.has(pId);
       const visitData = selectedVisitsMap.get(pId) || {
         date: prop.dataVisita || defaultDate,
@@ -389,7 +419,7 @@
       const cleanType = (prop.tipo || prop.propertyType || 'Imóvel').replace('Residential / ', '').replace('Commercial / ', '');
       const transType = prop.finalidade || prop.transactionType || 'Imóvel';
       const title = prop.titulo || prop.title || `${cleanType} em ${prop.bairro || 'Santo André'}`;
-      const location = [prop.bairro, prop.cidade].filter(Boolean).join(', ') || 'Santo André - SP';
+      const fullAddress = prop.enderecoCompleto || prop.endereco || [prop.bairro, prop.cidade].filter(Boolean).join(', ') || 'Santo André - SP';
       const priceFormatted = prop.valorFormatado || prop.priceText || (prop.valor ? `R$ ${Number(prop.valor).toLocaleString('pt-BR')}` : 'Sob Consulta');
       const url = resolvePropertyWebsiteUrl(prop);
       const matchScore = prop.matchScore ? `<span class="visit-card-match-pill">🔥 ${prop.matchScore}% Match</span>` : '';
@@ -409,7 +439,7 @@
             </div>
             <h4 class="visit-card-title" title="${title}">${title}</h4>
             <div class="visit-card-sub-row">
-              <span class="visit-card-location">📍 ${location}</span>
+              <span class="visit-card-location" title="${fullAddress}">📍 ${fullAddress}</span>
               <span class="visit-card-price">${priceFormatted}</span>
               <a href="${url}" target="_blank" rel="noopener noreferrer" class="visit-card-link-ext" title="Ver ficha completa no site da imobiliária">
                 <span>Ver Imóvel ↗</span>
@@ -496,10 +526,13 @@
           btnLogistics.classList.add('is-active');
           fetchOperationalData(pId);
 
+          const currentAddress = operationalDataMap.get(pId)?.data?.enderecoCompleto || fullAddress;
+
           selectedVisitsMap.set(pId, {
             propertyId: pId,
             propertyTitle: title,
             propertyNeighborhood: prop.bairro || '',
+            propertyAddress: currentAddress,
             propertyType: cleanType,
             propertyUrl: url,
             propertyPrice: priceFormatted,
@@ -723,6 +756,15 @@
       return;
     }
 
+    // Aguarda resolução dos dados operacionais (endereço completo) para os imóveis selecionados
+    await Promise.all(visits.map(v => {
+      const op = operationalDataMap.get(v.propertyId);
+      if (!op || op.loading) {
+        return fetchOperationalData(v.propertyId);
+      }
+      return Promise.resolve();
+    }));
+
     const clientName = leadNameTitle.textContent && !leadNameTitle.textContent.includes('Lead')
       ? leadNameTitle.textContent.split(' ')[0]
       : 'Cliente';
@@ -735,22 +777,25 @@
 
     visits.forEach((v, idx) => {
       const dateFormatted = formatDatePtBr(v.date);
+      const opData = operationalDataMap.get(v.propertyId)?.data;
+      const enderecoFinal = opData?.enderecoCompleto || v.propertyAddress || (v.propertyNeighborhood ? `${v.propertyNeighborhood}, Santo André - SP` : 'Santo André - SP');
+
       lines.push(
         `📍 *Visita ${idx + 1}: ${v.propertyTitle || `Imóvel #${v.propertyId}`}*`,
+        `🏠 *Endereço Completo:* ${enderecoFinal}`,
         `📅 *Data:* ${dateFormatted} às ${v.time}`,
-        v.propertyNeighborhood ? `📌 *Bairro:* ${v.propertyNeighborhood}` : '',
         v.notes ? `📝 *Observação:* ${v.notes}` : '',
         v.propertyUrl ? `🔗 *Ficha Completa:* ${v.propertyUrl}` : '',
         `----------------------------------------`
       );
     });
 
-    lines.push(`Nosso corretor estará no local no horário agendado. Qualquer dúvida ou alteração, é só nos avisar por aqui! 😊`);
+    lines.push(`Podemos confirmar os detalhes? Qualquer dúvida ou alteração estou à disposição por aqui! 😊`);
 
     const msg = lines.filter(Boolean).join('\n');
     await copyToClipboard(msg);
     triggerButtonFeedback(btnCopyWhatsAppMsg, '✅ Mensagem Copiada!');
-    showToast('📋 Mensagem pronta copiada! Cole no WhatsApp do cliente.');
+    showToast('📋 Mensagem pronta copiada com endereço completo!');
   });
 
   // --- Ação: Copiar JSON Estruturado para Integrações (n8n / CRM) ---
@@ -771,10 +816,13 @@
       totalVisitas: visits.length,
       visitas: visits.map(v => {
         const op = operationalDataMap.get(v.propertyId)?.data;
+        const enderecoFinal = op?.enderecoCompleto || v.propertyAddress || null;
         return {
           propertyId: v.propertyId,
           codigoAuxiliar: op?.codigoAuxiliar || null,
           titulo: v.propertyTitle,
+          enderecoCompleto: enderecoFinal,
+          endereco: op?.endereco || null,
           bairro: v.propertyNeighborhood,
           tipo: v.propertyType,
           valor: v.propertyPrice,
