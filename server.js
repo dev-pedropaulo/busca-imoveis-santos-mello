@@ -1409,6 +1409,104 @@ app.get('/api/leads/session-metadata', async (req, res) => {
 });
 
 /**
+ * GET /api/proposta/dados
+ * Endpoint unificado para carregar dados do atendimento para o módulo de Proposta:
+ * - Dados do cliente (nome, telefone, endereço)
+ * - Número do atendimento
+ * - Lista de imóveis enviados no chat
+ * - Lista de imóveis agendados para visita
+ */
+app.get('/api/proposta/dados', async (req, res) => {
+  try {
+    const contactId = req.query.contactId || req.query.contact_id;
+    const sessionId = req.query.sessionId || req.query.session_id;
+    const token = req.headers['x-helena-token'] || req.query.token || null;
+
+    let client = { name: '', phone: '', email: '', address: '' };
+    let imoveisEnviados = [];
+    let visitasAgendadas = [];
+    let activeSessionId = sessionId;
+
+    // Se tiver contactId, busca contato no Helena CRM
+    if (contactId) {
+      try {
+        const contactRes = await fetchHelenaContact(contactId, token);
+        if (contactRes && contactRes.contact) {
+          const c = contactRes.contact;
+          client.name = c.name || '';
+          client.phone = c.phoneNumber || '';
+          client.email = c.email || '';
+
+          // Procura campos de endereço nos campos personalizados
+          const fields = c.customFields || [];
+          const endField = fields.find(f => /endere|rua|bairro|logradouro/i.test(f.title || f.name || ''));
+          if (endField && endField.value) {
+            client.address = String(endField.value);
+          }
+        }
+      } catch (e) {
+        console.warn('Aviso ao consultar contato para proposta:', e.message);
+      }
+    }
+
+    // Busca metadados da sessão se houver sessionId ou contactId
+    if (activeSessionId || contactId) {
+      try {
+        let session = null;
+        if (activeSessionId) {
+          session = await fetchHelenaSession(activeSessionId, token);
+        } else if (contactId) {
+          const sRes = await fetchHelenaContactSessions(contactId, token);
+          session = sRes.activeSession;
+          if (session) activeSessionId = session.id;
+        }
+
+        if (session && session.metadata) {
+          const meta = session.metadata;
+          const rawEnviados = Array.isArray(meta.imoveisEnviados) ? meta.imoveisEnviados : [];
+          imoveisEnviados = rawEnviados.map(enrichPropertyWithCatalog).filter(Boolean);
+
+          const rawVisitas = Array.isArray(meta.visitasAgendadas) ? meta.visitasAgendadas : [];
+          visitasAgendadas = rawVisitas
+            .filter(v => {
+              const id = String(v.propertyId || '').toUpperCase();
+              return !id.startsWith('TEST') && id !== 'MOCK';
+            })
+            .map(v => {
+              const enriched = enrichPropertyWithCatalog({ id: v.propertyId, titulo: v.propertyTitle });
+              return {
+                ...v,
+                propertyTitle: enriched?.titulo || v.propertyTitle,
+                propertyAddress: enriched?.enderecoCompleto || v.propertyAddress || '',
+                propertyPrice: enriched?.valorFormatado || v.propertyPrice || ''
+              };
+            });
+        }
+      } catch (e) {
+        console.warn('Aviso ao consultar sessão para proposta:', e.message);
+      }
+    }
+
+    const atendimentoNum = activeSessionId 
+      ? activeSessionId.slice(0, 6).toUpperCase() 
+      : (contactId ? contactId.slice(0, 6).toUpperCase() : '5861');
+
+    res.json({
+      success: true,
+      atendimento: atendimentoNum,
+      sessionId: activeSessionId,
+      contactId,
+      client,
+      imoveisEnviados,
+      visitasAgendadas
+    });
+  } catch (err) {
+    console.error('Erro ao gerar dados da proposta:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * GET /api/imoveis/:id/detalhes-operacionais
  * Consulta os dados operacionais do Imoview: localização da chave, captadores e locador/proprietário
  */

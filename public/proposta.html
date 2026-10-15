@@ -29,14 +29,14 @@
 
       <!-- Links Rápidos de Navegação entre Módulos -->
       <div class="header-nav-links">
-        <a href="/" class="header-nav-btn" title="Buscar no Catálogo XML">
-          <span>🔍 Catálogo</span>
+        <a href="/" id="headerLinkCatalog" class="header-nav-btn" title="Buscar Imóveis Recomendados">
+          <span>🔍 Recomendados</span>
         </a>
-        <a href="/visitas" id="headerLinkVisitas" class="header-nav-btn" title="Ir para Agendamento de Visitas">
+        <a href="/visitas" id="headerLinkVisitas" class="header-nav-btn" title="Agendamento de Visitas">
           <span>📅 Visitas</span>
         </a>
-        <a href="/crm" class="header-nav-btn" title="Ir para CRM & Claviculário">
-          <span>📊 CRM</span>
+        <a href="/proposta" id="headerLinkProposta" class="header-nav-btn active" title="Ficha de Visita & Proposta">
+          <span>📄 Ficha & Proposta</span>
         </a>
       </div>
 
@@ -130,33 +130,36 @@
           </div>
         </div>
 
-        <!-- Bloco 3: Imóveis Visitados -->
+        <!-- Bloco 3: Imóveis do Atendimento (Visitas / Proposta) -->
         <div class="form-card">
           <div class="form-card-header-flex">
-            <h3 class="form-card-title">3. Imóveis Visitados</h3>
-            <span class="badge-count" id="badgePropsCount">1 imóvel</span>
+            <h3 class="form-card-title">3. Imóveis da Ficha / Proposta</h3>
+            <span class="badge-count" id="badgePropsCount">0 na ficha</span>
           </div>
 
-          <!-- Busca rápida de imóvel por código -->
+          <!-- Ações Rápidas de Marcação -->
+          <div class="prop-filter-actions">
+            <button type="button" class="btn-filter-action" id="btnSelectAllProps" title="Marcar todos os imóveis enviados">Marcar Todos</button>
+            <button type="button" class="btn-filter-action active" id="btnSelectScheduledOnly" title="Marcar somente os imóveis agendados para visita">Apenas Agendados</button>
+            <button type="button" class="btn-filter-action" id="btnUnselectAllProps" title="Desmarcar todos">Desmarcar Todos</button>
+          </div>
+
+          <!-- Lista Interativa de Seleção dos Imóveis do Atendimento -->
+          <div class="attendance-props-checklist" id="attendancePropsChecklist">
+            <!-- Renderizado dinamicamente via JavaScript -->
+          </div>
+
+          <!-- Busca rápida para adicionar outro imóvel por código -->
           <div class="quick-add-prop-box">
-            <label class="field-label" for="inputQuickCode">Buscar Imóvel por Código</label>
+            <label class="field-label" for="inputQuickCode">Adicionar Outro Imóvel por Código</label>
             <div class="quick-add-input-group">
               <input type="text" id="inputQuickCode" class="field-input" placeholder="Ex: 5586 ou 3271">
               <button type="button" class="btn-quick-add" id="btnQuickAddProp" title="Buscar no catálogo e adicionar na proposta">
                 <span>+ Adicionar</span>
               </button>
             </div>
-            <span class="quick-hint">Pressione Enter ou clique em Adicionar para preencher endereço e aluguel.</span>
+            <span class="quick-hint">Digite o código para preencher endereço e aluguel automaticamente.</span>
           </div>
-
-          <!-- Lista de Imóveis Adicionados para Edição Manual -->
-          <div class="properties-items-list" id="propertiesEditorList">
-            <!-- Renderizado dinamicamente via JavaScript -->
-          </div>
-
-          <button type="button" class="btn-add-empty-prop" id="btnAddEmptyRow">
-            <span>+ Adicionar Linha em Branco</span>
-          </button>
         </div>
 
         <!-- Bloco 4: Condições da Proposta -->

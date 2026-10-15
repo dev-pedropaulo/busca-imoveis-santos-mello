@@ -437,72 +437,167 @@ body {
   color: var(--text-muted);
 }
 
-/* Lista de Imóveis no Editor */
-.properties-items-list {
+/* Ações de Filtro de Imóveis */
+.prop-filter-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
 }
 
-.property-edit-item {
+.btn-filter-action {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  font-size: 0.725rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.btn-filter-action:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: var(--text-primary);
+}
+
+.btn-filter-action.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: #93c5fd;
+}
+
+/* Checklist de Imóveis do Atendimento */
+.attendance-props-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.prop-check-card {
   background: #ffffff;
   border: 1px solid var(--border-app);
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  transition: all 0.2s;
   position: relative;
 }
 
-.prop-edit-header {
+.prop-check-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.prop-check-card.is-selected {
+  border-color: #3b82f6;
+  background: #f8faff;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.prop-check-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.prop-badge-cod {
-  font-size: 0.75rem;
+.prop-check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 700;
-  color: var(--primary);
-  background: var(--primary-light);
-  padding: 0.15rem 0.45rem;
-  border-radius: 4px;
+  font-size: 0.825rem;
+  color: var(--text-primary);
+  cursor: pointer;
 }
 
-.btn-remove-prop {
+.prop-check-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.prop-tag-badge {
+  font-size: 0.675rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.prop-tag-scheduled {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.prop-tag-sent {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.prop-tag-manual {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.prop-check-addr {
+  font-size: 0.775rem;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.prop-check-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.prop-check-val {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.btn-use-as-rent {
   background: none;
   border: none;
-  color: #ef4444;
-  cursor: pointer;
-  font-size: 0.75rem;
+  color: var(--primary);
+  font-size: 0.725rem;
   font-weight: 600;
-  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
   border-radius: 4px;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
-.btn-remove-prop:hover {
-  background: #fee2e2;
+.btn-use-as-rent:hover {
+  background: var(--primary-light);
+  text-decoration: underline;
 }
 
-.btn-add-empty-prop {
-  width: 100%;
-  padding: 0.5rem;
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
-  color: var(--text-secondary);
+.empty-checklist-msg {
+  padding: 1.25rem;
+  text-align: center;
   font-size: 0.8rem;
-  font-weight: 600;
+  color: var(--text-muted);
+  background: #ffffff;
   border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-add-empty-prop:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: var(--text-primary);
+  border: 1px dashed #cbd5e1;
 }
 
 /* Seletores de Garantia */

@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * JAVASCRIPT • FICHA DE VISITA & PROPOSTA (SANTOS & MELLO IMÓVEIS)
- * Integração com Helena CRM, busca de imóveis, sincronização em tempo real e PDF
+ * Integração com Helena CRM, seleção de imóveis enviados/agendados e PDF A4
  * ============================================================================
  */
 
@@ -18,12 +18,16 @@
       phone: '(11) 95340-7249',
       address: ''
     },
-    properties: [
+    // Lista completa de imóveis do atendimento (enviados no chat + agendados para visita)
+    allProperties: [
       {
         id: '5586',
         address: 'Rua Almada, 270, Individual, CEP 09260-420',
         neighborhood: 'Jardim Santo Alberto - Santo André',
-        value: 'R$ 1.600,00'
+        value: 'R$ 1.600,00',
+        selected: true,
+        isScheduled: true,
+        source: 'visita'
       }
     ],
     proposal: {
@@ -38,13 +42,15 @@
   };
 
   // --- Elementos do DOM ---
-  // Ações do Cabeçalho
+  // Ações do Cabeçalho e Navegação
   const btnPrintPdf = document.getElementById('btnPrintPdf');
   const btnDownloadPdf = document.getElementById('btnDownloadPdf');
   const btnCopyProposalWhatsApp = document.getElementById('btnCopyProposalWhatsApp');
   const leadSessionChip = document.getElementById('leadSessionChip');
   const leadSessionText = document.getElementById('leadSessionText');
+  const headerLinkCatalog = document.getElementById('headerLinkCatalog');
   const headerLinkVisitas = document.getElementById('headerLinkVisitas');
+  const headerLinkProposta = document.getElementById('headerLinkProposta');
 
   // Modo Manual vs Digital
   const checkManualMode = document.getElementById('checkManualMode');
@@ -63,8 +69,10 @@
   // Formulário: Imóveis
   const inputQuickCode = document.getElementById('inputQuickCode');
   const btnQuickAddProp = document.getElementById('btnQuickAddProp');
-  const propertiesEditorList = document.getElementById('propertiesEditorList');
-  const btnAddEmptyRow = document.getElementById('btnAddEmptyRow');
+  const attendancePropsChecklist = document.getElementById('attendancePropsChecklist');
+  const btnSelectAllProps = document.getElementById('btnSelectAllProps');
+  const btnSelectScheduledOnly = document.getElementById('btnSelectScheduledOnly');
+  const btnUnselectAllProps = document.getElementById('btnUnselectAllProps');
   const badgePropsCount = document.getElementById('badgePropsCount');
 
   // Formulário: Proposta
@@ -132,8 +140,7 @@
   }
 
   /**
-   * Formata uma data YYYY-MM-DD para extenso em português
-   * Ex: "Santo André, quinta-feira, 15 de outubro de 2026"
+   * Formata data para o padrão por extenso: "Santo André, quinta-feira, 15 de outubro de 2026"
    */
   function formatDateToPortugueseFull(dateStr) {
     if (!dateStr) return 'Santo André, SP';
@@ -154,16 +161,7 @@
     return `Santo André, ${diaSemana}, ${diaNum} de ${mesNome} de ${anoNum}`;
   }
 
-  function formatMoneyValue(val) {
-    if (typeof val === 'number') {
-      return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-    const clean = String(val || '').replace(/[^\d,.]/g, '').replace(',', '.');
-    const num = parseFloat(clean);
-    return isNaN(num) ? String(val || '') : num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
-  // --- Atualização da Interface (Formulário + Folha A4) ---
+  // --- Renderização Geral (Preview A4 + Checklist Lateral) ---
   function renderAll() {
     // 1. Dados do Atendimento e Corretor
     docAtendimentoVal.textContent = state.atendimento || '__________';
@@ -176,31 +174,43 @@
     docSignerName1.textContent = state.client.name || 'Cliente';
     docSignerName2.textContent = state.client.name || 'Cliente';
 
-    // 3. Data por Extenso
+    // 3. Data por Extenso na Folha
     docCityDateVal.textContent = formatDateToPortugueseFull(state.dataDocumento);
 
-    // 4. Tabela de Imóveis (Folha A4)
+    // 4. Imóveis Selecionados para a Folha A4
+    const selectedProps = state.allProperties.filter(p => p.selected);
     docPropertiesTbody.innerHTML = '';
-    state.properties.forEach(p => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="col-cod">${p.id || ''}</td>
-        <td class="col-endereco">${p.address || ''}</td>
-        <td class="col-bairro">${p.neighborhood || ''}</td>
-        <td class="col-valor">${p.value || ''}</td>
+
+    if (selectedProps.length === 0) {
+      const trEmpty = document.createElement('tr');
+      trEmpty.innerHTML = `
+        <td class="col-cod">____</td>
+        <td class="col-endereco">____________________________________________________________</td>
+        <td class="col-bairro">______________________________</td>
+        <td class="col-valor">R$ __________</td>
       `;
-      docPropertiesTbody.appendChild(tr);
-    });
+      docPropertiesTbody.appendChild(trEmpty);
+    } else {
+      selectedProps.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="col-cod">${p.id || ''}</td>
+          <td class="col-endereco">${p.address || ''}</td>
+          <td class="col-bairro">${p.neighborhood || ''}</td>
+          <td class="col-valor">${p.value || ''}</td>
+        `;
+        docPropertiesTbody.appendChild(tr);
+      });
+    }
 
-    badgePropsCount.textContent = `${state.properties.length} imóvel${state.properties.length !== 1 ? 'is' : ''}`;
+    badgePropsCount.textContent = `${selectedProps.length} selecionado${selectedProps.length !== 1 ? 's' : ''} de ${state.allProperties.length}`;
 
-    // 5. Bloco da Proposta (Digital vs Manual)
+    // 5. Proposta (Digital vs. Manual)
     if (state.isManualMode) {
       docValorAluguelVal.textContent = '______________________________';
       docPrazoLocacaoVal.textContent = '________';
       docDiaVencimentoVal.textContent = '__________';
 
-      // Caixas de garantia todas em branco
       docGuaranteeChecks.innerHTML = `
         <span class="guarantee-box-item">[ &nbsp; ] Seguro Fiança</span>
         <span class="guarantee-box-item">[ &nbsp; ] Fiador</span>
@@ -220,7 +230,6 @@
       docPrazoLocacaoVal.textContent = state.proposal.termMonths || '30';
       docDiaVencimentoVal.textContent = state.proposal.dueDay || '10';
 
-      // Garantia marcada
       const g = state.proposal.guarantee;
       docGuaranteeChecks.innerHTML = `
         <span class="guarantee-box-item">${g === 'seguro' ? '[ X ]' : '[ &nbsp; ]'} Seguro Fiança</span>
@@ -229,7 +238,6 @@
         ${g === 'caucao' ? '<span class="guarantee-box-item">[ X ] Caução</span>' : ''}
       `;
 
-      // Observações preenchidas
       if (state.proposal.notes && state.proposal.notes.trim()) {
         docObsContent.innerHTML = `
           <div class="obs-line" style="font-weight: 600; text-decoration: underline;">${state.proposal.notes.trim()}</div>
@@ -241,7 +249,6 @@
         `;
       }
 
-      // Data nos traços
       if (state.dataDocumento) {
         const [y, m, d] = state.dataDocumento.split('-');
         docSignatureDateDay.textContent = d;
@@ -250,84 +257,86 @@
       }
     }
 
-    // Renderiza a lista de edição de imóveis na barra lateral
-    renderPropertiesEditorList();
+    // Renderiza a lista interativa de seleção na barra lateral
+    renderChecklist();
   }
 
-  function renderPropertiesEditorList() {
-    propertiesEditorList.innerHTML = '';
-    state.properties.forEach((p, idx) => {
-      const item = document.createElement('div');
-      item.className = 'property-edit-item';
-      item.innerHTML = `
-        <div class="prop-edit-header">
-          <span class="prop-badge-cod">#${p.id || 'Sem Código'}</span>
-          <button type="button" class="btn-remove-prop" data-index="${idx}" title="Remover imóvel desta proposta">✕ Remover</button>
-        </div>
-        <div class="form-row-2">
-          <div class="form-field">
-            <label class="field-label">Código</label>
-            <input type="text" class="field-input input-prop-id" data-index="${idx}" value="${p.id || ''}">
-          </div>
-          <div class="form-field">
-            <label class="field-label">Valor (R$)</label>
-            <input type="text" class="field-input input-prop-val" data-index="${idx}" value="${p.value || ''}">
-          </div>
-        </div>
-        <div class="form-field">
-          <label class="field-label">Endereço Completo</label>
-          <input type="text" class="field-input input-prop-addr" data-index="${idx}" value="${p.address || ''}">
-        </div>
-        <div class="form-field">
-          <label class="field-label">Bairro / Cidade</label>
-          <input type="text" class="field-input input-prop-neigh" data-index="${idx}" value="${p.neighborhood || ''}">
+  // --- Renderização da Checklist Interativa de Imóveis ---
+  function renderChecklist() {
+    attendancePropsChecklist.innerHTML = '';
+
+    if (state.allProperties.length === 0) {
+      attendancePropsChecklist.innerHTML = `
+        <div class="empty-checklist-msg">
+          Nenhum imóvel vinculado a este atendimento. Utilize o campo abaixo para buscar e adicionar por código.
         </div>
       `;
-      propertiesEditorList.appendChild(item);
+      return;
+    }
+
+    state.allProperties.forEach((p, idx) => {
+      const card = document.createElement('div');
+      card.className = `prop-check-card ${p.selected ? 'is-selected' : ''}`;
+      card.dataset.index = idx;
+
+      let tagHtml = '';
+      if (p.isScheduled) {
+        tagHtml = '<span class="prop-tag-badge prop-tag-scheduled">📅 Marcado p/ Visita</span>';
+      } else if (p.source === 'enviado') {
+        tagHtml = '<span class="prop-tag-badge prop-tag-sent">📤 Enviado</span>';
+      } else {
+        tagHtml = '<span class="prop-tag-badge prop-tag-manual">➕ Adicionado</span>';
+      }
+
+      card.innerHTML = `
+        <div class="prop-check-top">
+          <label class="prop-check-label">
+            <input type="checkbox" class="prop-check-checkbox" data-index="${idx}" ${p.selected ? 'checked' : ''}>
+            <span>#${p.id || 'Imóvel'}</span>
+          </label>
+          ${tagHtml}
+        </div>
+        <div class="prop-check-addr">
+          <strong>${p.neighborhood || 'Santo André'}</strong><br>
+          ${p.address || 'Endereço sob consulta'}
+        </div>
+        <div class="prop-check-bottom">
+          <span class="prop-check-val">${p.value || 'Sob Consulta'}</span>
+          <button type="button" class="btn-use-as-rent" data-index="${idx}" title="Definir este valor como o aluguel ofertado na proposta">
+            Usar como Aluguel
+          </button>
+        </div>
+      `;
+
+      attendancePropsChecklist.appendChild(card);
     });
 
-    // Conecta eventos de edição dos itens
-    propertiesEditorList.querySelectorAll('.btn-remove-prop').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = parseInt(btn.dataset.index, 10);
-        if (!isNaN(index) && state.properties.length > 1) {
-          state.properties.splice(index, 1);
+    // Conecta eventos de marcar/desmarcar individualmente
+    attendancePropsChecklist.querySelectorAll('.prop-check-checkbox').forEach(chk => {
+      chk.addEventListener('change', (e) => {
+        const idx = parseInt(e.target.dataset.index, 10);
+        if (!isNaN(idx)) {
+          state.allProperties[idx].selected = e.target.checked;
           renderAll();
-        } else if (state.properties.length <= 1) {
-          showToast('A ficha deve possuir pelo menos 1 imóvel.', '⚠️');
         }
       });
     });
 
-    propertiesEditorList.querySelectorAll('.input-prop-id').forEach(inp => {
-      inp.addEventListener('input', (e) => {
-        const idx = parseInt(e.target.dataset.index, 10);
-        state.properties[idx].id = e.target.value.trim();
-        renderAll();
-      });
-    });
-
-    propertiesEditorList.querySelectorAll('.input-prop-val').forEach(inp => {
-      inp.addEventListener('input', (e) => {
-        const idx = parseInt(e.target.dataset.index, 10);
-        state.properties[idx].value = e.target.value.trim();
-        renderAll();
-      });
-    });
-
-    propertiesEditorList.querySelectorAll('.input-prop-addr').forEach(inp => {
-      inp.addEventListener('input', (e) => {
-        const idx = parseInt(e.target.dataset.index, 10);
-        state.properties[idx].address = e.target.value.trim();
-        renderAll();
-      });
-    });
-
-    propertiesEditorList.querySelectorAll('.input-prop-neigh').forEach(inp => {
-      inp.addEventListener('input', (e) => {
-        const idx = parseInt(e.target.dataset.index, 10);
-        state.properties[idx].neighborhood = e.target.value.trim();
-        renderAll();
+    // Conecta botão de usar o valor do imóvel como aluguel da proposta
+    attendancePropsChecklist.querySelectorAll('.btn-use-as-rent').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index, 10);
+        const prop = state.allProperties[idx];
+        if (prop && prop.value) {
+          const cleanNum = prop.value.replace(/[^\d,]/g, '');
+          if (cleanNum) {
+            state.proposal.rentValue = cleanNum;
+            inputValorAluguel.value = cleanNum;
+            renderAll();
+            showToast(`Valor de R$ ${cleanNum} definido na proposta!`, '💰');
+          }
+        }
       });
     });
   }
@@ -341,7 +350,6 @@
     btnQuickAddProp.textContent = 'Buscando...';
 
     try {
-      // Consulta endpoint operacional consolidado
       const res = await fetch(`/api/imoveis/${encodeURIComponent(cleanCode)}/detalhes-operacionais`);
       const data = await res.json();
 
@@ -354,7 +362,6 @@
         bairro = data.bairro ? `${data.bairro} - ${data.cidade || 'Santo André'}` : (data.cidade ? `${data.cidade} - SP` : 'Santo André - SP');
         valorFormatado = data.valor ? (typeof data.valor === 'number' ? `R$ ${data.valor.toLocaleString('pt-BR')}` : String(data.valor)) : 'Sob Consulta';
       } else {
-        // Fallback para endpoint /api/imovel/:id
         const resFb = await fetch(`/api/imovel/${encodeURIComponent(cleanCode)}`);
         const jsonFb = await resFb.json();
         if (resFb.ok && jsonFb.data) {
@@ -368,24 +375,30 @@
         }
       }
 
-      // Se já houver apenas 1 imóvel genérico com código 5586 e usuário estiver buscando o primeiro, substitui
-      if (state.properties.length === 1 && state.properties[0].id === '5586' && cleanCode !== '5586') {
-        state.properties = [{
-          id: cleanCode,
-          address: endereco || `Rua do Imóvel #${cleanCode}`,
-          neighborhood: bairro,
-          value: valorFormatado
-        }];
-      } else {
-        state.properties.push({
-          id: cleanCode,
-          address: endereco || `Rua do Imóvel #${cleanCode}`,
-          neighborhood: bairro,
-          value: valorFormatado
-        });
+      // Se for o imóvel mock inicial 5586, substitui para não poluir
+      if (state.allProperties.length === 1 && state.allProperties[0].id === '5586' && cleanCode !== '5586') {
+        state.allProperties = [];
       }
 
-      // Se o valor do aluguel da proposta estiver zerado ou default, sugere o valor deste imóvel
+      // Verifica se já existe na lista
+      const existing = state.allProperties.find(p => String(p.id).toLowerCase() === cleanCode.toLowerCase());
+      if (existing) {
+        existing.selected = true;
+        showToast(`Imóvel #${cleanCode} já estava na lista e foi marcado!`, 'ℹ️');
+      } else {
+        state.allProperties.push({
+          id: cleanCode,
+          address: endereco || `Rua do Imóvel #${cleanCode}`,
+          neighborhood: bairro,
+          value: valorFormatado,
+          selected: true,
+          isScheduled: false,
+          source: 'manual'
+        });
+        showToast(`Imóvel #${cleanCode} adicionado e marcado para a proposta!`, '✅');
+      }
+
+      // Sugere valor do aluguel se ainda estiver default
       if (valorFormatado && valorFormatado.includes('R$')) {
         const valClean = valorFormatado.replace(/[^\d,]/g, '');
         if (valClean) {
@@ -396,24 +409,26 @@
 
       inputQuickCode.value = '';
       renderAll();
-      showToast(`Imóvel #${cleanCode} adicionado à proposta!`, '✅');
     } catch (err) {
       console.warn('Erro ao consultar imóvel:', err);
-      state.properties.push({
+      state.allProperties.push({
         id: cleanCode,
         address: `Imóvel #${cleanCode}`,
         neighborhood: 'Santo André - SP',
-        value: 'Sob Consulta'
+        value: 'Sob Consulta',
+        selected: true,
+        isScheduled: false,
+        source: 'manual'
       });
       renderAll();
-      showToast(`Adicionado imóvel #${cleanCode} (modo offline/manual).`, 'ℹ️');
+      showToast(`Adicionado imóvel #${cleanCode} (modo manual).`, 'ℹ️');
     } finally {
       btnQuickAddProp.disabled = false;
       btnQuickAddProp.textContent = '+ Adicionar';
     }
   }
 
-  // --- Integração com Helena CRM via Query Params ---
+  // --- Inicialização a partir da URL e do Endpoint Unificado (/api/proposta/dados) ---
   async function initFromQueryParams() {
     const urlParams = new URLSearchParams(window.location.search);
     const contactId = urlParams.get('contactId') || urlParams.get('contact_id');
@@ -423,7 +438,7 @@
     const corretorParam = urlParams.get('corretor');
     const atendimentoParam = urlParams.get('atendimento');
 
-    // Configura data inicial para hoje no input date
+    // Configura data inicial para hoje
     inputDataDoc.value = state.dataDocumento;
 
     if (corretorParam) {
@@ -436,61 +451,116 @@
       inputAtendimento.value = state.atendimento;
     }
 
-    // Se houver contactId ou sessionId, sincroniza atendimento
+    // Atualiza links de navegação entre módulos preservando a query string ativa do Helena CRM
+    const qString = urlParams.toString();
+    if (headerLinkCatalog) {
+      headerLinkCatalog.href = qString ? `/?${qString}` : '/';
+    }
+    if (headerLinkVisitas) {
+      headerLinkVisitas.href = qString ? `/visitas?${qString}` : '/visitas';
+    }
+    if (headerLinkProposta) {
+      headerLinkProposta.href = qString ? `/proposta?${qString}` : '/proposta';
+    }
+
+    // Se houver contactId ou sessionId, consulta o endpoint unificado de dados
     if (contactId || sessionId) {
       leadSessionChip.style.display = 'inline-flex';
       leadSessionText.textContent = sessionId ? `Sessão #${sessionId.slice(0, 8)}...` : `Lead #${contactId.slice(0, 8)}...`;
-      state.atendimento = sessionId ? sessionId.slice(0, 6).toUpperCase() : (contactId ? contactId.slice(0, 6).toUpperCase() : state.atendimento);
-      inputAtendimento.value = state.atendimento;
 
-      if (headerLinkVisitas) {
-        headerLinkVisitas.href = `/visitas?${urlParams.toString()}`;
-      }
-
-      // Busca dados do contato no Helena CRM
       try {
-        const contactRes = await fetch(`/api/leads/match?contactId=${encodeURIComponent(contactId || '')}&limit=1`);
-        const contactData = await contactRes.json();
-        if (contactData.contact) {
-          state.client.name = contactData.contact.name || state.client.name;
-          state.client.phone = contactData.contact.phoneNumber || state.client.phone;
-          inputClienteNome.value = state.client.name;
-          inputClienteTel.value = state.client.phone;
-        }
-      } catch (e) {
-        console.warn('Aviso ao sincronizar dados do contato Helena CRM:', e.message);
-      }
+        const res = await fetch(`/api/proposta/dados?${qString}`);
+        const data = await res.json();
 
-      // Busca visitas agendadas ou imóveis enviados no session metadata
-      if (sessionId) {
-        try {
-          const metaRes = await fetch(`/api/leads/session-metadata?sessionId=${encodeURIComponent(sessionId)}`);
-          const metaData = await metaRes.json();
-          if (metaData.success && Array.isArray(metaData.visitasAgendadas) && metaData.visitasAgendadas.length > 0) {
-            state.properties = metaData.visitasAgendadas.map(v => ({
-              id: String(v.propertyId || ''),
-              address: v.propertyAddress || v.enderecoCompleto || `Imóvel #${v.propertyId}`,
-              neighborhood: v.propertyNeighborhood ? `${v.propertyNeighborhood} - Santo André` : 'Santo André - SP',
-              value: v.propertyPrice || 'Sob Consulta'
-            }));
+        if (res.ok && data.success) {
+          if (data.atendimento) {
+            state.atendimento = data.atendimento;
+            inputAtendimento.value = state.atendimento;
           }
-        } catch (e) {
-          console.warn('Aviso ao consultar metadados de visitas:', e.message);
+          if (data.client) {
+            if (data.client.name) {
+              state.client.name = data.client.name;
+              inputClienteNome.value = state.client.name;
+            }
+            if (data.client.phone) {
+              state.client.phone = data.client.phone;
+              inputClienteTel.value = state.client.phone;
+            }
+            if (data.client.address) {
+              state.client.address = data.client.address;
+              inputClienteEnd.value = state.client.address;
+            }
+          }
+
+          // Monta lista consolidada de imóveis do atendimento
+          const propsMap = new Map();
+
+          // 1. Visitas Agendadas (têm prioridade de seleção)
+          const scheduledList = Array.isArray(data.visitasAgendadas) ? data.visitasAgendadas : [];
+          scheduledList.forEach(v => {
+            const vId = String(v.propertyId || '');
+            if (vId) {
+              propsMap.set(vId.toLowerCase(), {
+                id: vId,
+                address: v.propertyAddress || v.enderecoCompleto || `Imóvel #${vId}`,
+                neighborhood: v.propertyNeighborhood ? `${v.propertyNeighborhood} - Santo André` : 'Santo André - SP',
+                value: v.propertyPrice || 'Sob Consulta',
+                selected: true,
+                isScheduled: true,
+                source: 'visita'
+              });
+            }
+          });
+
+          // 2. Imóveis Enviados no Chat (disponíveis para o corretor marcar/desmarcar)
+          const sentList = Array.isArray(data.imoveisEnviados) ? data.imoveisEnviados : [];
+          sentList.forEach(p => {
+            const pId = String(p.id || p.codigo || '');
+            if (pId && !propsMap.has(pId.toLowerCase())) {
+              const fullAddr = p.enderecoCompleto || p.endereco || [p.bairro, p.cidade].filter(Boolean).join(', ') || 'Santo André - SP';
+              const priceFmt = p.valorFormatado || p.priceText || (p.valor ? `R$ ${Number(p.valor).toLocaleString('pt-BR')}` : 'Sob Consulta');
+              propsMap.set(pId.toLowerCase(), {
+                id: pId,
+                address: fullAddr,
+                neighborhood: p.bairro ? `${p.bairro} - ${p.cidade || 'Santo André'}` : 'Santo André - SP',
+                value: priceFmt,
+                // Se não houver nenhuma visita agendada, deixa todos os enviados marcados por padrão
+                selected: scheduledList.length === 0,
+                isScheduled: false,
+                source: 'enviado'
+              });
+            }
+          });
+
+          if (propsMap.size > 0) {
+            state.allProperties = Array.from(propsMap.values());
+            // Sugere o valor do primeiro imóvel selecionado como aluguel da proposta
+            const firstSelected = state.allProperties.find(p => p.selected);
+            if (firstSelected && firstSelected.value) {
+              const cleanVal = firstSelected.value.replace(/[^\d,]/g, '');
+              if (cleanVal) {
+                state.proposal.rentValue = cleanVal;
+                inputValorAluguel.value = cleanVal;
+              }
+            }
+          }
         }
+      } catch (err) {
+        console.warn('Aviso ao consultar dados unificados da proposta:', err.message);
       }
     }
 
-    // Se foram passados IDs específicos via query params
+    // Se foram passados IDs específicos via query params (ex: ?ids=3271,5586)
     if (idsList) {
       const arr = idsList.split(',').map(s => s.trim()).filter(Boolean);
       if (arr.length > 0) {
-        state.properties = [];
+        state.allProperties = [];
         for (const code of arr) {
           await fetchAndAddPropertyByCode(code);
         }
       }
     } else if (propertyId) {
-      state.properties = [];
+      state.allProperties = [];
       await fetchAndAddPropertyByCode(propertyId);
     }
 
@@ -545,7 +615,34 @@
       renderAll();
     });
 
-    // Busca rápida de imóvel
+    // Filtros Rápidos de Seleção de Imóveis
+    btnSelectAllProps.addEventListener('click', () => {
+      state.allProperties.forEach(p => p.selected = true);
+      btnSelectAllProps.classList.add('active');
+      btnSelectScheduledOnly.classList.remove('active');
+      btnUnselectAllProps.classList.remove('active');
+      renderAll();
+    });
+
+    btnSelectScheduledOnly.addEventListener('click', () => {
+      state.allProperties.forEach(p => {
+        p.selected = Boolean(p.isScheduled);
+      });
+      btnSelectScheduledOnly.classList.add('active');
+      btnSelectAllProps.classList.remove('active');
+      btnUnselectAllProps.classList.remove('active');
+      renderAll();
+    });
+
+    btnUnselectAllProps.addEventListener('click', () => {
+      state.allProperties.forEach(p => p.selected = false);
+      btnUnselectAllProps.classList.add('active');
+      btnSelectAllProps.classList.remove('active');
+      btnSelectScheduledOnly.classList.remove('active');
+      renderAll();
+    });
+
+    // Busca rápida de imóvel por código
     btnQuickAddProp.addEventListener('click', () => {
       fetchAndAddPropertyByCode(inputQuickCode.value);
     });
@@ -555,16 +652,6 @@
         e.preventDefault();
         fetchAndAddPropertyByCode(inputQuickCode.value);
       }
-    });
-
-    btnAddEmptyRow.addEventListener('click', () => {
-      state.properties.push({
-        id: '',
-        address: '',
-        neighborhood: '',
-        value: ''
-      });
-      renderAll();
     });
 
     // Proposta
@@ -643,7 +730,6 @@
         showToast('📄 Download do PDF concluído!', '✅');
       } catch (err) {
         console.error('Erro ao gerar PDF via html2pdf:', err);
-        // Fallback para impressão nativa do navegador
         window.print();
       } finally {
         btnDownloadPdf.disabled = false;
@@ -661,17 +747,23 @@
         nenhuma: 'A definir'
       };
 
+      const selectedProps = state.allProperties.filter(p => p.selected);
+
       const lines = [
         `📄 *FICHA DE VISITA & PROPOSTA DE LOCAÇÃO*`,
         `🏢 *Santos & Mello Imóveis* • Atendimento #${state.atendimento}`,
         `👤 *Cliente:* ${state.client.name || 'Cliente'} (${state.client.phone || ''})`,
         `----------------------------------------`,
-        `📍 *Imóveis Visitados:*`
+        `📍 *Imóveis da Ficha de Visita:*`
       ];
 
-      state.properties.forEach((p, i) => {
-        lines.push(`• *Opção ${i + 1} (Cód. #${p.id}):* ${p.address} - ${p.neighborhood} (${p.value})`);
-      });
+      if (selectedProps.length === 0) {
+        lines.push(`• Nenhum imóvel selecionado.`);
+      } else {
+        selectedProps.forEach((p, i) => {
+          lines.push(`• *Opção ${i + 1} (Cód. #${p.id}):* ${p.address} - ${p.neighborhood} (${p.value})`);
+        });
+      }
 
       lines.push(
         `----------------------------------------`,
