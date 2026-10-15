@@ -847,6 +847,20 @@
     showToast('📋 Estrutura JSON copiada com sucesso para o n8n!');
   });
 
+  // --- Ação: Abrir Ficha de Visita & Proposta (PDF) ---
+  const btnGoToProposal = document.getElementById('btnGoToProposal');
+  if (btnGoToProposal) {
+    btnGoToProposal.addEventListener('click', () => {
+      const visits = Array.from(selectedVisitsMap.values());
+      const ids = visits.map(v => v.propertyId).join(',');
+      const params = new URLSearchParams(window.location.search);
+      if (ids) {
+        params.set('ids', ids);
+      }
+      window.open(`/proposta?${params.toString()}`, '_blank');
+    });
+  }
+
   // --- Inicialização ---
   loadSessionVisitasData();
 

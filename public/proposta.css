@@ -1,0 +1,988 @@
+/**
+ * ============================================================================
+ * FOLHA DE VISITA & PROPOSTA • SANTOS & MELLO IMÓVEIS
+ * Estilos da interface de edição interativa + folha A4 com regras de impressão
+ * ============================================================================
+ */
+
+:root {
+  --primary: #1e3a8a;
+  --primary-hover: #1e40af;
+  --primary-light: #eff6ff;
+  --accent-gold: #c59b27;
+  --accent-whatsapp: #25d366;
+  --accent-whatsapp-hover: #128c7e;
+  --accent-red: #dc2626;
+
+  --bg-app: #f1f5f9;
+  --bg-sidebar: #ffffff;
+  --bg-sheet: #ffffff;
+  --border-app: #e2e8f0;
+  --border-focus: #3b82f6;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-sheet: 0 12px 35px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08);
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-doc: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+}
+
+/* Reset básico */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ============================================================================
+   1. CABEÇALHO DO APLICATIVO
+   ============================================================================ */
+.app-header {
+  background: #ffffff;
+  border-bottom: 1px solid var(--border-app);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-container {
+  max-width: 1700px;
+  margin: 0 auto;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.brand-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brand-divider {
+  width: 1px;
+  height: 28px;
+  background-color: var(--border-app);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-gold);
+}
+
+.brand-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.header-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: #f8fafc;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.825rem;
+  font-weight: 600;
+  border: 1px solid var(--border-app);
+  transition: all 0.2s ease;
+}
+
+.header-nav-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: #bfdbfe;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.lead-session-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.btn-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-app);
+  background: #ffffff;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.btn-tool:hover {
+  background: #f8fafc;
+  color: var(--text-primary);
+  border-color: #cbd5e1;
+}
+
+.btn-tool.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.btn-tool.btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-tool.btn-copy-whatsapp {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.btn-tool.btn-copy-whatsapp:hover {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.btn-tool.btn-download-pdf {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.btn-tool.btn-download-pdf:hover {
+  background: #fef3c7;
+}
+
+/* ============================================================================
+   2. LAYOUT DIVIDIDO (SIDEBAR EDITOR + PREVIEW A4)
+   ============================================================================ */
+.main-layout {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 65px);
+  overflow: hidden;
+}
+
+/* Barra Lateral de Edição */
+.sidebar-editor {
+  width: 440px;
+  min-width: 400px;
+  max-width: 480px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-app);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.sidebar-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-app);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sidebar-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.switch-mode-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.switch-mode-label input {
+  display: none;
+}
+
+.switch-slider {
+  width: 32px;
+  height: 18px;
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+  position: relative;
+  transition: 0.3s;
+}
+
+.switch-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 2px;
+  top: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.switch-mode-label input:checked + .switch-slider {
+  background-color: var(--primary);
+}
+
+.switch-mode-label input:checked + .switch-slider::before {
+  transform: translateX(14px);
+}
+
+.sidebar-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Cartões do Formulário */
+.form-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-app);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.form-card-header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.form-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-count {
+  font-size: 0.7rem;
+  background: #e2e8f0;
+  color: var(--text-secondary);
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field-label {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.field-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 55px;
+}
+
+/* Bloco de Adição Rápida de Imóvel */
+.quick-add-prop-box {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.quick-add-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-quick-add {
+  padding: 0.5rem 0.85rem;
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-quick-add:hover {
+  background: var(--primary-hover);
+}
+
+.quick-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Lista de Imóveis no Editor */
+.properties-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.property-edit-item {
+  background: #ffffff;
+  border: 1px solid var(--border-app);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.prop-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prop-badge-cod {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.btn-remove-prop {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.btn-remove-prop:hover {
+  background: #fee2e2;
+}
+
+.btn-add-empty-prop {
+  width: 100%;
+  padding: 0.5rem;
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-add-empty-prop:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: var(--text-primary);
+}
+
+/* Seletores de Garantia */
+.guarantee-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.check-guarantee-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  font-size: 0.775rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.check-guarantee-pill:hover {
+  border-color: #94a3b8;
+}
+
+.check-guarantee-pill input[type="radio"]:checked + span {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* ============================================================================
+   3. ÁREA DE PREVIEW DA FOLHA A4
+   ============================================================================ */
+.preview-viewport {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #64748b;
+  background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+  background-size: 20px 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+.preview-control-bar {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 0.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  z-index: 20;
+}
+
+.preview-mode-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.preview-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-gold);
+}
+
+.preview-zoom-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-zoom, .btn-zoom-reset {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.2s;
+}
+
+.btn-zoom:hover, .btn-zoom-reset:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.zoom-level-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 45px;
+  text-align: center;
+}
+
+.sheet-scroller {
+  flex: 1;
+  overflow: auto;
+  padding: 2.5rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* ============================================================================
+   4. FOLHA A4 OFICIAL (PROPORÇÃO E REPRODUÇÃO EXATA DO DOCUMENTO PDF)
+   ============================================================================ */
+.a4-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--bg-sheet);
+  box-shadow: var(--shadow-sheet);
+  padding: 14mm 18mm 14mm 18mm;
+  font-family: var(--font-doc);
+  color: #000000;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease-out;
+  transform-origin: top center;
+  box-sizing: border-box;
+}
+
+/* Cabeçalho do Documento */
+.doc-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.doc-logo-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.doc-logo-img {
+  height: 52px;
+  width: auto;
+  object-fit: contain;
+}
+
+.doc-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin: 4px 0 2px 0;
+  color: #000000;
+}
+
+.doc-sub {
+  font-size: 11px;
+  color: #000000;
+  margin: 0;
+}
+
+/* Seção de Identificação do Atendimento e Cliente */
+.doc-meta-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.meta-line {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.meta-label {
+  font-weight: 700;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.meta-value {
+  color: #000000;
+}
+
+/* Parágrafo de Declaração */
+.doc-declaration {
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  text-align: justify;
+}
+
+.doc-corretor-name {
+  font-weight: 700;
+}
+
+/* Tabela de Imóveis */
+.doc-table-section {
+  margin-bottom: 10px;
+}
+
+.doc-properties-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.doc-properties-table th,
+.doc-properties-table td {
+  border: 1px solid #000000;
+  padding: 4px 6px;
+  color: #000000;
+  vertical-align: middle;
+}
+
+.doc-properties-table th {
+  font-weight: 700;
+  text-align: center;
+  background-color: transparent;
+  padding: 5px 6px;
+}
+
+.col-cod {
+  width: 10%;
+  text-align: center;
+  font-weight: 600;
+}
+
+.col-endereco {
+  width: 47%;
+  text-align: left;
+}
+
+.col-bairro {
+  width: 28%;
+  text-align: left;
+}
+
+.col-valor {
+  width: 15%;
+  text-align: right;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Cláusula de Intermediação */
+.doc-clause {
+  margin-bottom: 12px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  text-align: justify;
+}
+
+/* Data e Primeira Assinatura */
+.doc-date-signature-1 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.doc-city-date {
+  font-size: 12px;
+  color: #000000;
+}
+
+.doc-signature-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.signature-line {
+  font-size: 12px;
+  color: #000000;
+  line-height: 1;
+}
+
+.signature-signer-name {
+  font-size: 12px;
+  color: #000000;
+  margin-top: 4px;
+}
+
+.doc-section-divider {
+  border: 0;
+  border-top: 1px solid #000000;
+  margin: 8px 0 12px 0;
+}
+
+/* Seção da Proposta */
+.doc-proposal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc-proposal-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px 0;
+  color: #000000;
+}
+
+.proposal-field-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  flex-wrap: wrap;
+}
+
+.proposal-field-label {
+  font-weight: 700;
+  color: #000000;
+}
+
+.proposal-field-fillable {
+  border-bottom: 1px solid #000000;
+  min-width: 160px;
+  padding: 0 4px;
+  font-weight: 600;
+  color: #000000;
+  display: inline-block;
+}
+
+.proposal-field-sub {
+  font-size: 11.5px;
+  color: #000000;
+}
+
+.guarantee-checks-inline {
+  display: inline-flex;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.guarantee-box-item {
+  font-weight: 500;
+  color: #000000;
+}
+
+.proposal-obs-block {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.proposal-obs-label {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.proposal-obs-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.obs-line {
+  font-size: 11px;
+  color: #000000;
+  word-break: break-all;
+}
+
+.proposal-disclaimer {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: justify;
+}
+
+/* Data da Proposta e Segunda Assinatura */
+.doc-date-signature-2 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.signature-date-slashes {
+  font-size: 12px;
+  color: #000000;
+}
+
+/* Toast */
+.toast-notification {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  z-index: 1000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.toast-notification.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ============================================================================
+   5. REGRAS DE IMPRESSÃO (@media print)
+   ============================================================================ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 15mm 10mm 15mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  .no-print,
+  .app-header,
+  .sidebar-editor,
+  .preview-control-bar,
+  .toast-notification {
+    display: none !important;
+  }
+
+  .main-layout {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .preview-viewport {
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .sheet-scroller {
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .a4-sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    height: auto !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .doc-table-section,
+  .doc-declaration,
+  .doc-clause,
+  .doc-proposal-section {
+    page-break-inside: avoid;
+  }
+}

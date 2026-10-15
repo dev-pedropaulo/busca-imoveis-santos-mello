@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ficha de Visita & Proposta | Santos & Mello Imóveis</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="proposta.css">
+  <!-- html2pdf para download direto do PDF em alta resolução -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <!-- Cabeçalho do Módulo de Atendimento -->
+  <header class="app-header no-print">
+    <div class="header-container">
+      <div class="brand-group">
+        <a href="/" class="brand-link" title="Voltar ao catálogo">
+          <img src="logo.png" alt="Santos & Mello Imóveis" class="brand-logo" onerror="this.src='logo.webp'">
+        </a>
+        <div class="brand-divider"></div>
+        <div class="brand-text">
+          <span class="brand-tag">Atendimento & Locação</span>
+          <h1 class="brand-title">Ficha de Visita & Proposta</h1>
+        </div>
+      </div>
+
+      <!-- Links Rápidos de Navegação entre Módulos -->
+      <div class="header-nav-links">
+        <a href="/" class="header-nav-btn" title="Buscar no Catálogo XML">
+          <span>🔍 Catálogo</span>
+        </a>
+        <a href="/visitas" id="headerLinkVisitas" class="header-nav-btn" title="Ir para Agendamento de Visitas">
+          <span>📅 Visitas</span>
+        </a>
+        <a href="/crm" class="header-nav-btn" title="Ir para CRM & Claviculário">
+          <span>📊 CRM</span>
+        </a>
+      </div>
+
+      <div class="header-actions">
+        <!-- Indicador de Sessão / Lead do Helena CRM -->
+        <div class="lead-session-chip" id="leadSessionChip" style="display: none;">
+          <span class="chip-dot"></span>
+          <span class="chip-text" id="leadSessionText">Lead Helena CRM</span>
+        </div>
+
+        <button type="button" class="btn-tool btn-copy-whatsapp" id="btnCopyProposalWhatsApp" title="Copiar resumo da proposta para o WhatsApp">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+          </svg>
+          <span>Copiar p/ WhatsApp</span>
+        </button>
+
+        <button type="button" class="btn-tool btn-download-pdf" id="btnDownloadPdf" title="Baixar arquivo PDF diretamente">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Baixar PDF</span>
+        </button>
+
+        <button type="button" class="btn-tool btn-primary btn-print-pdf" id="btnPrintPdf" title="Imprimir documento ou salvar pelo navegador (Ctrl + P)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          <span>Imprimir / Salvar PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Layout Principal Dividido: Editor Lateral + Preview da Folha A4 -->
+  <main class="main-layout">
+    
+    <!-- Painel Lateral: Configurações & Preenchimento da Proposta -->
+    <aside class="sidebar-editor no-print">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Personalizar Documento</h2>
+        <div class="mode-switch-group">
+          <label class="switch-mode-label" title="Alternar entre proposta com valores digitados ou campos pontilhados para assinatura manual em visita">
+            <input type="checkbox" id="checkManualMode">
+            <span class="switch-slider"></span>
+            <span class="switch-text" id="manualModeLabel">Preenchimento Digital</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="sidebar-scroll-content">
+        <!-- Bloco 1: Atendimento e Corretor -->
+        <div class="form-card">
+          <h3 class="form-card-title">1. Dados do Atendimento</h3>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label class="field-label" for="inputAtendimento">Nº Atendimento</label>
+              <input type="text" id="inputAtendimento" class="field-input" placeholder="Ex: 5861" value="5861">
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="inputDataDoc">Data da Ficha</label>
+              <input type="date" id="inputDataDoc" class="field-input">
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="inputCorretor">Corretor Autônomo Responsável</label>
+            <input type="text" id="inputCorretor" class="field-input" placeholder="Nome do corretor" value="Matheus dos Santos Cruz">
+          </div>
+        </div>
+
+        <!-- Bloco 2: Dados do Cliente -->
+        <div class="form-card">
+          <h3 class="form-card-title">2. Identificação do Cliente</h3>
+          <div class="form-field">
+            <label class="field-label" for="inputClienteNome">Nome do Cliente *</label>
+            <input type="text" id="inputClienteNome" class="field-input" placeholder="Ex: Kelly Cristina..." value="Kelly">
+          </div>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label class="field-label" for="inputClienteTel">Telefone / WhatsApp</label>
+              <input type="text" id="inputClienteTel" class="field-input" placeholder="(11) 99999-9999" value="(11) 95340-7249">
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="inputClienteEnd">Endereço Atual</label>
+              <input type="text" id="inputClienteEnd" class="field-input" placeholder="Rua, número, bairro...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco 3: Imóveis Visitados -->
+        <div class="form-card">
+          <div class="form-card-header-flex">
+            <h3 class="form-card-title">3. Imóveis Visitados</h3>
+            <span class="badge-count" id="badgePropsCount">1 imóvel</span>
+          </div>
+
+          <!-- Busca rápida de imóvel por código -->
+          <div class="quick-add-prop-box">
+            <label class="field-label" for="inputQuickCode">Buscar Imóvel por Código</label>
+            <div class="quick-add-input-group">
+              <input type="text" id="inputQuickCode" class="field-input" placeholder="Ex: 5586 ou 3271">
+              <button type="button" class="btn-quick-add" id="btnQuickAddProp" title="Buscar no catálogo e adicionar na proposta">
+                <span>+ Adicionar</span>
+              </button>
+            </div>
+            <span class="quick-hint">Pressione Enter ou clique em Adicionar para preencher endereço e aluguel.</span>
+          </div>
+
+          <!-- Lista de Imóveis Adicionados para Edição Manual -->
+          <div class="properties-items-list" id="propertiesEditorList">
+            <!-- Renderizado dinamicamente via JavaScript -->
+          </div>
+
+          <button type="button" class="btn-add-empty-prop" id="btnAddEmptyRow">
+            <span>+ Adicionar Linha em Branco</span>
+          </button>
+        </div>
+
+        <!-- Bloco 4: Condições da Proposta -->
+        <div class="form-card">
+          <h3 class="form-card-title">4. Condições da Proposta</h3>
+          
+          <div class="form-row-2">
+            <div class="form-field">
+              <label class="field-label" for="inputValorAluguel">Valor do Aluguel (R$)</label>
+              <input type="text" id="inputValorAluguel" class="field-input" placeholder="Ex: 1.600,00" value="1.600,00">
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="inputPrazoLocacao">Prazo da Locação</label>
+              <input type="text" id="inputPrazoLocacao" class="field-input" placeholder="Ex: 30" value="30">
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-field">
+              <label class="field-label" for="selectDiaVencimento">Vencimento Desejado</label>
+              <select id="selectDiaVencimento" class="field-input field-select">
+                <option value="10" selected>Dia 10 de cada mês</option>
+                <option value="25">Dia 25 de cada mês</option>
+                <option value="outro">Outro dia...</option>
+              </select>
+            </div>
+            <div class="form-field" id="wrapDiaCustom" style="display: none;">
+              <label class="field-label" for="inputDiaCustom">Dia Especificado</label>
+              <input type="number" id="inputDiaCustom" class="field-input" min="1" max="31" placeholder="Ex: 15">
+            </div>
+          </div>
+
+          <!-- Seleção da Garantia Pretendida -->
+          <div class="form-field">
+            <label class="field-label">Garantia Pretendida</label>
+            <div class="guarantee-options-grid">
+              <label class="check-guarantee-pill">
+                <input type="radio" name="garantiaOption" value="seguro" checked>
+                <span>Seguro Fiança</span>
+              </label>
+              <label class="check-guarantee-pill">
+                <input type="radio" name="garantiaOption" value="fiador">
+                <span>Fiador</span>
+              </label>
+              <label class="check-guarantee-pill">
+                <input type="radio" name="garantiaOption" value="titulo">
+                <span>Título de Capitalização</span>
+              </label>
+              <label class="check-guarantee-pill">
+                <input type="radio" name="garantiaOption" value="caucao">
+                <span>Caução / Outro</span>
+              </label>
+              <label class="check-guarantee-pill">
+                <input type="radio" name="garantiaOption" value="nenhuma">
+                <span>A Definir (Em Branco)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Observações da Proposta -->
+          <div class="form-field">
+            <label class="field-label" for="inputObsProposta">Observações da Proposta</label>
+            <textarea id="inputObsProposta" class="field-input field-textarea" rows="2" placeholder="Ex: Proposta com carência de 15 dias para pintura; cliente pretende mudar dia 01..."></textarea>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Área de Visualização e Renderização da Folha A4 Oficial -->
+    <section class="preview-viewport" id="previewViewport">
+      
+      <!-- Barra Superior de Controle de Visualização -->
+      <div class="preview-control-bar no-print">
+        <div class="preview-mode-tag">
+          <span class="preview-dot"></span>
+          <span>Modelo Oficial Santos & Mello (A4)</span>
+        </div>
+        <div class="preview-zoom-actions">
+          <button type="button" class="btn-zoom" id="btnZoomOut" title="Reduzir zoom">-</button>
+          <span class="zoom-level-text" id="zoomLevelText">100%</span>
+          <button type="button" class="btn-zoom" id="btnZoomIn" title="Aumentar zoom">+</button>
+          <button type="button" class="btn-zoom-reset" id="btnZoomReset" title="Ajustar visualização">Ajustar</button>
+        </div>
+      </div>
+
+      <!-- Container Centralizado da Folha -->
+      <div class="sheet-scroller" id="sheetScroller">
+        
+        <!-- FOLHA A4 OFICIAL • FICHA DE VISITA / PROPOSTA -->
+        <article class="a4-sheet" id="printableSheet">
+          
+          <!-- Topo: Logo Oficial e Dados da Imobiliária -->
+          <header class="doc-header">
+            <div class="doc-logo-wrap">
+              <img src="logo.png" alt="Santos & Mello Imóveis" class="doc-logo-img" onerror="this.src='logo.webp'">
+            </div>
+            <h2 class="doc-title">FICHA DE VISITA</h2>
+            <p class="doc-sub">S & M - Rua Iugoslávia, 33 - Parque das Nações - Santo André - (11) 4469-2121</p>
+          </header>
+
+          <!-- Dados do Atendimento e do Cliente -->
+          <section class="doc-meta-section">
+            <div class="meta-line">
+              <span class="meta-label">ATENDIMENTO:</span>
+              <span class="meta-value" id="docAtendimentoVal">5861</span>
+            </div>
+            <div class="meta-line">
+              <span class="meta-label">CLIENTE:</span>
+              <span class="meta-value" id="docClienteNomeVal">Kelly</span>
+            </div>
+            <div class="meta-line">
+              <span class="meta-label">Endereço:</span>
+              <span class="meta-value" id="docClienteEndVal"></span>
+            </div>
+            <div class="meta-line">
+              <span class="meta-label">Tel.</span>
+              <span class="meta-value" id="docClienteTelVal">(11) 95340-7249</span>
+            </div>
+          </section>
+
+          <!-- Declaração de Visita -->
+          <section class="doc-declaration">
+            <p>
+              Declaro, que nesta data, por intermédio do Corretor autônomo, Sr. <span class="doc-corretor-name" id="docCorretorVal">Matheus dos Santos Cruz</span>, conheci, visitei pela primeira vez e obtive do mesmo as informações necessárias para locação dos imóveis abaixo relacionados, sendo que o mesmo prestou-me toda a consultoria necessária à verificação da viabilidade de locação do mesmo.
+            </p>
+          </section>
+
+          <!-- Tabela Oficial de Imóveis Visitados -->
+          <section class="doc-table-section">
+            <table class="doc-properties-table" id="docPropertiesTable">
+              <thead>
+                <tr>
+                  <th class="col-cod">CÓD.</th>
+                  <th class="col-endereco">ENDEREÇO</th>
+                  <th class="col-bairro">BAIRRO</th>
+                  <th class="col-valor">VALOR</th>
+                </tr>
+              </thead>
+              <tbody id="docPropertiesTbody">
+                <!-- Linhas inseridas dinamicamente -->
+                <tr>
+                  <td class="col-cod">5586</td>
+                  <td class="col-endereco">Rua Almada, 270, Individual, CEP 09260-420</td>
+                  <td class="col-bairro">Jardim Santo Alberto - Santo André</td>
+                  <td class="col-valor">R$ 1.600,00</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <!-- Cláusula de Intermediação e Não-Burlar Imobiliária -->
+          <section class="doc-clause">
+            <p>
+              Tendo em vista a assessoria prestada pela S & M, comprometo-me a não realizar a locação do imóvel diretamente com o proprietário. Caso isso ocorra, reconheço serem devidos os honorários pelos serviços de intermediação prestados pela S & M.
+            </p>
+          </section>
+
+          <!-- Local, Data e Primeira Assinatura -->
+          <section class="doc-date-signature-1">
+            <div class="doc-city-date" id="docCityDateVal">Santo André, quinta-feira, 15 de outubro de 2026</div>
+            <div class="doc-signature-block">
+              <div class="signature-line">______________________________________________</div>
+              <div class="signature-signer-name" id="docSignerName1">Kelly</div>
+            </div>
+          </section>
+
+          <hr class="doc-section-divider">
+
+          <!-- Bloco da PROPOSTA -->
+          <section class="doc-proposal-section">
+            <h3 class="doc-proposal-title">PROPOSTA</h3>
+
+            <div class="proposal-field-row">
+              <span class="proposal-field-label">Valor Mensal do Aluguel: R$</span>
+              <span class="proposal-field-fillable" id="docValorAluguelVal">1.600,00</span>
+            </div>
+
+            <div class="proposal-field-row">
+              <span class="proposal-field-label">Prazo da Locação:</span>
+              <span class="proposal-field-fillable" id="docPrazoLocacaoVal">30</span>
+              <span class="proposal-field-sub">meses (ou anos)</span>
+            </div>
+
+            <div class="proposal-field-row">
+              <span class="proposal-field-label">Data Desejada para Início / Vencimento: Dia</span>
+              <span class="proposal-field-fillable" id="docDiaVencimentoVal">10</span>
+              <span class="proposal-field-sub">de cada mês. (10 ou 25)</span>
+            </div>
+
+            <div class="proposal-field-row proposal-guarantee-row">
+              <span class="proposal-field-label">Garantia Pretendida:</span>
+              <div class="guarantee-checks-inline" id="docGuaranteeChecks">
+                <span class="guarantee-box-item" data-type="seguro">[ X ] Seguro Fiança</span>
+                <span class="guarantee-box-item" data-type="fiador">[ &nbsp; ] Fiador</span>
+                <span class="guarantee-box-item" data-type="titulo">[ &nbsp; ] Título de Capitalização</span>
+                <span class="guarantee-box-item" data-type="caucao" style="display: none;">[ &nbsp; ] Caução</span>
+              </div>
+            </div>
+
+            <div class="proposal-obs-block">
+              <div class="proposal-obs-label">OBS:</div>
+              <div class="proposal-obs-content" id="docObsContent">
+                <div class="obs-line" id="docObsLine1">_________________________________________________________________________________________________</div>
+                <div class="obs-line" id="docObsLine2">_________________________________________________________________________________________________</div>
+              </div>
+            </div>
+
+            <div class="proposal-disclaimer">
+              <p>
+                O proponente declara estar ciente de que, além do aluguel, serão de sua responsabilidade o pagamento de IPTU, Condomínio, água, luz, gás e seguro incêndio obrigatório.
+              </p>
+            </div>
+
+            <!-- Data da Proposta e Segunda Assinatura -->
+            <div class="doc-date-signature-2">
+              <div class="signature-date-slashes">
+                <span id="docSignatureDateDay">___________</span> / <span id="docSignatureDateMonth">___________</span> / <span id="docSignatureDateYear">___________</span>
+              </div>
+              <div class="doc-signature-block">
+                <div class="signature-line">___________________________________</div>
+                <div class="signature-signer-name" id="docSignerName2">Kelly</div>
+              </div>
+            </div>
+
+          </section>
+
+        </article>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Notificação Toast -->
+  <div class="toast-notification" id="toastNotification">
+    <span class="toast-icon" id="toastIcon">📋</span>
+    <span class="toast-message" id="toastMsg">Proposta gerada com sucesso!</span>
+  </div>
+
+  <script src="proposta.js"></script>
+</body>
+</html>

@@ -815,6 +815,18 @@ body.visitas-app {
   box-shadow: none;
 }
 
+.btn-go-proposta {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.btn-go-proposta:hover {
+  background: #fef3c7;
+  color: #78350f;
+  border-color: #f59e0b;
+}
+
 /* ==========================================================================
    TOAST NOTIFICATION
    ========================================================================== */

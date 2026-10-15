@@ -40,6 +40,11 @@ app.get(['/visitas', '/agendar-visitas', '/visitas.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'visitas.html'));
 });
 
+// Interface Dedicada para Ficha de Visita & Proposta de Locação (PDF / Helena CRM)
+app.get(['/proposta', '/ficha-visita', '/proposta.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'proposta.html'));
+});
+
 // Estado em memória dos imóveis
 let listingsMap = new Map();
 let listingsList = [];

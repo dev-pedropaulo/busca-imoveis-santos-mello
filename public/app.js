@@ -1502,6 +1502,17 @@
     });
   }
 
+  // 5. Gerar Ficha de Visita & Proposta (PDF)
+  const btnCreateProposalModal = document.getElementById('btnCreateProposalModal');
+  if (btnCreateProposalModal) {
+    btnCreateProposalModal.addEventListener('click', () => {
+      if (!currentProperty) return;
+      const params = new URLSearchParams(window.location.search);
+      params.set('propertyId', currentProperty.id);
+      window.open(`/proposta?${params.toString()}`, '_blank');
+    });
+  }
+
   // --- Handlers da Barra de Ações em Lote (Seleção Múltipla no Atendimento) ---
   const btnBulkCopyText = document.getElementById('btnBulkCopyText');
   if (btnBulkCopyText) {
