@@ -1221,14 +1221,52 @@
           </div>
         </div>
 
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label class="form-label" for="formPropImage">Foto Principal (URL)</label>
-            <input type="url" id="formPropImage" class="form-control" placeholder="https://exemplo.com/foto.jpg">
+        <!-- SEÇÃO DE FOTOS DO IMÓVEL (UPLOAD E GALERIA) -->
+        <div class="prop-photos-section">
+          <div class="prop-photos-section-header">
+            <div>
+              <label class="form-label" style="margin-bottom: 2px;">Fotos do Imóvel (Galeria & Capa)</label>
+              <span class="prop-photos-hint">Faça upload de fotos ou adicione links. A foto marcada com estrela será a capa do anúncio.</span>
+            </div>
+            <span class="prop-photos-counter" id="propPhotosCountBadge">0 fotos</span>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="formPropTour">Tour Virtual / Vídeo (URL)</label>
-            <input type="url" id="formPropTour" class="form-control" placeholder="https://youtube.com/... ou Matterport">
+
+          <!-- DROPZONE PARA ARRASTAR/SOLTAR OU CLICAR -->
+          <div class="prop-photo-dropzone" id="propPhotoDropzone">
+            <input type="file" id="propPhotoFileInput" multiple accept="image/*" style="display: none;">
+            <div class="dropzone-content">
+              <div class="dropzone-icon-circle">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              <div class="dropzone-text-group">
+                <p class="dropzone-title"><strong>Arraste e solte fotos aqui</strong> ou <span class="dropzone-browse-btn">procure no seu dispositivo</span></p>
+                <p class="dropzone-subtitle">Formatos aceitos: JPG, PNG, WEBP • Múltiplas fotos permitidas com compressão automática</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- GALERIA DE MINIATURAS DAS FOTOS CARREGADAS -->
+          <div class="prop-photos-gallery" id="propPhotosGallery">
+            <!-- Gerado dinamicamente -->
+          </div>
+
+          <!-- OPÇÃO ADICIONAL: ADICIONAR POR LINK OU TOUR VIRTUAL -->
+          <div class="form-grid-2" style="margin-top: 0.5rem;">
+            <div class="form-group">
+              <label class="form-label" for="formPropImage">Adicionar Foto por Link (URL Externa)</label>
+              <div class="input-with-action-btn">
+                <input type="url" id="formPropImage" class="form-control" placeholder="https://exemplo.com/foto.jpg">
+                <button type="button" class="btn-action-small" id="btnAddPhotoUrl" title="Adicionar link à galeria">Adicionar</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="formPropTour">Tour Virtual / Vídeo (URL)</label>
+              <input type="url" id="formPropTour" class="form-control" placeholder="https://youtube.com/... ou Matterport">
+            </div>
           </div>
         </div>
 

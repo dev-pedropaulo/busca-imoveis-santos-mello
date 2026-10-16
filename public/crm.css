@@ -2185,3 +2185,332 @@ body.simplified-view .btn-card-quick-view:hover {
   color: #0f172a;
 }
 
+/* ==========================================================================
+   COMPONENTES DE UPLOAD DE FOTOS E GALERIA DO IMÓVEL (CRUD)
+   ========================================================================== */
+.prop-photos-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border-card, #334155);
+  border-radius: var(--radius-md, 10px);
+  padding: 1.1rem;
+}
+
+[data-theme="light"] .prop-photos-section {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.prop-photos-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.prop-photos-hint {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.3;
+}
+
+[data-theme="light"] .prop-photos-hint {
+  color: #64748b;
+}
+
+.prop-photos-counter {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  white-space: nowrap;
+}
+
+[data-theme="light"] .prop-photos-counter {
+  background: #e0f2fe;
+  color: #0284c7;
+  border-color: #bae6fd;
+}
+
+/* Dropzone */
+.prop-photo-dropzone {
+  border: 2px dashed rgba(56, 189, 248, 0.4);
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: var(--radius-md, 10px);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="light"] .prop-photo-dropzone {
+  border-color: #93c5fd;
+  background: #ffffff;
+}
+
+.prop-photo-dropzone:hover,
+.prop-photo-dropzone.dragover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.15);
+}
+
+[data-theme="light"] .prop-photo-dropzone:hover,
+[data-theme="light"] .prop-photo-dropzone.dragover {
+  border-color: #0284c7;
+  background: #f0f9ff;
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.dropzone-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.prop-photo-dropzone:hover .dropzone-icon-circle {
+  transform: scale(1.08);
+}
+
+.dropzone-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dropzone-title {
+  font-size: 0.92rem;
+  color: var(--text-primary, #f8fafc);
+  margin: 0;
+}
+
+[data-theme="light"] .dropzone-title {
+  color: #0f172a;
+}
+
+.dropzone-browse-btn {
+  color: #38bdf8;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+[data-theme="light"] .dropzone-browse-btn {
+  color: #0284c7;
+}
+
+.dropzone-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted, #94a3b8);
+  margin: 0;
+}
+
+/* Galeria de Miniaturas */
+.prop-photos-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.85rem;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 0.25rem 0.1rem;
+}
+
+.prop-photos-gallery:empty {
+  display: none;
+}
+
+.prop-photo-card {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+[data-theme="light"] .prop-photo-card {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.prop-photo-card.is-cover {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
+.prop-photo-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.prop-photo-card:hover img {
+  transform: scale(1.04);
+}
+
+/* Overlay de Ações na foto */
+.prop-photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 40%, rgba(0,0,0,0.7) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px;
+  opacity: 0.92;
+  transition: opacity 0.2s ease;
+}
+
+.prop-photo-card:hover .prop-photo-overlay {
+  opacity: 1;
+}
+
+.prop-photo-actions-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.prop-photo-idx {
+  background: rgba(0, 0, 0, 0.65);
+  color: #f8fafc;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.btn-remove-photo {
+  background: rgba(239, 68, 68, 0.85);
+  color: #ffffff;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-remove-photo:hover {
+  background: #dc2626;
+  transform: scale(1.15);
+}
+
+.prop-photo-actions-bottom {
+  display: flex;
+  justify-content: center;
+}
+
+.badge-cover-photo {
+  background: #f59e0b;
+  color: #1e1b4b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.btn-set-cover {
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  backdrop-filter: blur(4px);
+}
+
+.btn-set-cover:hover {
+  background: #f59e0b;
+  color: #0f172a;
+  border-color: #f59e0b;
+}
+
+/* Grupo de Input com Botão */
+.input-with-action-btn {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-action-small {
+  padding: 0.5rem 0.85rem;
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-card, #334155);
+  color: var(--text-primary, #f8fafc);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+[data-theme="light"] .btn-action-small {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.btn-action-small:hover {
+  background: #38bdf8;
+  color: #0f172a;
+  border-color: #38bdf8;
+}
+
+/* Badge de contagem de fotos na tabela de Imóveis do CRM */
+.badge-photo-count {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+[data-theme="light"] .badge-photo-count {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+

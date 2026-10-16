@@ -28,12 +28,19 @@ test('CRM Store - CRUD de imóvel manual', () => {
   assert.equal(created.id, testId);
   assert.equal(created.rentalPrice, 3200);
 
-  // Atualização
+  // Atualização com fotos (primaryImage e galeria images)
   const updated = crmStore.updateProperty(testId, {
     rentalPrice: 3500,
-    kanbanStage: 'com_proposta'
+    kanbanStage: 'com_proposta',
+    primaryImage: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...',
+    images: [
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...',
+      'https://exemplo.com/foto2.jpg'
+    ]
   });
   assert.equal(updated.rentalPrice, 3500);
+  assert.equal(updated.primaryImage, 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...');
+  assert.equal(updated.images.length, 2);
 
   // Override de status
   const override = crmStore.getPropertyOverride(testId);

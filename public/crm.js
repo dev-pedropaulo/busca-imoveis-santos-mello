@@ -20,7 +20,9 @@
     keysList: [],
     reportsData: null,
     editingPropertyId: null,
-    allMergedProperties: [] // cache para selects rápidos
+    allMergedProperties: [], // cache para selects rápidos
+    modalPhotos: [], // fotos carregadas no modal (base64 / URLs)
+    modalPrimaryIndex: 0 // índice da foto definida como capa principal
   };
 
   // --- Elementos do DOM ---
@@ -196,6 +198,8 @@
 
       const stageKey = item.kanbanStage || 'disponivel';
       const stageObj = (stages || []).find(s => s.id === stageKey) || { label: item.status || 'Disponível' };
+      const photoCount = Array.isArray(item.images) && item.images.length > 0 ? item.images.length : (item.primaryImage ? 1 : 0);
+      const photoBadge = photoCount > 1 ? `<span class="badge-photo-count" title="${photoCount} fotos cadastradas">📷 ${photoCount} fotos</span>` : '';
 
       return `
         <tr data-id="${item.id}">
@@ -204,7 +208,7 @@
               <img src="${item.primaryImage || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=120'}" class="prop-thumb-img" alt="${item.title}" onerror="this.src='logo.png'" />
               <div>
                 <div class="prop-info-title" title="${item.title}">${item.title}</div>
-                <div class="prop-info-sub">${item.location?.neighborhood || 'Santo André'} • ${item.livingArea || 0} m² • ${item.bedrooms || 0} qts</div>
+                <div class="prop-info-sub">${item.location?.neighborhood || 'Santo André'} • ${item.livingArea || 0} m² • ${item.bedrooms || 0} qts ${photoBadge}</div>
               </div>
             </div>
           </td>
@@ -331,9 +335,222 @@
   const propModalClose = document.getElementById('propModalClose');
   const propModalCancel = document.getElementById('propModalCancel');
 
+  // Elementos do Upload e Galeria de Fotos
+  const propPhotoDropzone = document.getElementById('propPhotoDropzone');
+  const propPhotoFileInput = document.getElementById('propPhotoFileInput');
+  const propPhotosGallery = document.getElementById('propPhotosGallery');
+  const propPhotosCountBadge = document.getElementById('propPhotosCountBadge');
+  const btnAddPhotoUrl = document.getElementById('btnAddPhotoUrl');
+  const formPropImage = document.getElementById('formPropImage');
+
+  /**
+   * Comprime uma imagem local utilizando Canvas para evitar payloads gigantescos
+   * Mantém alta fidelidade visual (até 1600px de largura/altura com compressão JPEG ~82%).
+   */
+  function compressImageFile(file, maxWidth = 1600, maxHeight = 1200, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo da imagem'));
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Erro ao processar formato da imagem'));
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /**
+   * Processa lista de arquivos selecionados ou arrastados
+   */
+  async function handleFilesUpload(files) {
+    if (!files || files.length === 0) return;
+    const imageFiles = Array.from(files).filter(f => f.type && f.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      showToast('Por favor, selecione arquivos de imagem válidos (JPG, PNG, WebP).', 'error');
+      return;
+    }
+
+    if (propPhotoDropzone) {
+      propPhotoDropzone.style.opacity = '0.6';
+      propPhotoDropzone.style.pointerEvents = 'none';
+    }
+
+    let addedCount = 0;
+    for (const file of imageFiles) {
+      try {
+        const compressedDataUrl = await compressImageFile(file);
+        state.modalPhotos.push(compressedDataUrl);
+        addedCount++;
+      } catch (err) {
+        console.warn('Erro ao processar imagem:', file.name, err);
+      }
+    }
+
+    if (propPhotoDropzone) {
+      propPhotoDropzone.style.opacity = '1';
+      propPhotoDropzone.style.pointerEvents = 'auto';
+    }
+
+    if (addedCount > 0) {
+      if (state.modalPrimaryIndex < 0 || state.modalPrimaryIndex >= state.modalPhotos.length) {
+        state.modalPrimaryIndex = 0;
+      }
+      renderPhotosGallery();
+      showToast(`${addedCount} foto${addedCount > 1 ? 's' : ''} adicionada${addedCount > 1 ? 's' : ''} com sucesso!`);
+    }
+  }
+
+  /**
+   * Renderiza as miniaturas na galeria de fotos do modal
+   */
+  function renderPhotosGallery() {
+    if (!propPhotosGallery) return;
+
+    if (state.modalPrimaryIndex < 0 || state.modalPrimaryIndex >= state.modalPhotos.length) {
+      state.modalPrimaryIndex = 0;
+    }
+
+    if (propPhotosCountBadge) {
+      const count = state.modalPhotos.length;
+      propPhotosCountBadge.textContent = `${count} foto${count !== 1 ? 's' : ''}`;
+    }
+
+    if (state.modalPhotos.length === 0) {
+      propPhotosGallery.innerHTML = '';
+      return;
+    }
+
+    propPhotosGallery.innerHTML = state.modalPhotos.map((photoUrl, idx) => {
+      const isCover = idx === state.modalPrimaryIndex;
+      return `
+        <div class="prop-photo-card ${isCover ? 'is-cover' : ''}" data-idx="${idx}">
+          <img src="${photoUrl}" alt="Foto ${idx + 1}" onerror="this.src='logo.png'" />
+          <div class="prop-photo-overlay">
+            <div class="prop-photo-actions-top">
+              <span class="prop-photo-idx">#${idx + 1}</span>
+              <button type="button" class="btn-remove-photo" data-idx="${idx}" title="Excluir esta foto">✕</button>
+            </div>
+            <div class="prop-photo-actions-bottom">
+              ${isCover 
+                ? '<span class="badge-cover-photo">⭐ Capa</span>' 
+                : `<button type="button" class="btn-set-cover" data-idx="${idx}" title="Definir como foto principal">Tornar Capa</button>`}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Ações dos botões de remover e definir como capa
+    propPhotosGallery.querySelectorAll('.btn-remove-photo').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const removeIdx = parseInt(btn.dataset.idx, 10);
+        state.modalPhotos.splice(removeIdx, 1);
+        if (state.modalPrimaryIndex >= state.modalPhotos.length) {
+          state.modalPrimaryIndex = Math.max(0, state.modalPhotos.length - 1);
+        }
+        renderPhotosGallery();
+      });
+    });
+
+    propPhotosGallery.querySelectorAll('.btn-set-cover').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const setIdx = parseInt(btn.dataset.idx, 10);
+        state.modalPrimaryIndex = setIdx;
+        renderPhotosGallery();
+      });
+    });
+  }
+
+  /**
+   * Adiciona uma foto a partir de URL externa
+   */
+  function addPhotoFromUrl() {
+    if (!formPropImage) return;
+    const url = formPropImage.value.trim();
+    if (!url) {
+      showToast('Digite uma URL de imagem válida para adicionar.', 'error');
+      return;
+    }
+    state.modalPhotos.push(url);
+    formPropImage.value = '';
+    renderPhotosGallery();
+    showToast('Foto adicionada à galeria!');
+  }
+
   function initPropModal() {
     if (propModalClose) propModalClose.addEventListener('click', closePropertyModal);
     if (propModalCancel) propModalCancel.addEventListener('click', closePropertyModal);
+
+    // Drag & Drop no dropzone de fotos
+    if (propPhotoDropzone) {
+      propPhotoDropzone.addEventListener('click', () => {
+        if (propPhotoFileInput) propPhotoFileInput.click();
+      });
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        propPhotoDropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          propPhotoDropzone.classList.add('dragover');
+        });
+      });
+
+      ['dragleave', 'dragend', 'drop'].forEach(eventName => {
+        propPhotoDropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          propPhotoDropzone.classList.remove('dragover');
+        });
+      });
+
+      propPhotoDropzone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        handleFilesUpload(files);
+      });
+    }
+
+    // Input file nativo
+    if (propPhotoFileInput) {
+      propPhotoFileInput.addEventListener('change', (e) => {
+        handleFilesUpload(e.target.files);
+        propPhotoFileInput.value = '';
+      });
+    }
+
+    // Botão de adicionar link externo
+    if (btnAddPhotoUrl) {
+      btnAddPhotoUrl.addEventListener('click', addPhotoFromUrl);
+    }
+    if (formPropImage) {
+      formPropImage.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addPhotoFromUrl();
+        }
+      });
+    }
 
     if (propForm) {
       propForm.addEventListener('submit', async (e) => {
@@ -353,6 +570,19 @@
       propForm.reset();
 
       if (item) {
+        // Carrega fotos existentes na galeria
+        if (Array.isArray(item.images) && item.images.length > 0) {
+          state.modalPhotos = [...item.images];
+          const foundIdx = item.primaryImage ? state.modalPhotos.indexOf(item.primaryImage) : 0;
+          state.modalPrimaryIndex = foundIdx >= 0 ? foundIdx : 0;
+        } else if (item.primaryImage) {
+          state.modalPhotos = [item.primaryImage];
+          state.modalPrimaryIndex = 0;
+        } else {
+          state.modalPhotos = [];
+          state.modalPrimaryIndex = 0;
+        }
+
         document.getElementById('formPropId').value = item.id || '';
         document.getElementById('formPropId').disabled = true;
         document.getElementById('formPropTitle').value = item.title || '';
@@ -376,7 +606,7 @@
         document.getElementById('formPropNeighborhood').value = item.location?.neighborhood || '';
         document.getElementById('formPropCity').value = item.location?.city || 'Santo André';
         document.getElementById('formPropCep').value = item.location?.postalCode || '';
-        document.getElementById('formPropImage').value = item.primaryImage || '';
+        document.getElementById('formPropImage').value = '';
         document.getElementById('formPropTour').value = item.virtualTourLink || '';
         document.getElementById('formPropDesc').value = item.description || '';
 
@@ -386,12 +616,17 @@
           cb.checked = featSet.has(cb.value);
         });
       } else {
+        state.modalPhotos = [];
+        state.modalPrimaryIndex = 0;
         document.getElementById('formPropId').value = `SM-${Math.floor(1000 + Math.random() * 9000)}`;
         document.getElementById('formPropId').disabled = false;
         document.getElementById('formPropCity').value = 'Santo André';
         document.getElementById('formPropStage').value = 'disponivel';
         document.getElementById('formPropKeyTag').value = `CLAV-${Math.floor(10 + Math.random() * 90)}`;
+        document.getElementById('formPropImage').value = '';
       }
+
+      renderPhotosGallery();
     }
 
     if (propModalOverlay) {
@@ -417,6 +652,27 @@
     document.querySelectorAll('.feat-checkbox:checked').forEach(cb => {
       features.push(cb.value);
     });
+
+    // Determinar foto de capa e galeria completa
+    let primaryImage = '';
+    let images = [];
+
+    if (state.modalPhotos.length > 0) {
+      const validIdx = (state.modalPrimaryIndex >= 0 && state.modalPrimaryIndex < state.modalPhotos.length)
+        ? state.modalPrimaryIndex
+        : 0;
+      primaryImage = state.modalPhotos[validIdx];
+      images = [...state.modalPhotos];
+    } else {
+      const directUrl = document.getElementById('formPropImage')?.value.trim();
+      if (directUrl) {
+        primaryImage = directUrl;
+        images = [directUrl];
+      } else {
+        primaryImage = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+        images = [primaryImage];
+      }
+    }
 
     const payload = {
       id: id,
@@ -444,7 +700,8 @@
         state: 'SP',
         postalCode: document.getElementById('formPropCep').value.trim()
       },
-      primaryImage: document.getElementById('formPropImage').value.trim() || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80',
+      primaryImage: primaryImage,
+      images: images,
       virtualTourLink: document.getElementById('formPropTour').value.trim(),
       description: document.getElementById('formPropDesc').value.trim(),
       features: features
