@@ -738,8 +738,8 @@
         throw new Error(resData.error || 'Falha ao salvar agendamento.');
       }
 
-      triggerButtonFeedback(btnSaveVisits, '✅ Visitas Salvas com Sucesso!');
-      showToast(`🎉 ${visits.length} visita(s) confirmada(s) e registradas no atendimento!`, '🎉');
+      triggerButtonFeedback(btnSaveVisits, '✅ Visitas Salvas no CRM e no Card!');
+      showToast(`🎉 ${visits.length} visita(s) confirmada(s) e registradas no atendimento e no card do lead!`, '🎉');
     } catch (err) {
       console.error('Erro ao salvar visitas:', err);
       showToast(`Erro ao salvar: ${err.message}`, '❌');

@@ -11,7 +11,8 @@ const {
   updateHelenaSessionMetadata,
   recordSentPropertiesInHelenaSession,
   recordScheduledVisitsInHelenaSession,
-  recordSentPropertiesInHelenaCard
+  recordSentPropertiesInHelenaCard,
+  recordScheduledVisitsInHelenaCard
 } = require('./lib/helena-crm');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
 const { getOperationalPropertyData } = require('./lib/imoview-api');
@@ -1653,25 +1654,71 @@ app.post('/api/leads/schedule-visits', async (req, res) => {
       }
     });
 
-    // 2. Salva no session metadata do Helena CRM
+    // 2. Enriquece visitas com dados operacionais e de catálogo para gerar o melhor resumo e anexos
+    const enrichedVisits = await Promise.all(visitList.map(async v => {
+      let op = null;
+      try {
+        if (v.propertyId) {
+          op = await getOperationalPropertyData(v.propertyId);
+        }
+      } catch (_) {}
+
+      const catalogProp = enrichPropertyWithCatalog({ id: v.propertyId, titulo: v.propertyTitle });
+
+      return {
+        ...v,
+        propertyTitle: catalogProp?.titulo || op?.titulo || v.propertyTitle,
+        propertyAddress: op?.enderecoCompleto || catalogProp?.enderecoCompleto || v.propertyAddress || '',
+        propertyPrice: op?.valor || catalogProp?.valorFormatado || v.propertyPrice || '',
+        propertyPhoto: catalogProp?.primaryImage || op?.foto || v.propertyPhoto || '',
+        propertyUrl: catalogProp?.websiteUrl || v.propertyUrl || `https://www.santosemello.com.br/imovel/${v.propertyId}`,
+        chave: op?.chave || null,
+        captadores: op?.captadores || [],
+        proprietarios: op?.proprietarios || [],
+        anotacoes: op?.anotacoes || ''
+      };
+    }));
+
+    // 3. Salva no session metadata do Helena CRM
     let sessionResult = null;
     try {
       sessionResult = await recordScheduledVisitsInHelenaSession({
         sessionId,
         contactId,
-        visits: visitList,
+        visits: enrichedVisits,
         tokenOverride: token
       });
     } catch (helenaErr) {
       console.warn('Aviso ao salvar visitas no metadata da Helena:', helenaErr.message);
     }
 
+    // 4. Salva nas Notas/Anexos do Card do Lead no Painel do Helena CRM
+    let cardResult = null;
+    try {
+      const panelId = req.body.panelId || req.query.panelId || null;
+      cardResult = await recordScheduledVisitsInHelenaCard({
+        contactId,
+        sessionId,
+        visits: enrichedVisits,
+        clientName,
+        clientPhone,
+        panelId,
+        tokenOverride: token
+      });
+      if (cardResult && cardResult.success) {
+        console.log(`📋 [Helena CRM Card] Visitas registradas no Card #${cardResult.cardKey} (${cardResult.cardId})`);
+      }
+    } catch (cardErr) {
+      console.warn('Aviso ao registrar visitas no card do Helena CRM:', cardErr.message);
+    }
+
     res.json({
       success: true,
-      message: `${visitList.length} visita(s) agendada(s) com sucesso!`,
+      message: `${visitList.length} visita(s) agendada(s) com sucesso no atendimento e no card do lead!`,
       data: {
         crmVisits: savedCrmVisits,
-        helenaSession: sessionResult
+        helenaSession: sessionResult,
+        card: cardResult
       }
     });
   } catch (err) {

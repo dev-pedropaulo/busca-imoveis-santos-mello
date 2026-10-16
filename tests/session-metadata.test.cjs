@@ -101,7 +101,7 @@ test('Session Metadata - Validação dos endpoints e regras de negócio', async 
   });
 
   await t.test('Helena CRM Card - Validações de integridade e registro em card', async () => {
-    const { fetchHelenaContactCard, recordSentPropertiesInHelenaCard } = require('../lib/helena-crm');
+    const { fetchHelenaContactCard, recordSentPropertiesInHelenaCard, recordScheduledVisitsInHelenaCard } = require('../lib/helena-crm');
 
     // Rejeita busca de card sem contactId
     await assert.rejects(
@@ -116,5 +116,20 @@ test('Session Metadata - Validação dos endpoints e regras de negócio', async 
     });
     assert.equal(emptyResult.success, false);
     assert.equal(emptyResult.skipped, true);
+
+    // Ignora graciosamente quando lista de visitas vazia
+    const emptyVisitsResult = await recordScheduledVisitsInHelenaCard({
+      contactId: 'a9f747f3-1cde-41a1-8c21-66b14bede7e9',
+      visits: []
+    });
+    assert.equal(emptyVisitsResult.success, false);
+    assert.equal(emptyVisitsResult.skipped, true);
+
+    // Ignora graciosamente quando nem contactId nem sessionId são fornecidos
+    const noContactResult = await recordScheduledVisitsInHelenaCard({
+      visits: [{ propertyId: '3271' }]
+    });
+    assert.equal(noContactResult.success, false);
+    assert.equal(noContactResult.skipped, true);
   });
 });
