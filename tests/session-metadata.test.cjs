@@ -99,4 +99,22 @@ test('Session Metadata - Validação dos endpoints e regras de negócio', async 
     assert.equal(body.data.crmVisits[0].propertyId, '8713');
     assert.equal(body.data.crmVisits[0].time, '14:30');
   });
+
+  await t.test('Helena CRM Card - Validações de integridade e registro em card', async () => {
+    const { fetchHelenaContactCard, recordSentPropertiesInHelenaCard } = require('../lib/helena-crm');
+
+    // Rejeita busca de card sem contactId
+    await assert.rejects(
+      async () => fetchHelenaContactCard(''),
+      /ID do contato não fornecido/
+    );
+
+    // Ignora graciosamente quando lista de imóveis vazia
+    const emptyResult = await recordSentPropertiesInHelenaCard({
+      contactId: 'a9f747f3-1cde-41a1-8c21-66b14bede7e9',
+      properties: []
+    });
+    assert.equal(emptyResult.success, false);
+    assert.equal(emptyResult.skipped, true);
+  });
 });

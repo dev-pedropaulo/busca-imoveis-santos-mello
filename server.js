@@ -10,7 +10,8 @@ const {
   fetchHelenaSession,
   updateHelenaSessionMetadata,
   recordSentPropertiesInHelenaSession,
-  recordScheduledVisitsInHelenaSession
+  recordScheduledVisitsInHelenaSession,
+  recordSentPropertiesInHelenaCard
 } = require('./lib/helena-crm');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
 const { getOperationalPropertyData } = require('./lib/imoview-api');
@@ -1302,20 +1303,47 @@ app.post(['/api/leads/session-metadata', '/api/leads/record-sent'], async (req, 
       .map(enrichPropertyWithCatalog)
       .filter(Boolean);
 
-    const result = await recordSentPropertiesInHelenaSession({
-      sessionId,
-      contactId,
-      properties: enrichedList.length > 0 ? enrichedList : propList,
-      tokenOverride: token
-    });
+    const finalProperties = enrichedList.length > 0 ? enrichedList : propList;
+
+    // 1. Registra no Session Metadata do Helena CRM
+    let sessionResult = null;
+    try {
+      sessionResult = await recordSentPropertiesInHelenaSession({
+        sessionId,
+        contactId,
+        properties: finalProperties,
+        tokenOverride: token
+      });
+    } catch (sessionErr) {
+      console.warn('Aviso ao registrar imóveis no session metadata do Helena CRM:', sessionErr.message);
+    }
+
+    // 2. Registra nas Notas/Anexos do Card do Lead no Painel do Helena CRM
+    let cardResult = null;
+    try {
+      const panelId = req.body.panelId || req.query.panelId || null;
+      cardResult = await recordSentPropertiesInHelenaCard({
+        contactId,
+        sessionId,
+        properties: finalProperties,
+        panelId,
+        tokenOverride: token
+      });
+      if (cardResult && cardResult.success) {
+        console.log(`📋 [Helena CRM Card] Imóveis registrados no Card #${cardResult.cardKey} (${cardResult.cardId})`);
+      }
+    } catch (cardErr) {
+      console.warn('Aviso ao registrar imóveis no card do Helena CRM:', cardErr.message);
+    }
 
     res.json({
       success: true,
-      message: `${propList.length} imóvel(is) registrado(s) no session metadata do Helena CRM com sucesso!`,
-      data: result
+      message: `${propList.length} imóvel(is) registrado(s) no atendimento e no card do lead com sucesso!`,
+      data: sessionResult,
+      card: cardResult
     });
   } catch (err) {
-    console.error('⚠️ Falha ao registrar imóveis no session metadata do Helena CRM:', err.message);
+    console.error('⚠️ Falha ao registrar imóveis no Helena CRM:', err.message);
     res.status(500).json({
       success: false,
       error: err.message

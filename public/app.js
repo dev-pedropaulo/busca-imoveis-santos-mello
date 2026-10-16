@@ -1514,6 +1514,31 @@
   }
 
   // --- Handlers da Barra de Ações em Lote (Seleção Múltipla no Atendimento) ---
+  const btnBulkSaveCard = document.getElementById('btnBulkSaveCard');
+  if (btnBulkSaveCard) {
+    btnBulkSaveCard.addEventListener('click', async () => {
+      const selectedProps = loadedPropertiesList.filter(p => selectedPropertyIds.has(String(p.id)));
+      if (selectedProps.length === 0) return;
+
+      btnBulkSaveCard.disabled = true;
+      const originalText = btnBulkSaveCard.innerHTML;
+      btnBulkSaveCard.innerHTML = '<span>⏳ Salvando no Card...</span>';
+
+      try {
+        await recordPropertiesSentToHelena(selectedProps);
+        btnBulkSaveCard.innerHTML = '<span>✅ Salvo no Card!</span>';
+        showToast(`📌 ${selectedProps.length} imóvel(is) salvo(s) nas notas do Card do Lead com sucesso!`);
+      } catch (err) {
+        showToast(`⚠️ Erro ao salvar no card: ${err.message}`, '⚠️');
+      } finally {
+        setTimeout(() => {
+          btnBulkSaveCard.disabled = false;
+          btnBulkSaveCard.innerHTML = originalText;
+        }, 2500);
+      }
+    });
+  }
+
   const btnBulkCopyText = document.getElementById('btnBulkCopyText');
   if (btnBulkCopyText) {
     btnBulkCopyText.addEventListener('click', async () => {
