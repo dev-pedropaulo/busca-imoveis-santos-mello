@@ -558,6 +558,14 @@
         await savePropertyFromForm();
       });
     }
+
+    const btnPropModalSubmit = document.getElementById('btnPropModalSubmit');
+    if (btnPropModalSubmit) {
+      btnPropModalSubmit.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await savePropertyFromForm();
+      });
+    }
   }
 
   function openPropertyModal(item = null) {
@@ -565,9 +573,18 @@
     if (propModalTitle) {
       propModalTitle.textContent = item ? `Editar Imóvel #${item.id}` : 'Cadastrar Novo Imóvel';
     }
+    const btnPropSubmitText = document.getElementById('btnPropSubmitText');
+    if (btnPropSubmitText) {
+      btnPropSubmitText.textContent = item ? '💾 Salvar Alterações' : '✨ Criar Imóvel';
+    }
 
     if (propForm) {
       propForm.reset();
+
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = (val !== null && val !== undefined) ? val : '';
+      };
 
       if (item) {
         // Carrega fotos existentes na galeria
@@ -583,32 +600,34 @@
           state.modalPrimaryIndex = 0;
         }
 
-        document.getElementById('formPropId').value = item.id || '';
-        document.getElementById('formPropId').disabled = true;
-        document.getElementById('formPropTitle').value = item.title || '';
-        document.getElementById('formPropTransaction').value = item.transactionType || 'Locação';
-        document.getElementById('formPropCategory').value = item.propertyType || 'Apartment';
-        document.getElementById('formPropUsage').value = item.usageType || 'Residencial';
-        document.getElementById('formPropStage').value = item.kanbanStage || 'disponivel';
-        document.getElementById('formPropKeyTag').value = item.keyTag || `CLAV-${item.id}`;
-        document.getElementById('formPropPriceSale').value = item.price || '';
-        document.getElementById('formPropPriceRent').value = item.rentalPrice || '';
-        document.getElementById('formPropCondo').value = item.condo || '';
-        document.getElementById('formPropIptu').value = item.iptu || '';
-        document.getElementById('formPropArea').value = item.livingArea || '';
-        document.getElementById('formPropBeds').value = item.bedrooms || '';
-        document.getElementById('formPropSuites').value = item.suites || '';
-        document.getElementById('formPropBaths').value = item.bathrooms || '';
-        document.getElementById('formPropGarage').value = item.garage || '';
-        document.getElementById('formPropAddress').value = item.location?.address || '';
-        document.getElementById('formPropNumber').value = item.location?.streetNumber || '';
-        document.getElementById('formPropComplement').value = item.location?.complement || '';
-        document.getElementById('formPropNeighborhood').value = item.location?.neighborhood || '';
-        document.getElementById('formPropCity').value = item.location?.city || 'Santo André';
-        document.getElementById('formPropCep').value = item.location?.postalCode || '';
-        document.getElementById('formPropImage').value = '';
-        document.getElementById('formPropTour').value = item.virtualTourLink || '';
-        document.getElementById('formPropDesc').value = item.description || '';
+        setVal('formPropId', item.id);
+        const elId = document.getElementById('formPropId');
+        if (elId) elId.disabled = true;
+
+        setVal('formPropTitle', item.title);
+        setVal('formPropTransaction', item.transactionType || 'Locação');
+        setVal('formPropCategory', item.propertyType || 'Apartment');
+        setVal('formPropUsage', item.usageType || 'Residencial');
+        setVal('formPropStage', item.kanbanStage || 'disponivel');
+        setVal('formPropKeyTag', item.keyTag || `CLAV-${item.id}`);
+        setVal('formPropPriceSale', item.price);
+        setVal('formPropPriceRent', item.rentalPrice);
+        setVal('formPropCondo', item.condo);
+        setVal('formPropIptu', item.iptu);
+        setVal('formPropArea', item.livingArea);
+        setVal('formPropBeds', item.bedrooms);
+        setVal('formPropSuites', item.suites);
+        setVal('formPropBaths', item.bathrooms);
+        setVal('formPropGarage', item.garage);
+        setVal('formPropAddress', item.location?.address);
+        setVal('formPropNumber', item.location?.streetNumber);
+        setVal('formPropComplement', item.location?.complement);
+        setVal('formPropNeighborhood', item.location?.neighborhood);
+        setVal('formPropCity', item.location?.city || 'Santo André');
+        setVal('formPropCep', item.location?.postalCode);
+        setVal('formPropImage', '');
+        setVal('formPropTour', item.virtualTourLink);
+        setVal('formPropDesc', item.description);
 
         // Comodidades
         const featSet = new Set(item.features || []);
@@ -618,12 +637,16 @@
       } else {
         state.modalPhotos = [];
         state.modalPrimaryIndex = 0;
-        document.getElementById('formPropId').value = `SM-${Math.floor(1000 + Math.random() * 9000)}`;
-        document.getElementById('formPropId').disabled = false;
-        document.getElementById('formPropCity').value = 'Santo André';
-        document.getElementById('formPropStage').value = 'disponivel';
-        document.getElementById('formPropKeyTag').value = `CLAV-${Math.floor(10 + Math.random() * 90)}`;
-        document.getElementById('formPropImage').value = '';
+        const newCode = `SM-${Math.floor(1000 + Math.random() * 9000)}`;
+        const elId = document.getElementById('formPropId');
+        if (elId) {
+          elId.value = newCode;
+          elId.disabled = false;
+        }
+        setVal('formPropCity', 'Santo André');
+        setVal('formPropStage', 'disponivel');
+        setVal('formPropKeyTag', `CLAV-${Math.floor(10 + Math.random() * 90)}`);
+        setVal('formPropImage', '');
       }
 
       renderPhotosGallery();
@@ -640,74 +663,112 @@
 
   async function savePropertyFromForm() {
     const isEditing = !!state.editingPropertyId;
-    const id = document.getElementById('formPropId').value.trim();
-    const title = document.getElementById('formPropTitle').value.trim();
-
-    if (!title) {
-      showToast('O título do imóvel é obrigatório.', 'error');
-      return;
-    }
-
-    const features = [];
-    document.querySelectorAll('.feat-checkbox:checked').forEach(cb => {
-      features.push(cb.value);
-    });
-
-    // Determinar foto de capa e galeria completa
-    let primaryImage = '';
-    let images = [];
-
-    if (state.modalPhotos.length > 0) {
-      const validIdx = (state.modalPrimaryIndex >= 0 && state.modalPrimaryIndex < state.modalPhotos.length)
-        ? state.modalPrimaryIndex
-        : 0;
-      primaryImage = state.modalPhotos[validIdx];
-      images = [...state.modalPhotos];
-    } else {
-      const directUrl = document.getElementById('formPropImage')?.value.trim();
-      if (directUrl) {
-        primaryImage = directUrl;
-        images = [directUrl];
-      } else {
-        primaryImage = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
-        images = [primaryImage];
-      }
-    }
-
-    const payload = {
-      id: id,
-      title: title,
-      transactionType: document.getElementById('formPropTransaction').value,
-      propertyType: document.getElementById('formPropCategory').value,
-      usageType: document.getElementById('formPropUsage').value,
-      kanbanStage: document.getElementById('formPropStage').value,
-      keyTag: document.getElementById('formPropKeyTag').value.trim() || `CLAV-${id}`,
-      price: parseFloat(document.getElementById('formPropPriceSale').value) || 0,
-      rentalPrice: parseFloat(document.getElementById('formPropPriceRent').value) || 0,
-      condo: parseFloat(document.getElementById('formPropCondo').value) || 0,
-      iptu: parseFloat(document.getElementById('formPropIptu').value) || 0,
-      livingArea: parseFloat(document.getElementById('formPropArea').value) || 0,
-      bedrooms: parseInt(document.getElementById('formPropBeds').value) || 0,
-      suites: parseInt(document.getElementById('formPropSuites').value) || 0,
-      bathrooms: parseInt(document.getElementById('formPropBaths').value) || 0,
-      garage: parseInt(document.getElementById('formPropGarage').value) || 0,
-      location: {
-        address: document.getElementById('formPropAddress').value.trim(),
-        streetNumber: document.getElementById('formPropNumber').value.trim(),
-        complement: document.getElementById('formPropComplement').value.trim(),
-        neighborhood: document.getElementById('formPropNeighborhood').value.trim(),
-        city: document.getElementById('formPropCity').value.trim() || 'Santo André',
-        state: 'SP',
-        postalCode: document.getElementById('formPropCep').value.trim()
-      },
-      primaryImage: primaryImage,
-      images: images,
-      virtualTourLink: document.getElementById('formPropTour').value.trim(),
-      description: document.getElementById('formPropDesc').value.trim(),
-      features: features
-    };
+    const btnPropModalSubmit = document.getElementById('btnPropModalSubmit');
+    const btnPropSubmitText = document.getElementById('btnPropSubmitText');
 
     try {
+      const getVal = (id, def = '') => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : def;
+      };
+      const getNum = (id, def = 0) => {
+        const el = document.getElementById(id);
+        if (!el) return def;
+        const n = parseFloat(el.value);
+        return isNaN(n) ? def : n;
+      };
+      const getInt = (id, def = 0) => {
+        const el = document.getElementById(id);
+        if (!el) return def;
+        const n = parseInt(el.value, 10);
+        return isNaN(n) ? def : n;
+      };
+
+      let id = getVal('formPropId');
+      if (!id) {
+        id = `SM-${Math.floor(1000 + Math.random() * 9000)}`;
+        const elId = document.getElementById('formPropId');
+        if (elId) elId.value = id;
+      }
+
+      const title = getVal('formPropTitle');
+      if (!title) {
+        showToast('Por favor, informe o título do anúncio do imóvel.', 'error');
+        const elTitle = document.getElementById('formPropTitle');
+        if (elTitle) elTitle.focus();
+        return;
+      }
+
+      const neighborhood = getVal('formPropNeighborhood');
+      if (!neighborhood) {
+        showToast('Por favor, informe o bairro do imóvel.', 'error');
+        const elNeigh = document.getElementById('formPropNeighborhood');
+        if (elNeigh) elNeigh.focus();
+        return;
+      }
+
+      const features = [];
+      document.querySelectorAll('.feat-checkbox:checked').forEach(cb => {
+        features.push(cb.value);
+      });
+
+      // Determinar foto de capa e galeria completa
+      let primaryImage = '';
+      let images = [];
+
+      if (state.modalPhotos && state.modalPhotos.length > 0) {
+        const validIdx = (state.modalPrimaryIndex >= 0 && state.modalPrimaryIndex < state.modalPhotos.length)
+          ? state.modalPrimaryIndex
+          : 0;
+        primaryImage = state.modalPhotos[validIdx];
+        images = [...state.modalPhotos];
+      } else {
+        const directUrl = getVal('formPropImage');
+        if (directUrl) {
+          primaryImage = directUrl;
+          images = [directUrl];
+        } else {
+          primaryImage = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+          images = [primaryImage];
+        }
+      }
+
+      const payload = {
+        id: id,
+        title: title,
+        transactionType: getVal('formPropTransaction', 'Locação'),
+        propertyType: getVal('formPropCategory', 'Apartment'),
+        usageType: getVal('formPropUsage', 'Residencial'),
+        kanbanStage: getVal('formPropStage', 'disponivel'),
+        keyTag: getVal('formPropKeyTag') || `CLAV-${id}`,
+        price: getNum('formPropPriceSale'),
+        rentalPrice: getNum('formPropPriceRent'),
+        condo: getNum('formPropCondo'),
+        iptu: getNum('formPropIptu'),
+        livingArea: getNum('formPropArea'),
+        bedrooms: getInt('formPropBeds'),
+        suites: getInt('formPropSuites'),
+        bathrooms: getInt('formPropBaths'),
+        garage: getInt('formPropGarage'),
+        location: {
+          address: getVal('formPropAddress'),
+          streetNumber: getVal('formPropNumber'),
+          complement: getVal('formPropComplement'),
+          neighborhood: neighborhood,
+          city: getVal('formPropCity', 'Santo André'),
+          state: 'SP',
+          postalCode: getVal('formPropCep')
+        },
+        primaryImage: primaryImage,
+        images: images,
+        virtualTourLink: getVal('formPropTour'),
+        description: getVal('formPropDesc'),
+        features: features
+      };
+
+      if (btnPropModalSubmit) btnPropModalSubmit.disabled = true;
+      if (btnPropSubmitText) btnPropSubmitText.textContent = '⏳ Salvando...';
+
       const url = isEditing ? `/api/imoveis/${state.editingPropertyId}` : '/api/imoveis';
       const method = isEditing ? 'PUT' : 'POST';
 
@@ -720,11 +781,16 @@
       const json = await res.json();
       if (!json.success) throw new Error(json.error || 'Erro ao salvar imóvel.');
 
-      showToast(json.message || 'Imóvel salvo com sucesso!');
+      showToast(json.message || (isEditing ? 'Imóvel atualizado com sucesso!' : 'Imóvel cadastrado com sucesso!'));
       closePropertyModal();
       loadCrudProperties();
     } catch (err) {
       showToast(err.message, 'error');
+    } finally {
+      if (btnPropModalSubmit) btnPropModalSubmit.disabled = false;
+      if (btnPropSubmitText) {
+        btnPropSubmitText.textContent = isEditing ? '💾 Salvar Alterações' : '✨ Criar Imóvel';
+      }
     }
   }
 

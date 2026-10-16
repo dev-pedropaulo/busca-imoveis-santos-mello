@@ -1092,7 +1092,7 @@
         <h3 id="propModalTitle">Cadastrar Novo Imóvel</h3>
         <button type="button" class="btn-icon-action" id="propModalClose">✕</button>
       </div>
-      <form id="propForm" class="crm-modal-body">
+      <form id="propForm" class="crm-modal-body" novalidate>
         
         <div class="form-grid-3">
           <div class="form-group">
@@ -1191,10 +1191,14 @@
           </div>
         </div>
 
-        <div class="form-grid-3">
+        <div class="form-grid-4">
           <div class="form-group">
             <label class="form-label" for="formPropGarage">Vagas de Garagem</label>
             <input type="number" id="formPropGarage" class="form-control" placeholder="ex: 2">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="formPropCep">CEP</label>
+            <input type="text" id="formPropCep" class="form-control" placeholder="ex: 09090-000">
           </div>
           <div class="form-group">
             <label class="form-label" for="formPropNeighborhood">Bairro *</label>
@@ -1293,7 +1297,9 @@
 
         <div class="crm-modal-footer">
           <button type="button" class="btn-secondary-action" id="propModalCancel">Cancelar</button>
-          <button type="submit" class="btn-primary-action">💾 Salvar Imóvel</button>
+          <button type="submit" class="btn-primary-action" id="btnPropModalSubmit">
+            <span id="btnPropSubmitText">✨ Criar Imóvel</span>
+          </button>
         </div>
       </form>
     </div>
