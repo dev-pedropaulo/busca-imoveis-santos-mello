@@ -12,7 +12,8 @@ const {
   recordSentPropertiesInHelenaSession,
   recordScheduledVisitsInHelenaSession,
   recordSentPropertiesInHelenaCard,
-  recordScheduledVisitsInHelenaCard
+  recordScheduledVisitsInHelenaCard,
+  recordVisitFeedbackInHelenaCard
 } = require('./lib/helena-crm');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
 const { getOperationalPropertyData } = require('./lib/imoview-api');
@@ -1517,6 +1518,26 @@ app.get('/api/proposta/dados', async (req, res) => {
       }
     }
 
+    // Complementa com visitas registradas localmente no crmStore para este lead ou sessão
+    try {
+      const localVisits = crmStore.getVisits({ contactId, sessionId });
+      localVisits.forEach(lv => {
+        const lvId = String(lv.propertyId || '').toUpperCase();
+        if (lvId && !visitasAgendadas.some(v => String(v.propertyId || '').toUpperCase() === lvId)) {
+          const enriched = enrichPropertyWithCatalog({ id: lv.propertyId, titulo: lv.propertyTitle });
+          visitasAgendadas.push({
+            propertyId: lv.propertyId,
+            propertyTitle: enriched?.titulo || lv.propertyTitle || `Imóvel #${lv.propertyId}`,
+            propertyAddress: enriched?.enderecoCompleto || '',
+            propertyPrice: enriched?.valorFormatado || '',
+            date: lv.date,
+            time: lv.time,
+            broker: lv.broker
+          });
+        }
+      });
+    } catch (_) {}
+
     const atendimentoNum = activeSessionId 
       ? activeSessionId.slice(0, 6).toUpperCase() 
       : (contactId ? contactId.slice(0, 6).toUpperCase() : '5861');
@@ -1532,6 +1553,94 @@ app.get('/api/proposta/dados', async (req, res) => {
     });
   } catch (err) {
     console.error('Erro ao gerar dados da proposta:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/leads/visit-feedback
+ * Registra o feedback de visita e fechamento no Card do Lead no Helena CRM
+ */
+app.post('/api/leads/visit-feedback', async (req, res) => {
+  try {
+    const {
+      contactId,
+      sessionId,
+      status,
+      imoveisFechados,
+      valor,
+      termo,
+      garantia,
+      observacoes,
+      clientName,
+      clientPhone,
+      corretor
+    } = req.body || {};
+
+    if (!contactId && !sessionId && !valor && (!imoveisFechados || imoveisFechados.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Parâmetros obrigatórios ausentes. Informe a identificação do contato/sessão, imóveis ou o valor negociado.'
+      });
+    }
+
+    const token = req.headers['x-helena-token'] || req.query.token || null;
+
+    // 1. Registra no Card do Lead no Helena CRM
+    let cardResult = null;
+    try {
+      cardResult = await recordVisitFeedbackInHelenaCard({
+        contactId,
+        sessionId,
+        status: status || 'Proposta Fechada / Aprovada',
+        imoveisFechados: imoveisFechados || [],
+        valor,
+        termo,
+        garantia,
+        observacoes,
+        clientName,
+        clientPhone,
+        corretor,
+        tokenOverride: token
+      });
+    } catch (cardErr) {
+      console.warn('Aviso ao registrar feedback no card do Helena CRM:', cardErr.message);
+      cardResult = { success: false, error: cardErr.message };
+    }
+
+    // 2. Atualiza o status do imóvel no Kanban do CRM
+    const closedList = Array.isArray(imoveisFechados) ? imoveisFechados : [];
+    if (closedList.length > 0) {
+      const isApproved = status && (status.toLowerCase().includes('fechada') || status.toLowerCase().includes('aprovada'));
+      const kanbanStage = isApproved ? 'analise_contrato' : 'com_proposta';
+      const statusLabel = isApproved ? 'Em Análise / Contrato' : 'Com Proposta';
+
+      closedList.forEach(p => {
+        const pId = p.id || p.propertyId || p.codigo;
+        if (pId) {
+          crmStore.savePropertyOverride(pId, {
+            kanbanStage,
+            status: statusLabel
+          });
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      cardNoteSaved: Boolean(cardResult?.success),
+      cardResult,
+      summary: {
+        status,
+        valor,
+        termo,
+        garantia,
+        totalImoveisFechados: closedList.length
+      },
+      message: 'Feedback de visita registrado com sucesso no Card do Lead!'
+    });
+  } catch (err) {
+    console.error('Erro ao processar feedback de visita:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });

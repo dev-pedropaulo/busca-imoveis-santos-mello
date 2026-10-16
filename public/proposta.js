@@ -10,6 +10,10 @@
 
   // --- Estado Global da Proposta ---
   const state = {
+    contactId: '',
+    sessionId: '',
+    visitasAgendadas: [],
+    closedPropertyIds: new Set(),
     atendimento: '5861',
     dataDocumento: new Date().toISOString().split('T')[0],
     corretor: 'Matheus dos Santos Cruz',
@@ -45,12 +49,30 @@
   // Ações do Cabeçalho e Navegação
   const btnPrintPdf = document.getElementById('btnPrintPdf');
   const btnDownloadPdf = document.getElementById('btnDownloadPdf');
+  const btnOpenFeedbackModal = document.getElementById('btnOpenFeedbackModal');
   const btnCopyProposalWhatsApp = document.getElementById('btnCopyProposalWhatsApp');
   const leadSessionChip = document.getElementById('leadSessionChip');
   const leadSessionText = document.getElementById('leadSessionText');
   const headerLinkCatalog = document.getElementById('headerLinkCatalog');
   const headerLinkVisitas = document.getElementById('headerLinkVisitas');
   const headerLinkProposta = document.getElementById('headerLinkProposta');
+
+  // Modal de Feedback de Visita & Fechamento
+  const feedbackModalOverlay = document.getElementById('feedbackModalOverlay');
+  const btnCloseFeedbackModal = document.getElementById('btnCloseFeedbackModal');
+  const btnFeedbackCancel = document.getElementById('btnFeedbackCancel');
+  const feedbackForm = document.getElementById('feedbackForm');
+  const feedbackModalClientName = document.getElementById('feedbackModalClientName');
+  const feedbackScheduledPropsList = document.getElementById('feedbackScheduledPropsList');
+  const feedbackExtraCodeInput = document.getElementById('feedbackExtraCodeInput');
+  const btnFeedbackAddExtraCode = document.getElementById('btnFeedbackAddExtraCode');
+  const feedbackStatusSelect = document.getElementById('feedbackStatusSelect');
+  const feedbackValorInput = document.getElementById('feedbackValorInput');
+  const feedbackTermoInput = document.getElementById('feedbackTermoInput');
+  const feedbackGarantiaSelect = document.getElementById('feedbackGarantiaSelect');
+  const feedbackObsText = document.getElementById('feedbackObsText');
+  const btnFeedbackSubmit = document.getElementById('btnFeedbackSubmit');
+  const btnFeedbackSubmitText = document.getElementById('btnFeedbackSubmitText');
 
   // Modo Manual vs Digital
   const checkManualMode = document.getElementById('checkManualMode');
@@ -438,6 +460,10 @@
     const corretorParam = urlParams.get('corretor');
     const atendimentoParam = urlParams.get('atendimento');
 
+    // Armazena identificadores no state
+    if (contactId) state.contactId = contactId;
+    if (sessionId) state.sessionId = sessionId;
+
     // Configura data inicial para hoje
     inputDataDoc.value = state.dataDocumento;
 
@@ -465,14 +491,17 @@
 
     // Se houver contactId ou sessionId, consulta o endpoint unificado de dados
     if (contactId || sessionId) {
-      leadSessionChip.style.display = 'inline-flex';
-      leadSessionText.textContent = sessionId ? `Sessão #${sessionId.slice(0, 8)}...` : `Lead #${contactId.slice(0, 8)}...`;
+      if (leadSessionChip) leadSessionChip.style.display = 'inline-flex';
+      if (leadSessionText) leadSessionText.textContent = sessionId ? `Sessão #${sessionId.slice(0, 8)}...` : `Lead #${contactId.slice(0, 8)}...`;
 
       try {
         const res = await fetch(`/api/proposta/dados?${qString}`);
         const data = await res.json();
 
         if (res.ok && data.success) {
+          if (data.contactId) state.contactId = data.contactId;
+          if (data.sessionId) state.sessionId = data.sessionId;
+
           if (data.atendimento) {
             state.atendimento = data.atendimento;
             inputAtendimento.value = state.atendimento;
@@ -497,6 +526,7 @@
 
           // 1. Visitas Agendadas (têm prioridade de seleção)
           const scheduledList = Array.isArray(data.visitasAgendadas) ? data.visitasAgendadas : [];
+          state.visitasAgendadas = scheduledList;
           scheduledList.forEach(v => {
             const vId = String(v.propertyId || '');
             if (vId) {
@@ -565,6 +595,329 @@
     }
 
     renderAll();
+  }
+
+  // --- Funções Auxiliares e Lógica do Modal de Feedback de Visita ---
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Consolida lista de imóveis da visita para exibir no modal de feedback
+   */
+  function getVisitPropertiesForFeedback() {
+    const map = new Map();
+
+    // 1. Visitas agendadas retornadas pela API/CRM
+    (state.visitasAgendadas || []).forEach(v => {
+      const pId = String(v.propertyId || v.id || '').trim();
+      if (!pId) return;
+      map.set(pId.toLowerCase(), {
+        id: pId,
+        address: v.propertyAddress || v.enderecoCompleto || v.endereco || `Imóvel #${pId}`,
+        neighborhood: v.propertyNeighborhood || v.bairro || 'Santo André - SP',
+        value: v.propertyPrice || v.valor || 'Sob Consulta',
+        isScheduled: true
+      });
+    });
+
+    // 2. Imóveis da proposta atual
+    (state.allProperties || []).forEach(p => {
+      const pId = String(p.id || '').trim();
+      if (!pId) return;
+      const existing = map.get(pId.toLowerCase());
+      if (existing) {
+        if (p.address && (!existing.address || existing.address.startsWith('Imóvel #'))) {
+          existing.address = p.address;
+        }
+        if (p.neighborhood && existing.neighborhood === 'Santo André - SP') {
+          existing.neighborhood = p.neighborhood;
+        }
+        if (p.value && existing.value === 'Sob Consulta') {
+          existing.value = p.value;
+        }
+      } else {
+        map.set(pId.toLowerCase(), {
+          id: pId,
+          address: p.address || `Imóvel #${pId}`,
+          neighborhood: p.neighborhood || 'Santo André - SP',
+          value: p.value || 'Sob Consulta',
+          isScheduled: Boolean(p.isScheduled)
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }
+
+  /**
+   * Renderiza os cards de imóveis com checkbox interativo no modal de feedback
+   */
+  function renderFeedbackPropsList() {
+    if (!feedbackScheduledPropsList) return;
+    const props = getVisitPropertiesForFeedback();
+
+    if (props.length === 0) {
+      feedbackScheduledPropsList.innerHTML = `
+        <div class="feedback-empty-props">
+          Nenhum imóvel de visita localizado automaticamente neste atendimento.<br>
+          <span style="font-size: 11px; opacity: 0.85;">Digite o código do imóvel fechado no campo abaixo para adicioná-lo.</span>
+        </div>
+      `;
+      return;
+    }
+
+    feedbackScheduledPropsList.innerHTML = '';
+    props.forEach(p => {
+      const isChecked = state.closedPropertyIds.has(p.id.toLowerCase());
+      const card = document.createElement('div');
+      card.className = `feedback-prop-card${isChecked ? ' is-selected' : ''}`;
+      card.dataset.propId = p.id;
+
+      card.innerHTML = `
+        <input type="checkbox" class="feedback-prop-check" ${isChecked ? 'checked' : ''} aria-label="Selecionar imóvel ${p.id}">
+        <div class="feedback-prop-info">
+          <div class="feedback-prop-headline">
+            <span class="feedback-prop-code">Cód. #${p.id}</span>
+            ${p.isScheduled ? '<span class="feedback-prop-badge-visita">📅 Visita Agendada</span>' : '<span class="feedback-prop-badge-enviado">💬 Enviado no Atendimento</span>'}
+            <span class="feedback-prop-val">${escapeHtml(p.value)}</span>
+          </div>
+          <div class="feedback-prop-address">${escapeHtml(p.address)}</div>
+          <div class="feedback-prop-bairro">${escapeHtml(p.neighborhood)}</div>
+        </div>
+      `;
+
+      const checkbox = card.querySelector('.feedback-prop-check');
+      const toggleSelect = () => {
+        const nextChecked = !state.closedPropertyIds.has(p.id.toLowerCase());
+        if (nextChecked) {
+          state.closedPropertyIds.add(p.id.toLowerCase());
+          card.classList.add('is-selected');
+          checkbox.checked = true;
+
+          // Sugere o valor deste imóvel se o input de valor do feedback estiver vazio ou genérico
+          if (p.value) {
+            const numVal = p.value.replace(/[^\d,]/g, '');
+            if (numVal && (!feedbackValorInput.value || feedbackValorInput.value === '1.600,00' || feedbackValorInput.value === '0,00')) {
+              feedbackValorInput.value = numVal;
+            }
+          }
+        } else {
+          state.closedPropertyIds.delete(p.id.toLowerCase());
+          card.classList.remove('is-selected');
+          checkbox.checked = false;
+        }
+      };
+
+      checkbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSelect();
+      });
+
+      card.addEventListener('click', () => {
+        toggleSelect();
+      });
+
+      feedbackScheduledPropsList.appendChild(card);
+    });
+  }
+
+  /**
+   * Adiciona código de imóvel avulso digitado pelo usuário no modal de feedback
+   */
+  async function handleAddExtraCodeFeedback() {
+    if (!feedbackExtraCodeInput) return;
+    const raw = feedbackExtraCodeInput.value.trim();
+    if (!raw) return;
+
+    const code = raw.replace(/\D/g, '');
+    if (!code) {
+      showToast('Informe um código numérico válido', '⚠️');
+      return;
+    }
+
+    if (btnFeedbackAddExtraCode) {
+      btnFeedbackAddExtraCode.disabled = true;
+      btnFeedbackAddExtraCode.textContent = 'Buscando...';
+    }
+
+    try {
+      const res = await fetch(`/api/imoveis/${encodeURIComponent(code)}`);
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.imovel) {
+        showToast(`Imóvel #${code} não encontrado no catálogo`, '⚠️');
+        return;
+      }
+
+      const im = data.imovel;
+      const addr = im.enderecoCompleto || im.endereco || [im.bairro, im.cidade].filter(Boolean).join(', ') || `Imóvel #${code}`;
+      const price = im.valorFormatado || im.priceText || (im.valor ? `R$ ${Number(im.valor).toLocaleString('pt-BR')}` : 'Sob Consulta');
+
+      const existing = state.allProperties.find(p => p.id.toLowerCase() === code.toLowerCase());
+      if (!existing) {
+        state.allProperties.unshift({
+          id: code,
+          address: addr,
+          neighborhood: im.bairro ? `${im.bairro} - ${im.cidade || 'Santo André'}` : 'Santo André - SP',
+          value: price,
+          selected: true,
+          isScheduled: true,
+          source: 'avulso'
+        });
+      }
+
+      state.closedPropertyIds.add(code.toLowerCase());
+
+      if (price) {
+        const numVal = price.replace(/[^\d,]/g, '');
+        if (numVal && (!feedbackValorInput.value || feedbackValorInput.value === '1.600,00')) {
+          feedbackValorInput.value = numVal;
+        }
+      }
+
+      feedbackExtraCodeInput.value = '';
+      renderFeedbackPropsList();
+      renderAll();
+      showToast(`Imóvel #${code} adicionado com sucesso!`, '✅');
+    } catch (err) {
+      showToast(`Erro ao buscar imóvel #${code}: ${err.message}`, '⚠️');
+    } finally {
+      if (btnFeedbackAddExtraCode) {
+        btnFeedbackAddExtraCode.disabled = false;
+        btnFeedbackAddExtraCode.textContent = '+ Adicionar';
+      }
+    }
+  }
+
+  /**
+   * Abre o Modal de Feedback de Visita & Fechamento
+   */
+  function openFeedbackModal() {
+    if (!feedbackModalOverlay) return;
+
+    if (feedbackModalClientName) {
+      const cName = state.client.name || 'Cliente';
+      const atText = state.atendimento ? ` (Atendimento #${state.atendimento})` : '';
+      feedbackModalClientName.textContent = `${cName}${atText}`;
+    }
+
+    if (feedbackValorInput && !feedbackValorInput.value.trim() && state.proposal.rentValue) {
+      feedbackValorInput.value = state.proposal.rentValue;
+    }
+
+    if (feedbackTermoInput && !feedbackTermoInput.value.trim()) {
+      feedbackTermoInput.value = state.proposal.termMonths ? `${state.proposal.termMonths} meses` : '30 meses';
+    }
+
+    if (feedbackObsText && !feedbackObsText.value.trim() && state.proposal.notes) {
+      feedbackObsText.value = state.proposal.notes;
+    }
+
+    // Se nenhuma propriedade estiver marcada ainda, pré-seleciona as que foram agendadas
+    if (state.closedPropertyIds.size === 0) {
+      (state.visitasAgendadas || []).forEach(v => {
+        const vid = String(v.propertyId || v.id || '').trim();
+        if (vid) state.closedPropertyIds.add(vid.toLowerCase());
+      });
+      if (state.closedPropertyIds.size === 0) {
+        const firstSelected = state.allProperties.find(p => p.selected);
+        if (firstSelected) {
+          state.closedPropertyIds.add(firstSelected.id.toLowerCase());
+        }
+      }
+    }
+
+    renderFeedbackPropsList();
+    feedbackModalOverlay.style.display = 'flex';
+  }
+
+  /**
+   * Fecha o Modal de Feedback de Visita
+   */
+  function closeFeedbackModal() {
+    if (feedbackModalOverlay) {
+      feedbackModalOverlay.style.display = 'none';
+    }
+  }
+
+  /**
+   * Salva o Feedback da Visita e Fechamento diretamente no Card do Lead no Helena CRM
+   */
+  async function handleSaveFeedback(e) {
+    if (e) e.preventDefault();
+
+    const status = feedbackStatusSelect ? feedbackStatusSelect.value : '🟢 Proposta Fechada / Aprovada';
+    const valor = feedbackValorInput ? feedbackValorInput.value.trim() : '';
+    const termo = feedbackTermoInput ? feedbackTermoInput.value.trim() : '';
+    const garantia = feedbackGarantiaSelect ? feedbackGarantiaSelect.value : '';
+    const observacoes = feedbackObsText ? feedbackObsText.value.trim() : '';
+
+    if (!valor) {
+      showToast('Por favor, informe o valor acordado ou negociado.', '⚠️');
+      if (feedbackValorInput) feedbackValorInput.focus();
+      return;
+    }
+
+    const allAvailable = getVisitPropertiesForFeedback();
+    const selectedProps = allAvailable.filter(p => state.closedPropertyIds.has(p.id.toLowerCase()));
+
+    if (selectedProps.length === 0 && allAvailable.length > 0) {
+      const confirmNoProp = window.confirm('Nenhum imóvel foi selecionado na lista acima. Deseja registrar o feedback assim mesmo?');
+      if (!confirmNoProp) return;
+    }
+
+    if (btnFeedbackSubmit) btnFeedbackSubmit.disabled = true;
+    if (btnFeedbackSubmitText) btnFeedbackSubmitText.innerHTML = '⏳ Gravando no Card do Lead...';
+
+    try {
+      const payload = {
+        contactId: state.contactId,
+        sessionId: state.sessionId,
+        status: status,
+        imoveisFechados: selectedProps,
+        valor: valor,
+        termo: termo,
+        garantia: garantia,
+        observacoes: observacoes,
+        clientName: state.client.name,
+        clientPhone: state.client.phone,
+        corretor: state.corretor
+      };
+
+      const res = await fetch('/api/leads/visit-feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Falha ao salvar feedback no Helena CRM');
+      }
+
+      if (data.cardNoteSaved) {
+        showToast('🎉 Feedback e fechamento gravados no Card do Lead no Helena CRM!', '🤝');
+      } else {
+        showToast('Visita e proposta atualizadas no sistema com sucesso!', '✅');
+      }
+
+      closeFeedbackModal();
+    } catch (err) {
+      console.error('Erro ao salvar feedback de visita:', err);
+      showToast(`Erro ao gravar no card: ${err.message}`, '⚠️');
+    } finally {
+      if (btnFeedbackSubmit) btnFeedbackSubmit.disabled = false;
+      if (btnFeedbackSubmitText) btnFeedbackSubmitText.innerHTML = '💾 Salvar no Card do Lead';
+    }
   }
 
   // --- Zoom do Documento na Tela ---
@@ -737,56 +1090,90 @@
       }
     });
 
-    // Copiar Texto da Proposta para WhatsApp
-    btnCopyProposalWhatsApp.addEventListener('click', async () => {
-      const gMap = {
-        seguro: 'Seguro Fiança',
-        fiador: 'Fiador',
-        titulo: 'Título de Capitalização',
-        caucao: 'Depósito Caução',
-        nenhuma: 'A definir'
-      };
+    // Copiar Texto da Proposta para WhatsApp (se disponível)
+    if (btnCopyProposalWhatsApp) {
+      btnCopyProposalWhatsApp.addEventListener('click', async () => {
+        const gMap = {
+          seguro: 'Seguro Fiança',
+          fiador: 'Fiador',
+          titulo: 'Título de Capitalização',
+          caucao: 'Depósito Caução',
+          nenhuma: 'A definir'
+        };
 
-      const selectedProps = state.allProperties.filter(p => p.selected);
+        const selectedProps = state.allProperties.filter(p => p.selected);
 
-      const lines = [
-        `📄 *FICHA DE VISITA & PROPOSTA DE LOCAÇÃO*`,
-        `🏢 *Santos & Mello Imóveis* • Atendimento #${state.atendimento}`,
-        `👤 *Cliente:* ${state.client.name || 'Cliente'} (${state.client.phone || ''})`,
-        `----------------------------------------`,
-        `📍 *Imóveis da Ficha de Visita:*`
-      ];
+        const lines = [
+          `📄 *FICHA DE VISITA & PROPOSTA DE LOCAÇÃO*`,
+          `🏢 *Santos & Mello Imóveis* • Atendimento #${state.atendimento}`,
+          `👤 *Cliente:* ${state.client.name || 'Cliente'} (${state.client.phone || ''})`,
+          `----------------------------------------`,
+          `📍 *Imóveis da Ficha de Visita:*`
+        ];
 
-      if (selectedProps.length === 0) {
-        lines.push(`• Nenhum imóvel selecionado.`);
-      } else {
-        selectedProps.forEach((p, i) => {
-          lines.push(`• *Opção ${i + 1} (Cód. #${p.id}):* ${p.address} - ${p.neighborhood} (${p.value})`);
-        });
-      }
+        if (selectedProps.length === 0) {
+          lines.push(`• Nenhum imóvel selecionado.`);
+        } else {
+          selectedProps.forEach((p, i) => {
+            lines.push(`• *Opção ${i + 1} (Cód. #${p.id}):* ${p.address} - ${p.neighborhood} (${p.value})`);
+          });
+        }
 
-      lines.push(
-        `----------------------------------------`,
-        `💰 *PROPOSTA OFERTADA:*`,
-        `• *Valor do Aluguel:* R$ ${state.proposal.rentValue || 'A combinar'}`,
-        `• *Prazo da Locação:* ${state.proposal.termMonths || '30'} meses`,
-        `• *Vencimento Desejado:* Todo dia ${state.proposal.dueDay || '10'} de cada mês`,
-        `• *Garantia Pretendida:* ${gMap[state.proposal.guarantee] || 'Seguro Fiança'}`
-      );
+        lines.push(
+          `----------------------------------------`,
+          `💰 *PROPOSTA OFERTADA:*`,
+          `• *Valor do Aluguel:* R$ ${state.proposal.rentValue || 'A combinar'}`,
+          `• *Prazo da Locação:* ${state.proposal.termMonths || '30'} meses`,
+          `• *Vencimento Desejado:* Todo dia ${state.proposal.dueDay || '10'} de cada mês`,
+          `• *Garantia Pretendida:* ${gMap[state.proposal.guarantee] || 'Seguro Fiança'}`
+        );
 
-      if (state.proposal.notes && state.proposal.notes.trim()) {
-        lines.push(`• *Observações:* ${state.proposal.notes.trim()}`);
-      }
+        if (state.proposal.notes && state.proposal.notes.trim()) {
+          lines.push(`• *Observações:* ${state.proposal.notes.trim()}`);
+        }
 
-      lines.push(
-        `----------------------------------------`,
-        `Ficamos à disposição para darmos andamento na documentação e análise! 😊`
-      );
+        lines.push(
+          `----------------------------------------`,
+          `Ficamos à disposição para darmos andamento na documentação e análise! 😊`
+        );
 
-      const msg = lines.join('\n');
-      await copyToClipboard(msg);
-      showToast('📋 Resumo da proposta copiado para o WhatsApp!', '✅');
-    });
+        const msg = lines.join('\n');
+        await copyToClipboard(msg);
+        showToast('📋 Resumo da proposta copiado para o WhatsApp!', '✅');
+      });
+    }
+
+    // Modal de Feedback de Visita & Fechamento
+    if (btnOpenFeedbackModal) {
+      btnOpenFeedbackModal.addEventListener('click', openFeedbackModal);
+    }
+    if (btnCloseFeedbackModal) {
+      btnCloseFeedbackModal.addEventListener('click', closeFeedbackModal);
+    }
+    if (btnFeedbackCancel) {
+      btnFeedbackCancel.addEventListener('click', closeFeedbackModal);
+    }
+    if (btnFeedbackAddExtraCode) {
+      btnFeedbackAddExtraCode.addEventListener('click', handleAddExtraCodeFeedback);
+    }
+    if (feedbackExtraCodeInput) {
+      feedbackExtraCodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleAddExtraCodeFeedback();
+        }
+      });
+    }
+    if (feedbackForm) {
+      feedbackForm.addEventListener('submit', handleSaveFeedback);
+    }
+    if (feedbackModalOverlay) {
+      feedbackModalOverlay.addEventListener('click', (e) => {
+        if (e.target === feedbackModalOverlay) {
+          closeFeedbackModal();
+        }
+      });
+    }
   }
 
   // Inicialização
