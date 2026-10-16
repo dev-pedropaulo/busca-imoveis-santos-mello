@@ -133,3 +133,46 @@ test('GET /api/imoveis/:id/detalhes-operacionais - Endpoint HTTP', async () => {
   }
 });
 
+test('Imoview API - CookieJar gerencia cookies e headers corretamente', () => {
+  const { CookieJar } = require('../lib/imoview-api');
+  const jar = new CookieJar();
+
+  const mockHeaders = new Headers();
+  mockHeaders.append('set-cookie', 'ASP.NET_SessionId=sess12345; path=/; HttpOnly');
+  mockHeaders.append('set-cookie', '.ASPXAUTH=auth67890; path=/; HttpOnly');
+  mockHeaders.append('set-cookie', 'auth_token_apiGerencia=tokenABC; path=/');
+
+  jar.absorb({ headers: mockHeaders });
+
+  assert.equal(jar.get('ASP.NET_SessionId'), 'sess12345');
+  assert.equal(jar.get('.ASPXAUTH'), 'auth67890');
+  assert.equal(jar.get('auth_token_apiGerencia'), 'tokenABC');
+  assert.equal(jar.hasAuth(), true);
+
+  const header = jar.toHeader();
+  assert.ok(header.includes('ASP.NET_SessionId=sess12345'));
+  assert.ok(header.includes('.ASPXAUTH=auth67890'));
+  assert.ok(header.includes('auth_token_apiGerencia=tokenABC'));
+
+  jar.clear();
+  assert.equal(jar.toHeader(), '');
+  assert.equal(jar.hasAuth(), false);
+});
+
+test('Imoview API - Regex de data-codigos no elemento loadPessoas', () => {
+  const sampleHtml = `
+    <div class="painel-pessoas">
+      <button class="btn btn-default loadPessoas" data-codigos="56049," data-imovel="3271">
+        Carregar Proprietários
+      </button>
+    </div>
+  `;
+
+  const matchCodigos = sampleHtml.match(/class=["'][^"']*loadPessoas[^"']*["'][^>]*data-codigos=["']([^"']+)["']/i)
+    || sampleHtml.match(/data-codigos=["']([^"']+)["'][^>]*class=["'][^"']*loadPessoas[^"']*["']/i)
+    || sampleHtml.match(/data-codigos=["']([^"']+)["']/i);
+
+  assert.ok(matchCodigos);
+  assert.equal(matchCodigos[1].trim(), '56049,');
+});
+
