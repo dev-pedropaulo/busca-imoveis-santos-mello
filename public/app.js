@@ -1901,7 +1901,7 @@
 
     try {
       showState('loading');
-      feedStatusText.textContent = `Recalculando imóveis com afinidade >= 60%...`;
+      feedStatusText.textContent = `Recalculando imóveis compatíveis...`;
 
       const res = await fetch(`${API_BASE}/api/leads/match?${params.toString()}`);
       const data = await res.json();
@@ -1915,7 +1915,7 @@
       const total = data.totalMatches || results.length;
 
       const contactName = (leadSimulationState.contactData && leadSimulationState.contactData.name) || `Lead #${contactId}`;
-      feedStatusText.textContent = `🎯 Perfil recalculado: ${contactName} • ${total} imóveis compatíveis (afinidade >= 60%)`;
+      feedStatusText.textContent = `🎯 Perfil recalculado: ${contactName} • ${total} imóveis compatíveis`;
 
       if (results.length === 0) {
         notFoundTitle.textContent = `Nenhum imóvel compatível com os filtros atuais`;
@@ -1930,9 +1930,9 @@
       showState('grid');
 
       if (resultsCountText) {
-        resultsCountText.textContent = `🎯 ${total} imóveis com afinidade >= 60% para ${contactName}`;
+        resultsCountText.textContent = `🎯 ${total} imóveis compatíveis para ${contactName}`;
       }
-      showToast(`🎯 Recalculado: ${total} imóveis com afinidade acima de 60%!`);
+      showToast(`🎯 Recalculado: ${total} imóveis compatíveis!`);
     } catch (err) {
       console.error('Erro ao recalcular:', err);
       showToast('⚠️ Erro ao recalcular match de imóveis.');
@@ -1949,7 +1949,7 @@
   async function searchLeadProperties(contactId) {
     setSimplifiedMode(true);
     showState('loading');
-    feedStatusText.textContent = `Consultando perfil do lead #${contactId} no Helena CRM...`;
+    feedStatusText.textContent = `Consultando perfil do lead #${contactId}...`;
 
     const leadProfileBanner = document.getElementById('leadProfileBanner');
     const leadProfileName = document.getElementById('leadProfileName');
@@ -1984,7 +1984,7 @@
           const contactParts = [];
           if (contactPhone) contactParts.push(`📱 ${contactPhone}`);
           if (contact && contact.email) contactParts.push(`✉️ ${contact.email}`);
-          leadProfileContact.textContent = contactParts.join(' • ') || 'Contato Helena CRM';
+          leadProfileContact.textContent = contactParts.join(' • ') || '';
         }
         if (leadProfileWhatsAppBtn) {
           if (contactPhone) {
@@ -2023,7 +2023,7 @@
           });
           renderLeadCriteriaCards();
           recalculateLeadMatch();
-          showToast('↩️ Filtros restaurados para os valores originais do Helena CRM.');
+          showToast('↩️ Filtros restaurados para os critérios originais.');
         };
       }
 
@@ -2055,11 +2055,11 @@
 
       renderLeadCriteriaCards();
 
-      feedStatusText.textContent = `🎯 Perfil carregado: ${contactName} • ${total} imóveis compatíveis (afinidade >= 60%)`;
+      feedStatusText.textContent = `🎯 Perfil carregado: ${contactName} • ${total} imóveis compatíveis`;
 
       if (results.length === 0) {
         notFoundTitle.textContent = `Nenhum imóvel compatível para ${contactName}`;
-        notFoundMsg.textContent = 'Não encontramos imóveis no momento com afinidade >= 60%. Experimente desativar o filtro de Bairros no painel.';
+        notFoundMsg.textContent = 'Não encontramos imóveis compatíveis no momento. Experimente desativar o filtro de Bairros no painel.';
         showState('notFound');
         return;
       }
@@ -2069,7 +2069,7 @@
       renderGrid(results, total, false);
       showState('grid');
 
-      // Consulta session metadata do Helena CRM para identificar imóveis já enviados previamente nesta conversa
+      // Consulta session metadata para identificar imóveis já enviados previamente nesta conversa
       (async () => {
         try {
           const metaRes = await fetch(`${API_BASE}/api/leads/session-metadata?contactId=${encodeURIComponent(contactId)}${tokenQuery}`);
@@ -2089,12 +2089,12 @@
       })();
 
       if (resultsCountText) {
-        resultsCountText.textContent = `🎯 ${total} imóveis recomendados (afinidade >= 60%) para ${contactName}`;
+        resultsCountText.textContent = `🎯 ${total} imóveis recomendados para ${contactName}`;
       }
     } catch (err) {
       console.error('Erro ao buscar perfil do lead:', err);
       feedStatusText.textContent = `⚠️ Não foi possível sincronizar com o lead #${contactId}`;
-      showToast('Aviso: Não foi possível obter dados do lead no Helena CRM. Exibindo busca padrão.');
+      showToast('Aviso: Não foi possível obter dados do lead. Exibindo busca padrão.');
       searchProperties();
     }
   }

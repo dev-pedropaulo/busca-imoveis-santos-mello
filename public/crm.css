@@ -1787,15 +1787,16 @@ body.helena-embedded .property-mini-card {
   background: #f8fafc !important;
 }
 
-/* Barra Flutuante de Ações em Lote */
+/* Barra Flutuante de Ações em Lote - Fixa na tela */
 .bulk-actions-bar {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  max-width: 95vw;
-  width: max-content;
+  position: fixed !important;
+  bottom: 1.5rem !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 999999 !important;
+  max-width: 95vw !important;
+  width: max-content !important;
+  pointer-events: auto !important;
   animation: slideUpBulk 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

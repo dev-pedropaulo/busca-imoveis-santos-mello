@@ -36,12 +36,6 @@
           <span id="feedStatusText">Carregando feed...</span>
         </div>
 
-        <!-- Botão de Alternância do Modo Simplificado (Menu Helena CRM) -->
-        <button type="button" class="simplified-mode-btn" id="toggleSimplifiedModeBtn" title="Alternar entre visualização completa e simplificada (ideal para Menu Lateral do Helena CRM)">
-          <span class="simplified-btn-icon">⚡</span>
-          <span class="simplified-btn-text" id="simplifiedBtnText">Modo Simplificado</span>
-        </button>
-
         <button class="theme-toggle" id="themeToggle" title="Alternar tema">
           <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="4"/>
@@ -102,17 +96,9 @@
           <div class="lead-profile-header-main">
             <div class="lead-avatar-icon" id="leadAvatarIcon">👤</div>
             <div class="lead-profile-info">
-              <div class="lead-profile-badge">
-                <span class="lead-crm-tag">Helena CRM</span>
-                <span class="lead-badge-sep">•</span>
-                <span>Perfil de Qualificação</span>
-              </div>
               <h2 id="leadProfileName" class="lead-profile-name">Nome do Cliente</h2>
               <div class="lead-profile-meta">
                 <span id="leadProfileContact" class="lead-profile-sub">Telefone / WhatsApp</span>
-                <a href="#" id="leadProfileWhatsAppBtn" class="lead-whatsapp-chip" target="_blank" rel="noopener noreferrer" style="display: none;">
-                  <span>💬 Conversar no WhatsApp</span>
-                </a>
               </div>
             </div>
           </div>
@@ -129,12 +115,11 @@
         <div class="lead-filters-toolbar" id="leadFiltersToolbar">
           <div class="toolbar-left">
             <span class="toolbar-pill pill-active" id="toolbarActiveFiltersBadge">Filtros Ativos: 0</span>
-            <span class="toolbar-pill pill-score" title="Apenas imóveis com compatibilidade de 60% ou superior em ordem decrescente">⭐ Mínimo 60% afinidade</span>
-            <span class="toolbar-pill pill-session-saved" id="toolbarSessionSavedBadge" style="display: none;" title="Imóveis registrados no Session Metadata do atendimento para integração com visitas">📤 0 salvos no atendimento</span>
-            <span class="toolbar-note">💡 Simule habilitando/desabilitando ou editando os filtros (não altera o CRM)</span>
+            <span class="toolbar-pill pill-session-saved" id="toolbarSessionSavedBadge" style="display: none;" title="Imóveis registrados no atendimento para integração com visitas">📤 0 salvos no atendimento</span>
+            <span class="toolbar-note">💡 Simule habilitando/desabilitando ou editando os filtros</span>
           </div>
           <div class="toolbar-actions">
-            <button type="button" class="btn-toolbar btn-reset-filters" id="btnResetLeadFilters" title="Restaurar critérios originais do Helena CRM">
+            <button type="button" class="btn-toolbar btn-reset-filters" id="btnResetLeadFilters" title="Restaurar critérios originais">
               ↩️ Restaurar Originais
             </button>
             <button type="button" class="btn-toolbar btn-recalc-match" id="btnRecalcMatch" title="Recalcular imóveis compatíveis com os filtros selecionados">
@@ -521,43 +506,6 @@
           </button>
         </div>
       </section>
-
-      <!-- Floating Bulk Selection Bar (para copiar múltiplos imóveis selecionados no atendimento) -->
-      <div id="bulkActionsBar" class="bulk-actions-bar" style="display: none;">
-        <div class="bulk-actions-content">
-          <div class="bulk-selection-info">
-            <span class="bulk-badge-count" id="bulkSelectedCount">0</span>
-            <span class="bulk-selection-text" id="bulkSelectedText">imóveis selecionados</span>
-          </div>
-          <div class="bulk-buttons-group">
-            <button type="button" class="btn-bulk-action btn-bulk-save-card" id="btnBulkSaveCard" title="Salvar os imóveis selecionados no Card e Sessão do Lead no Helena CRM" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-              </svg>
-              <span>Salvar no Card do Lead</span>
-            </button>
-            <button type="button" class="btn-bulk-action btn-bulk-copy-text" id="btnBulkCopyText" title="Copiar mensagem com todos os imóveis selecionados para o atendimento">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-              </svg>
-              <span class="bulk-btn-label">Copiar Apresentação Completa</span>
-            </button>
-            <button type="button" class="btn-bulk-action btn-bulk-copy-links" id="btnBulkCopyLinks" title="Copiar apenas os links oficiais dos imóveis selecionados">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-              <span>Copiar Links</span>
-            </button>
-            <button type="button" class="btn-bulk-action btn-bulk-clear" id="btnBulkClear" title="Desmarcar todos os imóveis">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6 6 18M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- Property Details Result Card (Single View) -->
       <section id="propertyResult" class="property-container" style="display: none;">
@@ -1078,11 +1026,6 @@
 
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <p>Santos & Mello • Sistema de Gestão Imobiliária & Consulta VivaReal</p>
-    </footer>
-
   </div>
 
   <!-- MODAL DE CADASTRO / EDIÇÃO DE IMÓVEL (CRUD) -->
@@ -1404,6 +1347,37 @@
     </button>
     <div class="modal-content">
       <img id="modalImg" src="" alt="Visualização em alta resolução" />
+    </div>
+  </div>
+
+  <!-- Barra Flutuante de Ações em Lote (Fixa na tela ao selecionar imóveis) -->
+  <div id="bulkActionsBar" class="bulk-actions-bar" style="display: none;">
+    <div class="bulk-actions-content">
+      <div class="bulk-selection-info">
+        <span class="bulk-badge-count" id="bulkSelectedCount">0</span>
+        <span class="bulk-selection-text" id="bulkSelectedText">imóveis selecionados</span>
+      </div>
+      <div class="bulk-buttons-group">
+        <button type="button" class="btn-bulk-action btn-bulk-copy-text" id="btnBulkCopyText" title="Copiar mensagem com todos os imóveis selecionados para o atendimento">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+          <span class="bulk-btn-label">Copiar Apresentação Completa</span>
+        </button>
+        <button type="button" class="btn-bulk-action btn-bulk-copy-links" id="btnBulkCopyLinks" title="Copiar apenas os links oficiais dos imóveis selecionados">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          <span>Copiar Links</span>
+        </button>
+        <button type="button" class="btn-bulk-action btn-bulk-clear" id="btnBulkClear" title="Desmarcar todos os imóveis">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 
