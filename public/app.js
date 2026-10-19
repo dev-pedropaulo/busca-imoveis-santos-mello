@@ -256,24 +256,45 @@
 
   // --- Formatadores de Mensagem para Atendimento / WhatsApp ---
   function getPropertyShareData(prop) {
-    const isRental = prop.transactionType.toLowerCase().includes('locação');
-    const cleanType = prop.propertyType.replace('Residential / ', '').replace('Commercial / ', '');
+    const isRental = String(prop.transactionType || '').toLowerCase().includes('locação');
+    let cleanType = (prop.propertyType || prop.tipo || 'Imóvel')
+      .replace('Residential / ', '')
+      .replace('Commercial / ', '')
+      .trim();
+
+    const typeTranslations = {
+      'Apartment': 'Apartamento',
+      'Home': 'Casa',
+      'Two-Story House': 'Sobrado',
+      'Penthouse': 'Cobertura',
+      'Studio': 'Studio',
+      'Kitnet': 'Kitnet',
+      'Loft': 'Loft',
+      'Land': 'Terreno',
+      'Allotment / Land': 'Terreno',
+      'Commercial Building': 'Prédio Comercial',
+      'Office': 'Sala Comercial',
+      'Shed': 'Galpão'
+    };
+    if (typeTranslations[cleanType]) {
+      cleanType = typeTranslations[cleanType];
+    }
+
     const mainPrice = isRental ? (prop.rentalPrice || prop.price) : (prop.price || prop.rentalPrice);
     const priceText = formatMoney(mainPrice) + (isRental ? '/mês' : '');
-    const linkImovel = prop.websiteUrl || `${window.location.origin}/?codigo=${prop.id}`;
+    const linkImovel = prop.websiteUrl || `https://www.santosemello.com.br/imovel/${prop.id}`;
 
-    let areaVal = '';
-    if (prop.livingArea > 0) areaVal = `${prop.livingArea} m² úteis`;
-    else if (prop.constructedArea > 0) areaVal = `${prop.constructedArea} m² const.`;
-    else if (prop.lotArea > 0) areaVal = `${prop.lotArea} m² lote`;
-
+    // Apenas dormitórios e vagas (metragem removida para deixar o texto limpo e direto)
     const specs = [];
-    if (prop.bedrooms > 0) specs.push(`🛏️ ${prop.bedrooms} dorms${prop.suites > 0 ? ` (${prop.suites} suíte${prop.suites > 1 ? 's' : ''})` : ''}`);
-    if (prop.garage > 0) specs.push(`🚗 ${prop.garage} vaga${prop.garage > 1 ? 's' : ''}`);
-    if (areaVal) specs.push(`📐 ${areaVal}`);
+    if (prop.bedrooms > 0) {
+      specs.push(`🛏️ ${prop.bedrooms} dormitório${prop.bedrooms > 1 ? 's' : ''}${prop.suites > 0 ? ` (${prop.suites} suíte${prop.suites > 1 ? 's' : ''})` : ''}`);
+    }
+    if (prop.garage > 0) {
+      specs.push(`🚗 ${prop.garage} vaga${prop.garage > 1 ? 's' : ''}`);
+    }
 
     const custos = [];
-    if (prop.condo > 0) custos.push(`Cond.: ${formatMoney(prop.condo)}`);
+    if (prop.condo > 0) custos.push(`Condomínio: ${formatMoney(prop.condo)}`);
     if (prop.iptu > 0) custos.push(`IPTU: ${formatMoney(prop.iptu)}`);
 
     const loc = prop.location || {};
@@ -304,8 +325,7 @@
       custos,
       neighborhood: bairro,
       city: cid,
-      fullAddress,
-      highlights: Array.isArray(prop.matchHighlights) ? prop.matchHighlights : []
+      fullAddress
     };
   }
 
@@ -316,21 +336,33 @@
       : 'Olá!';
 
     const lines = [
-      `${saudacao} 👋 Selecionei este imóvel na Santos & Mello que combina perfeitamente com você:`,
+      `${saudacao} 👋 Selecionei esta opção na Santos & Mello que combina perfeitamente com você:`,
       ``,
-      `🏠 *${data.cleanType} - ${data.neighborhood}* (Cód. #${prop.id})`,
-      data.fullAddress ? `📍 *Endereço Completo:* ${data.fullAddress}` : '',
-      `💰 *Valor:* ${data.priceText}${data.custos.length ? ` (${data.custos.join(' • ')})` : ''}`,
-      data.specs.length ? `✨ ${data.specs.join(' • ')}` : '',
-      data.highlights.length ? `🎯 *Destaques:* ${data.highlights.slice(0, 3).join(' • ')}` : '',
-      ``,
-      `🔗 *Veja fotos e ficha completa:*`,
+      `*Imóvel Cód. #${prop.id}*`,
+      ``
+    ];
+
+    if (data.fullAddress) {
+      lines.push(`📍 *Endereço:* ${data.fullAddress}`, ``);
+    } else if (data.neighborhood) {
+      lines.push(`📍 *Bairro:* ${data.neighborhood}`, ``);
+    }
+
+    const custosText = data.custos.length ? ` (${data.custos.join(' | ')})` : '';
+    lines.push(`💰 *Valor:* ${data.priceText}${custosText}`, ``);
+
+    if (data.specs.length) {
+      lines.push(data.specs.join(' • '), ``);
+    }
+
+    lines.push(
+      `🔗 *Link do imóvel:*`,
       data.linkImovel,
       ``,
       `Podemos conversar sobre este imóvel? Estou à disposição para tirar dúvidas ou agendarmos uma visita! 😊`
-    ];
+    );
 
-    return lines.filter(Boolean).join('\n');
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
   function formatBulkPropertiesChatText(propsList, leadName = '') {
@@ -340,24 +372,41 @@
 
     const lines = [
       `${saudacao} 👋 Selecionei estas ${propsList.length} opções na Santos & Mello que combinam muito com você:`,
-      `----------------------------------------`
+      ``
     ];
 
     propsList.forEach((prop, idx) => {
       const data = getPropertyShareData(prop);
-      lines.push(
-        `🔹 *Opção ${idx + 1}: ${data.cleanType} em ${data.neighborhood}* (Cód. #${prop.id})`,
-        data.fullAddress ? `📍 *Endereço:* ${data.fullAddress}` : '',
-        `💰 *Valor:* ${data.priceText}${data.custos.length ? ` (${data.custos.join(' • ')})` : ''}`,
-        data.specs.length ? `✨ ${data.specs.join(' • ')}` : '',
-        data.highlights.length ? `🎯 *Destaques:* ${data.highlights.slice(0, 2).join(' • ')}` : '',
-        `🔗 *Fotos & Ficha:* ${data.linkImovel}`,
-        `----------------------------------------`
-      );
+
+      lines.push(`*Opção ${idx + 1} (Cód. #${prop.id})*`);
+      lines.push(``);
+
+      if (data.fullAddress) {
+        lines.push(`📍 *Endereço:* ${data.fullAddress}`);
+        lines.push(``);
+      } else if (data.neighborhood) {
+        lines.push(`📍 *Bairro:* ${data.neighborhood}`);
+        lines.push(``);
+      }
+
+      const custosText = data.custos.length ? ` (${data.custos.join(' | ')})` : '';
+      lines.push(`💰 *Valor:* ${data.priceText}${custosText}`);
+      lines.push(``);
+
+      if (data.specs.length) {
+        lines.push(data.specs.join(' • '));
+        lines.push(``);
+      }
+
+      lines.push(`🔗 *Link do imóvel:*`);
+      lines.push(data.linkImovel);
+      lines.push(``);
+      lines.push(``); // Espaçamento entre opções
     });
 
     lines.push(`Qual dessas opções você prefere para conversarmos e agendarmos uma visita? 😊`);
-    return lines.filter(Boolean).join('\n');
+
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
   // --- Atualização Visual de Imóveis Enviados na Sessão (Badges e Contadores) ---
@@ -1429,33 +1478,11 @@
     shareWhatsAppBtn.addEventListener('click', () => {
       if (!currentProperty) return;
 
-      const p = currentProperty;
-      const shareData = getPropertyShareData(p);
-      const isRental = p.transactionType.toLowerCase().includes('locação');
-      const priceText = formatMoney(isRental ? (p.rentalPrice || p.price) : (p.price || p.rentalPrice));
-      const link = p.websiteUrl || `https://www.santosemello.com.br/imovel/${p.id}`;
+      const leadNameEl = document.getElementById('leadProfileName');
+      const leadName = leadNameEl ? leadNameEl.textContent.trim() : '';
+      const msg = formatSinglePropertyChatText(currentProperty, leadName);
 
-      let msg = `🏠 *${p.title}*\n`;
-      msg += `🔖 *Código:* #${p.id}\n`;
-      msg += `📍 *Endereço Completo:* ${shareData.fullAddress}\n`;
-      msg += `🏢 *Uso:* ${p.usageType} • *Tipo:* ${p.propertyType}\n`;
-      msg += `💰 *Valor (${p.transactionType}):* ${priceText}\n`;
-      
-      const detailsArr = [];
-      if (p.livingArea > 0) detailsArr.push(`📐 Área: ${p.livingArea}m²`);
-      if (p.lotArea > 0) detailsArr.push(`🌱 Terreno: ${p.lotArea}m²`);
-      if (p.constructedArea > 0) detailsArr.push(`🏗️ Constr.: ${p.constructedArea}m²`);
-      if (p.bedrooms > 0) detailsArr.push(`🛏️ ${p.bedrooms} dorms`);
-      if (p.garage > 0) detailsArr.push(`🚗 ${p.garage} vagas`);
-      if (detailsArr.length > 0) {
-        msg += `📌 *Detalhes:* ${detailsArr.join(' • ')}\n`;
-      }
-      
-      if (p.virtualTourLink) {
-        msg += `🎥 *Tour Virtual / Vídeo:* ${p.virtualTourLink}\n`;
-      }
-
-      msg += `\n🔗 *Veja fotos e ficha completa aqui:* \n${link}\n\nPodemos conversar sobre este imóvel? 😊`;
+      recordPropertiesSentToHelena(currentProperty);
 
       const leadPhone = (leadSimulationState && leadSimulationState.contactPhone) || '';
       const cleanPhone = leadPhone.replace(/\D/g, '');

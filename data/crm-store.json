@@ -148,16 +148,21 @@
       "keyTag": "CLAV-088",
       "updatedAt": "2026-09-30T12:16:23.612Z"
     },
+    "5586": {
+      "kanbanStage": "analise_contrato",
+      "status": "Em Análise / Contrato",
+      "updatedAt": "2026-10-19T16:11:48.616Z"
+    },
     "8713": {
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
-      "updatedAt": "2026-10-14T18:05:53.367Z"
+      "updatedAt": "2026-10-19T16:11:10.106Z"
     },
     "8797": {
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
       "keyTag": "CLAV-012",
-      "updatedAt": "2026-10-14T18:05:48.277Z"
+      "updatedAt": "2026-10-19T16:11:42.202Z"
     },
     "8816": {
       "kanbanStage": "concluido",
@@ -175,7 +180,7 @@
       "kanbanStage": "disponivel",
       "status": "Vago / Disponível",
       "keyTag": "CLAV-TEST-99",
-      "updatedAt": "2026-10-14T18:05:48.281Z"
+      "updatedAt": "2026-10-19T16:11:42.207Z"
     },
     "test-1790771916676": {
       "kanbanStage": "excluido",
@@ -253,9 +258,63 @@
       "status": "Inativo / Excluído",
       "updatedAt": "2026-10-14T18:05:48.275Z",
       "deleted": true
+    },
+    "test-1792160129606": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-16T14:15:29.611Z",
+      "deleted": true
+    },
+    "test-1792160306832": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-16T14:18:26.838Z",
+      "deleted": true
+    },
+    "test-1792426261908": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-19T16:11:01.914Z",
+      "deleted": true
+    },
+    "test-1792426302197": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-19T16:11:42.201Z",
+      "deleted": true
     }
   },
   "visits": [
+    {
+      "id": "vis-1792426270106-50",
+      "status": "Agendada",
+      "createdAt": "2026-10-19T16:11:10.106Z",
+      "propertyId": "8713",
+      "propertyTitle": "Apartamento Jardim Jamaica",
+      "clientName": "Pedro Santos",
+      "clientPhone": "11988887777",
+      "date": "2026-10-18",
+      "time": "14:30",
+      "broker": "Corretor de Plantão",
+      "notes": "Avisar portaria",
+      "sessionId": "sess-teste-visita",
+      "contactId": "contato-teste-visita"
+    },
+    {
+      "id": "vis-1792160141116-111",
+      "status": "Agendada",
+      "createdAt": "2026-10-16T14:15:41.116Z",
+      "propertyId": "8713",
+      "propertyTitle": "Apartamento Jardim Jamaica",
+      "clientName": "Pedro Santos",
+      "clientPhone": "11988887777",
+      "date": "2026-10-18",
+      "time": "14:30",
+      "broker": "Corretor de Plantão",
+      "notes": "Avisar portaria",
+      "sessionId": "sess-teste-visita",
+      "contactId": "contato-teste-visita"
+    },
     {
       "id": "vis-1792001153367-96",
       "status": "Agendada",
@@ -358,6 +417,46 @@
     }
   ],
   "keyMovements": [
+    {
+      "id": "km-1792426302205-212",
+      "takenAt": "2026-10-19T16:11:42.205Z",
+      "returnedAt": "2026-10-19T16:11:42.206Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1792426261919-674",
+      "takenAt": "2026-10-19T16:11:01.919Z",
+      "returnedAt": "2026-10-19T16:11:01.921Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1792160306845-336",
+      "takenAt": "2026-10-16T14:18:26.845Z",
+      "returnedAt": "2026-10-16T14:18:26.846Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1792160129616-781",
+      "takenAt": "2026-10-16T14:15:29.616Z",
+      "returnedAt": "2026-10-16T14:15:29.617Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
     {
       "id": "km-1792001148280-522",
       "takenAt": "2026-10-14T18:05:48.280Z",

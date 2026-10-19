@@ -771,8 +771,9 @@
 
     const lines = [
       `Olá, ${clientName}! 👋`,
+      ``,
       `Confirmamos o agendamento das suas visitas com a Santos & Mello Imóveis:`,
-      `----------------------------------------`
+      ``
     ];
 
     visits.forEach((v, idx) => {
@@ -780,19 +781,29 @@
       const opData = operationalDataMap.get(v.propertyId)?.data;
       const enderecoFinal = opData?.enderecoCompleto || v.propertyAddress || (v.propertyNeighborhood ? `${v.propertyNeighborhood}, Santo André - SP` : 'Santo André - SP');
 
-      lines.push(
-        `📍 *Visita ${idx + 1}: ${v.propertyTitle || `Imóvel #${v.propertyId}`}*`,
-        `🏠 *Endereço Completo:* ${enderecoFinal}`,
-        `📅 *Data:* ${dateFormatted} às ${v.time}`,
-        v.notes ? `📝 *Observação:* ${v.notes}` : '',
-        v.propertyUrl ? `🔗 *Ficha Completa:* ${v.propertyUrl}` : '',
-        `----------------------------------------`
-      );
+      lines.push(`*Visita ${idx + 1} (Cód. #${v.propertyId})*`);
+      lines.push(``);
+      lines.push(`📍 *Endereço:* ${enderecoFinal}`);
+      lines.push(``);
+      lines.push(`📅 *Data & Horário:* ${dateFormatted} às ${v.time}`);
+      lines.push(``);
+
+      if (v.notes) {
+        lines.push(`📝 *Observação:* ${v.notes}`);
+        lines.push(``);
+      }
+
+      if (v.propertyUrl) {
+        lines.push(`🔗 *Link do imóvel:*`);
+        lines.push(v.propertyUrl);
+        lines.push(``);
+      }
+      lines.push(``); // Espaçamento entre visitas
     });
 
     lines.push(`Podemos confirmar os detalhes? Qualquer dúvida ou alteração estou à disposição por aqui! 😊`);
 
-    const msg = lines.filter(Boolean).join('\n');
+    const msg = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     await copyToClipboard(msg);
     triggerButtonFeedback(btnCopyWhatsAppMsg, '✅ Mensagem Copiada!');
     showToast('📋 Mensagem pronta copiada com endereço completo!');

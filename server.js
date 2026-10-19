@@ -1045,10 +1045,10 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
 
       if (savingsPercent >= 10) {
         matchScore += 15;
-        matchHighlights.push(`Excelente custo-benefício (${savingsPercent}% abaixo do orçamento máximo: ${formattedPrice} vs ${formattedMax})`);
+        matchHighlights.push(`Excelente custo-benefício`);
       } else {
         matchScore += 10;
-        matchHighlights.push(`Dentro do orçamento planejado (${formattedPrice} de teto ${formattedMax})`);
+        matchHighlights.push(`Dentro do orçamento planejado`);
       }
     }
 
