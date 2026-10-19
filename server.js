@@ -1449,29 +1449,41 @@ app.get('/api/leads/session-metadata', async (req, res) => {
  */
 app.get('/api/proposta/dados', async (req, res) => {
   try {
-    const contactId = req.query.contactId || req.query.contact_id;
-    const sessionId = req.query.sessionId || req.query.session_id;
+    const rawContactId = req.query.contactId || req.query.contact_id || req.query.contatoId || req.query.idContato || req.query.id || '';
+    const contactId = (rawContactId && (rawContactId.includes('-') || rawContactId.length > 15)) ? rawContactId : null;
+    const sessionId = req.query.sessionId || req.query.session_id || req.query.sessaoId || req.query.idSessao || null;
     const token = req.headers['x-helena-token'] || req.query.token || null;
 
     let client = { name: '', phone: '', email: '', address: '' };
+
+    // Extrai cliente e telefone diretamente dos query params (fallback imediato e flexível)
+    const qName = req.query.clientName || req.query.client_name || req.query.cliente || req.query.nomeCliente || req.query.contactName || req.query.contato || req.query.nome || req.query.name || '';
+    if (qName) client.name = String(qName).trim();
+
+    const qPhone = req.query.phone || req.query.phoneNumber || req.query.phone_number || req.query.telephone || req.query.telefone || req.query.whatsapp || req.query.celular || req.query.tel || req.query.contactPhone || '';
+    if (qPhone) client.phone = String(qPhone).trim();
+
+    const qAddress = req.query.address || req.query.endereco || req.query.enderecoCliente || '';
+    if (qAddress) client.address = String(qAddress).trim();
+
     let imoveisEnviados = [];
     let visitasAgendadas = [];
     let activeSessionId = sessionId;
 
-    // Se tiver contactId, busca contato no Helena CRM
+    // Se tiver contactId, busca contato no Helena CRM e enriquece
     if (contactId) {
       try {
         const contactRes = await fetchHelenaContact(contactId, token);
         if (contactRes && contactRes.contact) {
           const c = contactRes.contact;
-          client.name = c.name || '';
-          client.phone = c.phoneNumber || '';
-          client.email = c.email || '';
+          if (c.name) client.name = c.name;
+          if (c.phoneNumber) client.phone = c.phoneNumber;
+          if (c.email) client.email = c.email;
 
           // Procura campos de endereço nos campos personalizados
           const fields = c.customFields || [];
           const endField = fields.find(f => /endere|rua|bairro|logradouro/i.test(f.title || f.name || ''));
-          if (endField && endField.value) {
+          if (endField && endField.value && !client.address) {
             client.address = String(endField.value);
           }
         }

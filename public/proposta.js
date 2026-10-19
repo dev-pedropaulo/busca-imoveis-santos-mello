@@ -440,39 +440,99 @@
     }
   }
 
+  // --- Leitura Normalizada e Flexível de Parâmetros da URL (Search + Hash) ---
+  function safeCleanParam(val) {
+    if (!val) return '';
+    let str = String(val).trim();
+    if (/^\{+.*?\}+$/.test(str)) return '';
+    if (str === 'undefined' || str === 'null') return '';
+    try {
+      str = decodeURIComponent(str.replace(/\+/g, ' ')).trim();
+    } catch (_) {}
+    return str;
+  }
+
+  function getMergedUrlParams() {
+    const rawSearch = window.location.search || '';
+    const rawHash = window.location.hash || '';
+
+    let combined = '';
+    if (rawSearch) {
+      combined += rawSearch.startsWith('?') ? rawSearch.slice(1) : rawSearch;
+    }
+    if (rawHash) {
+      const qIdx = rawHash.indexOf('?');
+      const hashPart = qIdx !== -1 ? rawHash.slice(qIdx + 1) : (rawHash.includes('=') ? rawHash.replace(/^#\/?/, '') : '');
+      if (hashPart) {
+        combined += (combined ? '&' : '') + hashPart;
+      }
+    }
+
+    const params = new URLSearchParams(combined);
+    const map = new Map();
+
+    for (const [key, val] of params.entries()) {
+      const cleanKey = key.trim().toLowerCase().replace(/[-_]/g, '');
+      const cleanVal = safeCleanParam(val);
+      if (cleanVal) {
+        if (!map.has(cleanKey)) map.set(cleanKey, cleanVal);
+        if (!map.has(key)) map.set(key, cleanVal);
+      }
+    }
+
+    return {
+      get: (...keys) => {
+        for (const k of keys) {
+          const norm = k.trim().toLowerCase().replace(/[-_]/g, '');
+          const res = map.get(norm) || map.get(k);
+          if (res) return res;
+        }
+        return '';
+      },
+      has: (...keys) => {
+        for (const k of keys) {
+          const norm = k.trim().toLowerCase().replace(/[-_]/g, '');
+          if (map.has(norm) || map.has(k)) return true;
+        }
+        return false;
+      },
+      toString: () => params.toString()
+    };
+  }
+
   // --- Inicialização a partir da URL e do Endpoint Unificado (/api/proposta/dados) ---
   async function initFromQueryParams() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const contactId = urlParams.get('contactId') || urlParams.get('contact_id');
-    const sessionId = urlParams.get('sessionId') || urlParams.get('session_id');
-    const propertyId = urlParams.get('propertyId') || urlParams.get('codigo') || urlParams.get('id');
+    const urlParams = getMergedUrlParams();
+
+    const rawContactId = urlParams.get('contactId', 'contact_id', 'contatoId', 'idContato', 'id');
+    const contactId = (rawContactId && (rawContactId.includes('-') || rawContactId.length > 15)) ? rawContactId : '';
+    const sessionId = urlParams.get('sessionId', 'session_id', 'sessaoId', 'idSessao');
+    const propertyId = urlParams.get('propertyId', 'codigo', 'cod', 'id');
     const idsList = urlParams.get('ids');
     
     // 1. Extração do Corretor / Nome do Usuário
-    const corretorParam = urlParams.get('userName') || 
-                          urlParams.get('user_name') || 
-                          urlParams.get('user') || 
-                          urlParams.get('usuario') || 
-                          urlParams.get('nomeUsuario') || 
-                          urlParams.get('corretor') || 
-                          urlParams.get('broker') || 
-                          urlParams.get('atendente') || 
-                          urlParams.get('attendant');
+    const corretorParam = urlParams.get(
+      'userName', 'user_name', 'username', 'user', 'usuario', 'nomeUsuario', 'usuarioNome',
+      'corretor', 'corretorNome', 'corretorResponsavel', 'broker', 'brokerName',
+      'atendente', 'atendenteNome', 'attendant', 'responsavel', 'responsible', 'responsibleUser'
+    );
     
     // 2. Extração do Nome do Cliente / Contato
-    const clientNameParam = urlParams.get('clientName') || 
-                            urlParams.get('client_name') || 
-                            urlParams.get('nome') || 
-                            urlParams.get('contato') || 
-                            urlParams.get('contactName') || 
-                            urlParams.get('name');
+    const clientNameParam = urlParams.get(
+      'clientName', 'client_name', 'clientname', 'cliente', 'clienteNome', 'nomeCliente',
+      'contactName', 'contact_name', 'contato', 'contatoNome', 'nomeContato',
+      'nome', 'name', 'client', 'contact'
+    );
 
     // 3. Extração do Telefone / WhatsApp do Cliente
-    const clientPhoneParam = urlParams.get('phone') || 
-                             urlParams.get('telefone') || 
-                             urlParams.get('whatsapp') || 
-                             urlParams.get('tel') || 
-                             urlParams.get('celular');
+    const clientPhoneParam = urlParams.get(
+      'phone', 'phoneNumber', 'phone_number', 'phonenumber', 'telephone',
+      'telefone', 'telefoneContato', 'whatsapp', 'whats', 'wts', 'celular', 'cel', 'tel',
+      'contactPhone', 'clientPhone'
+    );
+
+    // 4. Endereço do Cliente
+    const clientEndParam = urlParams.get('address', 'endereco', 'enderecoCliente', 'clientAddress');
 
     const atendimentoParam = urlParams.get('atendimento');
 
@@ -483,25 +543,34 @@
     // Configura data inicial para hoje
     if (inputDataDoc) inputDataDoc.value = state.dataDocumento;
 
+    // Atribuição IMEDIATA dos dados nos campos e no state
     if (corretorParam) {
-      state.corretor = decodeURIComponent(corretorParam);
+      state.corretor = corretorParam;
       if (inputCorretor) inputCorretor.value = state.corretor;
     }
 
     if (clientNameParam) {
-      state.client.name = decodeURIComponent(clientNameParam);
+      state.client.name = clientNameParam;
       if (inputClienteNome) inputClienteNome.value = state.client.name;
     }
 
     if (clientPhoneParam) {
-      state.client.phone = decodeURIComponent(clientPhoneParam);
+      state.client.phone = clientPhoneParam;
       if (inputClienteTel) inputClienteTel.value = state.client.phone;
+    }
+
+    if (clientEndParam) {
+      state.client.address = clientEndParam;
+      if (inputClienteEnd) inputClienteEnd.value = state.client.address;
     }
 
     if (atendimentoParam) {
       state.atendimento = atendimentoParam;
       if (inputAtendimento) inputAtendimento.value = state.atendimento;
     }
+
+    // ATUALIZAÇÃO IMEDIATA DO PREVIEW ANTES DE QUALQUER REQUISIÇÃO
+    renderAll();
 
     // Atualiza links de navegação entre módulos preservando a query string ativa do Helena CRM
     const qString = urlParams.toString();
@@ -528,7 +597,7 @@
           if (data.contactId) state.contactId = data.contactId;
           if (data.sessionId) state.sessionId = data.sessionId;
 
-          if (data.atendimento) {
+          if (data.atendimento && !state.atendimento) {
             state.atendimento = data.atendimento;
             if (inputAtendimento) inputAtendimento.value = state.atendimento;
           }
@@ -1218,10 +1287,16 @@
     }
   }
 
-  // Inicialização
-  document.addEventListener('DOMContentLoaded', () => {
+  // Inicialização segura e robusta para qualquer estado de carregamento do documento
+  function boot() {
     setupEventListeners();
     initFromQueryParams();
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
 
 })();
