@@ -14,28 +14,18 @@
     sessionId: '',
     visitasAgendadas: [],
     closedPropertyIds: new Set(),
-    atendimento: '5861',
+    atendimento: '',
     dataDocumento: new Date().toISOString().split('T')[0],
-    corretor: 'Matheus dos Santos Cruz',
+    corretor: '',
     client: {
-      name: 'Kelly',
-      phone: '(11) 95340-7249',
+      name: '',
+      phone: '',
       address: ''
     },
     // Lista completa de imóveis do atendimento (enviados no chat + agendados para visita)
-    allProperties: [
-      {
-        id: '5586',
-        address: 'Rua Almada, 270, Individual, CEP 09260-420',
-        neighborhood: 'Jardim Santo Alberto - Santo André',
-        value: 'R$ 1.600,00',
-        selected: true,
-        isScheduled: true,
-        source: 'visita'
-      }
-    ],
+    allProperties: [],
     proposal: {
-      rentValue: '1.600,00',
+      rentValue: '',
       termMonths: '30',
       dueDay: '10',
       guarantee: 'seguro',
@@ -185,16 +175,16 @@
 
   // --- Renderização Geral (Preview A4 + Checklist Lateral) ---
   function renderAll() {
-    // 1. Dados do Atendimento e Corretor
-    docAtendimentoVal.textContent = state.atendimento || '__________';
-    docCorretorVal.textContent = state.corretor || 'Corretor Autônomo';
+    // 1. Dados do Corretor
+    if (docAtendimentoVal) docAtendimentoVal.textContent = state.atendimento || '';
+    if (docCorretorVal) docCorretorVal.textContent = state.corretor || '______________________________';
 
     // 2. Dados do Cliente
-    docClienteNomeVal.textContent = state.client.name || '______________________________';
-    docClienteEndVal.textContent = state.client.address || '';
-    docClienteTelVal.textContent = state.client.phone || '______________________________';
-    docSignerName1.textContent = state.client.name || 'Cliente';
-    docSignerName2.textContent = state.client.name || 'Cliente';
+    if (docClienteNomeVal) docClienteNomeVal.textContent = state.client.name || '______________________________';
+    if (docClienteEndVal) docClienteEndVal.textContent = state.client.address || '';
+    if (docClienteTelVal) docClienteTelVal.textContent = state.client.phone || '______________________________';
+    if (docSignerName1) docSignerName1.textContent = state.client.name || 'Proponente / Locatário';
+    if (docSignerName2) docSignerName2.textContent = state.client.name || 'Proponente / Locatário';
 
     // 3. Data por Extenso na Folha
     docCityDateVal.textContent = formatDateToPortugueseFull(state.dataDocumento);
@@ -457,7 +447,33 @@
     const sessionId = urlParams.get('sessionId') || urlParams.get('session_id');
     const propertyId = urlParams.get('propertyId') || urlParams.get('codigo') || urlParams.get('id');
     const idsList = urlParams.get('ids');
-    const corretorParam = urlParams.get('corretor');
+    
+    // 1. Extração do Corretor / Nome do Usuário
+    const corretorParam = urlParams.get('userName') || 
+                          urlParams.get('user_name') || 
+                          urlParams.get('user') || 
+                          urlParams.get('usuario') || 
+                          urlParams.get('nomeUsuario') || 
+                          urlParams.get('corretor') || 
+                          urlParams.get('broker') || 
+                          urlParams.get('atendente') || 
+                          urlParams.get('attendant');
+    
+    // 2. Extração do Nome do Cliente / Contato
+    const clientNameParam = urlParams.get('clientName') || 
+                            urlParams.get('client_name') || 
+                            urlParams.get('nome') || 
+                            urlParams.get('contato') || 
+                            urlParams.get('contactName') || 
+                            urlParams.get('name');
+
+    // 3. Extração do Telefone / WhatsApp do Cliente
+    const clientPhoneParam = urlParams.get('phone') || 
+                             urlParams.get('telefone') || 
+                             urlParams.get('whatsapp') || 
+                             urlParams.get('tel') || 
+                             urlParams.get('celular');
+
     const atendimentoParam = urlParams.get('atendimento');
 
     // Armazena identificadores no state
@@ -465,16 +481,26 @@
     if (sessionId) state.sessionId = sessionId;
 
     // Configura data inicial para hoje
-    inputDataDoc.value = state.dataDocumento;
+    if (inputDataDoc) inputDataDoc.value = state.dataDocumento;
 
     if (corretorParam) {
       state.corretor = decodeURIComponent(corretorParam);
-      inputCorretor.value = state.corretor;
+      if (inputCorretor) inputCorretor.value = state.corretor;
+    }
+
+    if (clientNameParam) {
+      state.client.name = decodeURIComponent(clientNameParam);
+      if (inputClienteNome) inputClienteNome.value = state.client.name;
+    }
+
+    if (clientPhoneParam) {
+      state.client.phone = decodeURIComponent(clientPhoneParam);
+      if (inputClienteTel) inputClienteTel.value = state.client.phone;
     }
 
     if (atendimentoParam) {
       state.atendimento = atendimentoParam;
-      inputAtendimento.value = state.atendimento;
+      if (inputAtendimento) inputAtendimento.value = state.atendimento;
     }
 
     // Atualiza links de navegação entre módulos preservando a query string ativa do Helena CRM
@@ -504,20 +530,24 @@
 
           if (data.atendimento) {
             state.atendimento = data.atendimento;
-            inputAtendimento.value = state.atendimento;
+            if (inputAtendimento) inputAtendimento.value = state.atendimento;
+          }
+          if (data.corretor && !state.corretor) {
+            state.corretor = data.corretor;
+            if (inputCorretor) inputCorretor.value = state.corretor;
           }
           if (data.client) {
-            if (data.client.name) {
+            if (data.client.name && (!state.client.name || state.client.name === 'Cliente')) {
               state.client.name = data.client.name;
-              inputClienteNome.value = state.client.name;
+              if (inputClienteNome) inputClienteNome.value = state.client.name;
             }
-            if (data.client.phone) {
+            if (data.client.phone && !state.client.phone) {
               state.client.phone = data.client.phone;
-              inputClienteTel.value = state.client.phone;
+              if (inputClienteTel) inputClienteTel.value = state.client.phone;
             }
-            if (data.client.address) {
+            if (data.client.address && !state.client.address) {
               state.client.address = data.client.address;
-              inputClienteEnd.value = state.client.address;
+              if (inputClienteEnd) inputClienteEnd.value = state.client.address;
             }
           }
 
@@ -802,9 +832,8 @@
     if (!feedbackModalOverlay) return;
 
     if (feedbackModalClientName) {
-      const cName = state.client.name || 'Cliente';
-      const atText = state.atendimento ? ` (Atendimento #${state.atendimento})` : '';
-      feedbackModalClientName.textContent = `${cName}${atText}`;
+      feedbackModalClientName.textContent = '';
+      feedbackModalClientName.style.display = 'none';
     }
 
     if (feedbackValorInput && !feedbackValorInput.value.trim() && state.proposal.rentValue) {
@@ -937,36 +966,49 @@
     });
 
     // Atendimento e Corretor
-    inputAtendimento.addEventListener('input', (e) => {
-      state.atendimento = e.target.value.trim();
-      renderAll();
-    });
+    // Atendimento e Corretor
+    if (inputAtendimento) {
+      inputAtendimento.addEventListener('input', (e) => {
+        state.atendimento = e.target.value.trim();
+        renderAll();
+      });
+    }
 
-    inputDataDoc.addEventListener('change', (e) => {
-      state.dataDocumento = e.target.value;
-      renderAll();
-    });
+    if (inputDataDoc) {
+      inputDataDoc.addEventListener('change', (e) => {
+        state.dataDocumento = e.target.value;
+        renderAll();
+      });
+    }
 
-    inputCorretor.addEventListener('input', (e) => {
-      state.corretor = e.target.value.trim();
-      renderAll();
-    });
+    if (inputCorretor) {
+      inputCorretor.addEventListener('input', (e) => {
+        state.corretor = e.target.value.trim();
+        renderAll();
+      });
+    }
 
     // Cliente
-    inputClienteNome.addEventListener('input', (e) => {
-      state.client.name = e.target.value.trim();
-      renderAll();
-    });
+    if (inputClienteNome) {
+      inputClienteNome.addEventListener('input', (e) => {
+        state.client.name = e.target.value.trim();
+        renderAll();
+      });
+    }
 
-    inputClienteTel.addEventListener('input', (e) => {
-      state.client.phone = e.target.value.trim();
-      renderAll();
-    });
+    if (inputClienteTel) {
+      inputClienteTel.addEventListener('input', (e) => {
+        state.client.phone = e.target.value.trim();
+        renderAll();
+      });
+    }
 
-    inputClienteEnd.addEventListener('input', (e) => {
-      state.client.address = e.target.value.trim();
-      renderAll();
-    });
+    if (inputClienteEnd) {
+      inputClienteEnd.addEventListener('input', (e) => {
+        state.client.address = e.target.value.trim();
+        renderAll();
+      });
+    }
 
     // Filtros Rápidos de Seleção de Imóveis
     btnSelectAllProps.addEventListener('click', () => {
@@ -1105,8 +1147,8 @@
 
         const lines = [
           `📄 *FICHA DE VISITA & PROPOSTA DE LOCAÇÃO*`,
-          `🏢 *Santos & Mello Imóveis* • Atendimento #${state.atendimento}`,
-          `👤 *Cliente:* ${state.client.name || 'Cliente'} (${state.client.phone || ''})`,
+          `🏢 *Santos & Mello Imóveis*`,
+          `👤 *Cliente:* ${state.client.name || 'Cliente'} ${state.client.phone ? `(${state.client.phone})` : ''}`,
           `----------------------------------------`,
           `📍 *Imóveis da Ficha de Visita:*`
         ];

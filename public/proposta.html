@@ -76,22 +76,18 @@
       </div>
 
       <div class="sidebar-scroll-content">
-        <!-- Bloco 1: Atendimento e Corretor -->
+        <!-- Bloco 1: Corretor e Data -->
         <div class="form-card">
-          <h3 class="form-card-title">1. Dados do Atendimento</h3>
+          <h3 class="form-card-title">1. Dados do Corretor & Data</h3>
           <div class="form-row-2">
             <div class="form-field">
-              <label class="field-label" for="inputAtendimento">Nº Atendimento</label>
-              <input type="text" id="inputAtendimento" class="field-input" placeholder="Ex: 5861" value="5861">
+              <label class="field-label" for="inputCorretor">Corretor Autônomo Responsável</label>
+              <input type="text" id="inputCorretor" class="field-input" placeholder="Nome do corretor / usuário" value="">
             </div>
             <div class="form-field">
               <label class="field-label" for="inputDataDoc">Data da Ficha</label>
               <input type="date" id="inputDataDoc" class="field-input">
             </div>
-          </div>
-          <div class="form-field">
-            <label class="field-label" for="inputCorretor">Corretor Autônomo Responsável</label>
-            <input type="text" id="inputCorretor" class="field-input" placeholder="Nome do corretor" value="Matheus dos Santos Cruz">
           </div>
         </div>
 
@@ -100,12 +96,12 @@
           <h3 class="form-card-title">2. Identificação do Cliente</h3>
           <div class="form-field">
             <label class="field-label" for="inputClienteNome">Nome do Cliente *</label>
-            <input type="text" id="inputClienteNome" class="field-input" placeholder="Ex: Kelly Cristina..." value="Kelly">
+            <input type="text" id="inputClienteNome" class="field-input" placeholder="Ex: Nome do cliente..." value="">
           </div>
           <div class="form-row-2">
             <div class="form-field">
               <label class="field-label" for="inputClienteTel">Telefone / WhatsApp</label>
-              <input type="text" id="inputClienteTel" class="field-input" placeholder="(11) 99999-9999" value="(11) 95340-7249">
+              <input type="text" id="inputClienteTel" class="field-input" placeholder="(11) 99999-9999" value="">
             </div>
             <div class="form-field">
               <label class="field-label" for="inputClienteEnd">Endereço Atual</label>
@@ -244,15 +240,11 @@
             <p class="doc-sub">S & M - Rua Iugoslávia, 33 - Parque das Nações - Santo André - (11) 4469-2121</p>
           </header>
 
-          <!-- Dados do Atendimento e do Cliente -->
+          <!-- Dados do Cliente -->
           <section class="doc-meta-section">
             <div class="meta-line">
-              <span class="meta-label">ATENDIMENTO:</span>
-              <span class="meta-value" id="docAtendimentoVal">5861</span>
-            </div>
-            <div class="meta-line">
               <span class="meta-label">CLIENTE:</span>
-              <span class="meta-value" id="docClienteNomeVal">Kelly</span>
+              <span class="meta-value" id="docClienteNomeVal">______________________________</span>
             </div>
             <div class="meta-line">
               <span class="meta-label">Endereço:</span>
@@ -260,14 +252,14 @@
             </div>
             <div class="meta-line">
               <span class="meta-label">Tel.</span>
-              <span class="meta-value" id="docClienteTelVal">(11) 95340-7249</span>
+              <span class="meta-value" id="docClienteTelVal">______________________________</span>
             </div>
           </section>
 
           <!-- Declaração de Visita -->
           <section class="doc-declaration">
             <p>
-              Declaro, que nesta data, por intermédio do Corretor autônomo, Sr. <span class="doc-corretor-name" id="docCorretorVal">Matheus dos Santos Cruz</span>, conheci, visitei pela primeira vez e obtive do mesmo as informações necessárias para locação dos imóveis abaixo relacionados, sendo que o mesmo prestou-me toda a consultoria necessária à verificação da viabilidade de locação do mesmo.
+              Declaro, que nesta data, por intermédio do Corretor autônomo, Sr. <span class="doc-corretor-name" id="docCorretorVal">______________________________</span>, conheci, visitei pela primeira vez e obtive do mesmo as informações necessárias para locação dos imóveis abaixo relacionados, sendo que o mesmo prestou-me toda a consultoria necessária à verificação da viabilidade de locação do mesmo.
             </p>
           </section>
 
@@ -306,7 +298,7 @@
             <div class="doc-city-date" id="docCityDateVal">Santo André, quinta-feira, 15 de outubro de 2026</div>
             <div class="doc-signature-block">
               <div class="signature-line">______________________________________________</div>
-              <div class="signature-signer-name" id="docSignerName1">Kelly</div>
+              <div class="signature-signer-name" id="docSignerName1">Proponente / Locatário</div>
             </div>
           </section>
 
@@ -364,7 +356,7 @@
               </div>
               <div class="doc-signature-block">
                 <div class="signature-line">___________________________________</div>
-                <div class="signature-signer-name" id="docSignerName2">Kelly</div>
+                <div class="signature-signer-name" id="docSignerName2">Proponente / Locatário</div>
               </div>
             </div>
 
@@ -388,10 +380,6 @@
     <div class="feedback-modal-container">
       <div class="feedback-modal-header">
         <div class="feedback-header-info">
-          <div class="feedback-badge-row">
-            <span class="feedback-badge">🤝 Card do Lead • Helena CRM</span>
-            <span class="feedback-lead-name" id="feedbackModalClientName">Cliente</span>
-          </div>
           <h3>Feedback de Visita & Fechamento</h3>
           <p>Selecione o imóvel fechado, informe os valores acordados e registre o resultado diretamente no Card do Lead.</p>
         </div>

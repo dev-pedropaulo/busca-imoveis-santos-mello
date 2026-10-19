@@ -1538,9 +1538,36 @@ app.get('/api/proposta/dados', async (req, res) => {
       });
     } catch (_) {}
 
+    // Tenta identificar o nome do corretor / usuário
+    let corretor = req.query.userName || 
+                   req.query.user_name || 
+                   req.query.user || 
+                   req.query.usuario || 
+                   req.query.nomeUsuario || 
+                   req.query.corretor || 
+                   req.query.broker || 
+                   req.query.atendente || 
+                   req.query.attendant || '';
+
+    if (!corretor && contactId) {
+      try {
+        const { fetchHelenaContactCard } = require('./lib/helena-crm');
+        const cardRes = await fetchHelenaContactCard(contactId, null, token);
+        if (cardRes) {
+          const resp = cardRes.responsibleUser || cardRes.responsible;
+          if (resp && resp.name) corretor = resp.name;
+        }
+      } catch (_) {}
+    }
+
+    if (!corretor && visitasAgendadas.length > 0) {
+      const vWithBroker = visitasAgendadas.find(v => v.broker && v.broker !== 'Corretor de Plantão' && !v.broker.toLowerCase().includes('teste'));
+      if (vWithBroker) corretor = vWithBroker.broker;
+    }
+
     const atendimentoNum = activeSessionId 
       ? activeSessionId.slice(0, 6).toUpperCase() 
-      : (contactId ? contactId.slice(0, 6).toUpperCase() : '5861');
+      : (contactId ? contactId.slice(0, 6).toUpperCase() : '');
 
     res.json({
       success: true,
@@ -1548,6 +1575,7 @@ app.get('/api/proposta/dados', async (req, res) => {
       sessionId: activeSessionId,
       contactId,
       client,
+      corretor: corretor || '',
       imoveisEnviados,
       visitasAgendadas
     });
