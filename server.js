@@ -1474,17 +1474,36 @@ app.get('/api/proposta/dados', async (req, res) => {
     if (contactId) {
       try {
         const contactRes = await fetchHelenaContact(contactId, token);
-        if (contactRes && contactRes.contact) {
-          const c = contactRes.contact;
-          if (c.name) client.name = c.name;
-          if (c.phoneNumber) client.phone = c.phoneNumber;
-          if (c.email) client.email = c.email;
+        const c = (contactRes && contactRes.contact) ? contactRes.contact : contactRes;
+        if (c && typeof c === 'object') {
+          if (!client.name && (c.name || c.nameWhatsapp || c.nameInstagram)) {
+            client.name = String(c.name || c.nameWhatsapp || c.nameInstagram).trim();
+          }
+          const phoneVal = c.phoneNumberFormatted || c.phoneNumber || c.phone || c.telefone || '';
+          if (phoneVal && !client.phone) {
+            client.phone = String(phoneVal).trim();
+          }
+          if (c.email && !client.email) {
+            client.email = String(c.email).trim();
+          }
 
           // Procura campos de endereço nos campos personalizados
-          const fields = c.customFields || [];
-          const endField = fields.find(f => /endere|rua|bairro|logradouro/i.test(f.title || f.name || ''));
-          if (endField && endField.value && !client.address) {
-            client.address = String(endField.value);
+          let addressVal = c.address || c.endereco || '';
+          if (!addressVal && c.customFields) {
+            if (Array.isArray(c.customFields)) {
+              const endField = c.customFields.find(f => /endere|rua|logradouro|bairro|cidade/i.test(f.title || f.name || f.key || ''));
+              if (endField && endField.value) addressVal = String(endField.value);
+            } else if (typeof c.customFields === 'object') {
+              for (const [k, v] of Object.entries(c.customFields)) {
+                if (/endere|rua|logradouro/i.test(k) && v) {
+                  addressVal = String(v);
+                  break;
+                }
+              }
+            }
+          }
+          if (addressVal && !client.address) {
+            client.address = String(addressVal).trim();
           }
         }
       } catch (e) {
@@ -1493,37 +1512,49 @@ app.get('/api/proposta/dados', async (req, res) => {
     }
 
     // Busca metadados da sessão se houver sessionId ou contactId
+    let sessionObj = null;
     if (activeSessionId || contactId) {
       try {
-        let session = null;
         if (activeSessionId) {
-          session = await fetchHelenaSession(activeSessionId, token);
+          sessionObj = await fetchHelenaSession(activeSessionId, token);
         } else if (contactId) {
           const sRes = await fetchHelenaContactSessions(contactId, token);
-          session = sRes.activeSession;
-          if (session) activeSessionId = session.id;
+          sessionObj = sRes.activeSession;
+          if (sessionObj) activeSessionId = sessionObj.id;
         }
 
-        if (session && session.metadata) {
-          const meta = session.metadata;
-          const rawEnviados = Array.isArray(meta.imoveisEnviados) ? meta.imoveisEnviados : [];
-          imoveisEnviados = rawEnviados.map(enrichPropertyWithCatalog).filter(Boolean);
+        if (sessionObj) {
+          // Se o nome ou telefone do cliente ainda não tiverem sido encontrados, tenta dos detalhes da sessão
+          if (sessionObj.contactDetails) {
+            if (!client.name && sessionObj.contactDetails.name) {
+              client.name = String(sessionObj.contactDetails.name).trim();
+            }
+            if (!client.phone && (sessionObj.contactDetails.phoneNumber || sessionObj.contactDetails.phoneNumberFormatted)) {
+              client.phone = String(sessionObj.contactDetails.phoneNumberFormatted || sessionObj.contactDetails.phoneNumber).trim();
+            }
+          }
 
-          const rawVisitas = Array.isArray(meta.visitasAgendadas) ? meta.visitasAgendadas : [];
-          visitasAgendadas = rawVisitas
-            .filter(v => {
-              const id = String(v.propertyId || '').toUpperCase();
-              return !id.startsWith('TEST') && id !== 'MOCK';
-            })
-            .map(v => {
-              const enriched = enrichPropertyWithCatalog({ id: v.propertyId, titulo: v.propertyTitle });
-              return {
-                ...v,
-                propertyTitle: enriched?.titulo || v.propertyTitle,
-                propertyAddress: enriched?.enderecoCompleto || v.propertyAddress || '',
-                propertyPrice: enriched?.valorFormatado || v.propertyPrice || ''
-              };
-            });
+          if (sessionObj.metadata) {
+            const meta = sessionObj.metadata;
+            const rawEnviados = Array.isArray(meta.imoveisEnviados) ? meta.imoveisEnviados : [];
+            imoveisEnviados = rawEnviados.map(enrichPropertyWithCatalog).filter(Boolean);
+
+            const rawVisitas = Array.isArray(meta.visitasAgendadas) ? meta.visitasAgendadas : [];
+            visitasAgendadas = rawVisitas
+              .filter(v => {
+                const id = String(v.propertyId || '').toUpperCase();
+                return !id.startsWith('TEST') && id !== 'MOCK';
+              })
+              .map(v => {
+                const enriched = enrichPropertyWithCatalog({ id: v.propertyId, titulo: v.propertyTitle });
+                return {
+                  ...v,
+                  propertyTitle: enriched?.titulo || v.propertyTitle,
+                  propertyAddress: enriched?.enderecoCompleto || v.propertyAddress || '',
+                  propertyPrice: enriched?.valorFormatado || v.propertyPrice || ''
+                };
+              });
+          }
         }
       } catch (e) {
         console.warn('Aviso ao consultar sessão para proposta:', e.message);
@@ -1553,28 +1584,51 @@ app.get('/api/proposta/dados', async (req, res) => {
     // Tenta identificar o nome do corretor / usuário
     let corretor = req.query.userName || 
                    req.query.user_name || 
+                   req.query.username ||
                    req.query.user || 
                    req.query.usuario || 
                    req.query.nomeUsuario || 
+                   req.query.usuarioNome ||
                    req.query.corretor || 
+                   req.query.corretorNome ||
                    req.query.broker || 
+                   req.query.brokerName ||
                    req.query.atendente || 
+                   req.query.atendenteNome ||
                    req.query.attendant || '';
 
+    if (corretor) corretor = String(corretor).trim();
+
+    // 1. Tenta extrair da sessão ativa (agentDetails, user ou prefixo da mensagem enviada no chat Helena: *Adriano:*)
+    if (!corretor && sessionObj) {
+      if (sessionObj.agentDetails && sessionObj.agentDetails.name) {
+        corretor = String(sessionObj.agentDetails.name).trim();
+      } else if (sessionObj.user && sessionObj.user.name) {
+        corretor = String(sessionObj.user.name).trim();
+      } else if (sessionObj.lastMessageText) {
+        const match = String(sessionObj.lastMessageText).match(/^\*([^*:\n]+):\*/);
+        if (match && match[1]) {
+          corretor = match[1].trim();
+        }
+      }
+    }
+
+    // 2. Tenta extrair do Card do Lead no Helena CRM se ainda não identificado
     if (!corretor && contactId) {
       try {
         const { fetchHelenaContactCard } = require('./lib/helena-crm');
         const cardRes = await fetchHelenaContactCard(contactId, null, token);
         if (cardRes) {
-          const resp = cardRes.responsibleUser || cardRes.responsible;
-          if (resp && resp.name) corretor = resp.name;
+          const resp = cardRes.responsibleUser || cardRes.responsible || cardRes.owner || cardRes.assignedUser;
+          if (resp && resp.name) corretor = String(resp.name).trim();
         }
       } catch (_) {}
     }
 
+    // 3. Tenta extrair do histórico de visitas se houver corretor nomeado
     if (!corretor && visitasAgendadas.length > 0) {
       const vWithBroker = visitasAgendadas.find(v => v.broker && v.broker !== 'Corretor de Plantão' && !v.broker.toLowerCase().includes('teste'));
-      if (vWithBroker) corretor = vWithBroker.broker;
+      if (vWithBroker) corretor = String(vWithBroker.broker).trim();
     }
 
     const atendimentoNum = activeSessionId 
