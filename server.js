@@ -17,6 +17,8 @@ const {
 } = require('./lib/helena-crm');
 const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
 const { getOperationalPropertyData } = require('./lib/imoview-api');
+const { propertiesRepository } = require('./lib/repositories/properties-repository');
+const { crmRepository } = require('./lib/repositories/crm-repository');
 const PORT = process.env.PORT || 3333;
 const XML_URL = 'https://universal-ftp2.s3.us-west-2.amazonaws.com/vr/santosemello-vivareal-8835-ambos.xml';
 
@@ -212,58 +214,68 @@ function normalizeListing(raw) {
 }
 
 async function syncFeed() {
-  console.log('🔄 Sincronizando feed XML...');
+  console.log('🔄 Sincronizando catálogo a partir do banco de dados proprietário (Supabase)...');
   try {
-    const response = await fetch(XML_URL);
-    if (!response.ok) {
-      throw new Error(`Falha HTTP ao carregar XML: ${response.status} ${response.statusText}`);
-    }
-    const xmlText = await response.text();
-    const parsed = xmlParser.parse(xmlText);
-
-    const feed = parsed.ListingDataFeed;
-    if (!feed || !feed.Listings || !feed.Listings.Listing) {
-      throw new Error('Estrutura do XML inválida ou sem listagens.');
-    }
-
-    const header = feed.Header || {};
-    metadata.provider = cleanText(header.Provider) || metadata.provider;
-    metadata.logo = cleanText(header.Logo) || metadata.logo;
-    metadata.phone = cleanText(header.Telephone) || metadata.phone;
-
-    const rawList = Array.isArray(feed.Listings.Listing) ? feed.Listings.Listing : [feed.Listings.Listing];
-    
-    const newMap = new Map();
-    const newList = [];
-
-    for (const raw of rawList) {
-      const normalized = normalizeListing(raw);
-      if (normalized.id) {
-        newMap.set(normalized.id.toLowerCase(), normalized);
-        newList.push(normalized);
+    const result = await propertiesRepository.loadAllProperties();
+    listingsMap = propertiesRepository.getPropertiesMap();
+    listingsList = propertiesRepository.getPropertiesList();
+    metadata = propertiesRepository.getMetadata();
+    console.log(`✅ Sincronização concluída via Supabase! ${metadata.total} imóveis indexados (${metadata.totalRent} locação, ${metadata.totalSale} venda).`);
+    return result;
+  } catch (dbErr) {
+    console.warn('⚠️ Falha ao carregar do Supabase, tentando fallback XML:', dbErr.message);
+    try {
+      const response = await fetch(XML_URL);
+      if (!response.ok) {
+        throw new Error(`Falha HTTP ao carregar XML: ${response.status} ${response.statusText}`);
       }
+      const xmlText = await response.text();
+      const parsed = xmlParser.parse(xmlText);
+
+      const feed = parsed.ListingDataFeed;
+      if (!feed || !feed.Listings || !feed.Listings.Listing) {
+        throw new Error('Estrutura do XML inválida ou sem listagens.');
+      }
+
+      const header = feed.Header || {};
+      metadata.provider = cleanText(header.Provider) || metadata.provider;
+      metadata.logo = cleanText(header.Logo) || metadata.logo;
+      metadata.phone = cleanText(header.Telephone) || metadata.phone;
+
+      const rawList = Array.isArray(feed.Listings.Listing) ? feed.Listings.Listing : [feed.Listings.Listing];
+      
+      const newMap = new Map();
+      const newList = [];
+
+      for (const raw of rawList) {
+        const normalized = normalizeListing(raw);
+        if (normalized.id) {
+          newMap.set(normalized.id.toLowerCase(), normalized);
+          newList.push(normalized);
+        }
+      }
+
+      let countRent = 0;
+      let countSale = 0;
+      for (const item of newList) {
+        const t = (item.transactionType || '').toLowerCase();
+        if (t.includes('locação') || t.includes('locacao') || t.includes('rent')) countRent++;
+        if (t.includes('venda') || t.includes('sale')) countSale++;
+      }
+
+      listingsMap = newMap;
+      listingsList = newList;
+      metadata.lastSync = new Date().toISOString();
+      metadata.total = listingsList.length;
+      metadata.totalRent = countRent;
+      metadata.totalSale = countSale;
+
+      console.log(`✅ Fallback XML concluído! ${metadata.total} imóveis indexados (${countRent} locação, ${countSale} venda).`);
+      return { success: true, count: metadata.total, totalRent: countRent, totalSale: countSale, lastSync: metadata.lastSync };
+    } catch (xmlErr) {
+      console.error('❌ Falha na sincronização (Supabase e XML):', xmlErr.message);
+      throw xmlErr;
     }
-
-    let countRent = 0;
-    let countSale = 0;
-    for (const item of newList) {
-      const t = (item.transactionType || '').toLowerCase();
-      if (t.includes('locação') || t.includes('locacao') || t.includes('rent')) countRent++;
-      if (t.includes('venda') || t.includes('sale')) countSale++;
-    }
-
-    listingsMap = newMap;
-    listingsList = newList;
-    metadata.lastSync = new Date().toISOString();
-    metadata.total = listingsList.length;
-    metadata.totalRent = countRent;
-    metadata.totalSale = countSale;
-
-    console.log(`✅ Sincronização concluída! ${metadata.total} imóveis indexados (${countRent} locação, ${countSale} venda).`);
-    return { success: true, count: metadata.total, totalRent: countRent, totalSale: countSale, lastSync: metadata.lastSync };
-  } catch (err) {
-    console.error('❌ Erro na sincronização:', err.message);
-    throw err;
   }
 }
 
@@ -429,7 +441,7 @@ function enrichPropertyWithCatalog(prop) {
 }
 
 // Rotas da API
-app.get('/api/imovel/:id', (req, res) => {
+app.get('/api/imovel/:id', async (req, res) => {
   const code = (req.params.id || '').trim().toLowerCase();
 
   // Verifica primeiro em customProperties
@@ -439,7 +451,11 @@ app.get('/api/imovel/:id', (req, res) => {
     if (enriched) return res.json({ success: true, data: enriched });
   }
 
-  const imovel = listingsMap.get(code);
+  let imovel = await propertiesRepository.getPropertyById(code);
+  if (!imovel) {
+    imovel = listingsMap.get(code);
+  }
+
   if (!imovel) {
     return res.status(404).json({ error: 'Imóvel não encontrado com o código fornecido.' });
   }
