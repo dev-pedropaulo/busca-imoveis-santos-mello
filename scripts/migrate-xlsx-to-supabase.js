@@ -307,7 +307,7 @@ async function migrateImoveis(workbook) {
       aceita_financiamento: parseBool(obj['AceitaFinanciamentoImovel']),
       aceita_permuta: parseBool(obj['AceitaPermutaImovel']),
       exclusivo: parseBool(obj['ExclusivoImovel']),
-      exibir_site: cleanStr(obj['ExibirMeuSiteImovel']) !== 'Não',
+      exibir_site: cleanStr(obj['ExibirMeuSiteImovel']) === '1' || obj['ExibirMeuSiteImovel'] === 1 || parseBool(obj['ExibirMeuSiteImovel']),
       
       local_chave: cleanStr(obj['NomeLocalChave']) || 'Imobiliária',
       anotacoes_internas: cleanStr(obj['AnotacoesImovel']),

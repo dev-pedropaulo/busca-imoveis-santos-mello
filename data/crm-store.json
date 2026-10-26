@@ -156,13 +156,13 @@
     "8713": {
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
-      "updatedAt": "2026-10-19T16:11:10.106Z"
+      "updatedAt": "2026-10-26T16:33:34.446Z"
     },
     "8797": {
       "kanbanStage": "visita_agendada",
       "status": "Visita Agendada",
       "keyTag": "CLAV-012",
-      "updatedAt": "2026-10-19T16:11:42.202Z"
+      "updatedAt": "2026-10-26T16:32:01.898Z"
     },
     "8816": {
       "kanbanStage": "concluido",
@@ -180,7 +180,7 @@
       "kanbanStage": "disponivel",
       "status": "Vago / Disponível",
       "keyTag": "CLAV-TEST-99",
-      "updatedAt": "2026-10-19T16:11:42.207Z"
+      "updatedAt": "2026-10-26T16:32:01.903Z"
     },
     "test-1790771916676": {
       "kanbanStage": "excluido",
@@ -282,9 +282,51 @@
       "status": "Inativo / Excluído",
       "updatedAt": "2026-10-19T16:11:42.201Z",
       "deleted": true
+    },
+    "test-1793029629947": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-26T15:47:09.953Z",
+      "deleted": true
+    },
+    "test-1793032321892": {
+      "kanbanStage": "excluido",
+      "status": "Inativo / Excluído",
+      "updatedAt": "2026-10-26T16:32:01.897Z",
+      "deleted": true
     }
   },
   "visits": [
+    {
+      "id": "vis-1793032414446-659",
+      "status": "Agendada",
+      "createdAt": "2026-10-26T16:33:34.446Z",
+      "propertyId": "8713",
+      "propertyTitle": "Apartamento Jardim Jamaica",
+      "clientName": "Pedro Santos",
+      "clientPhone": "11988887777",
+      "date": "2026-10-18",
+      "time": "14:30",
+      "broker": "Corretor de Plantão",
+      "notes": "Avisar portaria",
+      "sessionId": "sess-teste-visita",
+      "contactId": "contato-teste-visita"
+    },
+    {
+      "id": "vis-1793029663530-581",
+      "status": "Agendada",
+      "createdAt": "2026-10-26T15:47:43.530Z",
+      "propertyId": "8713",
+      "propertyTitle": "Apartamento Jardim Jamaica",
+      "clientName": "Pedro Santos",
+      "clientPhone": "11988887777",
+      "date": "2026-10-18",
+      "time": "14:30",
+      "broker": "Corretor de Plantão",
+      "notes": "Avisar portaria",
+      "sessionId": "sess-teste-visita",
+      "contactId": "contato-teste-visita"
+    },
     {
       "id": "vis-1792426270106-50",
       "status": "Agendada",
@@ -417,6 +459,26 @@
     }
   ],
   "keyMovements": [
+    {
+      "id": "km-1793032321901-244",
+      "takenAt": "2026-10-26T16:32:01.901Z",
+      "returnedAt": "2026-10-26T16:32:01.903Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
+    {
+      "id": "km-1793029629958-513",
+      "takenAt": "2026-10-26T15:47:09.958Z",
+      "returnedAt": "2026-10-26T15:47:09.959Z",
+      "status": "Devolvida",
+      "propertyId": "8830",
+      "keyTag": "CLAV-TEST-99",
+      "takenBy": "Corretor Teste",
+      "notes": "Devolução: Chaves conferidas no retorno"
+    },
     {
       "id": "km-1792426302205-212",
       "takenAt": "2026-10-19T16:11:42.205Z",
@@ -616,5 +678,39 @@
       "purpose": "Visita agendada com cliente",
       "notes": "Chaves devolvidas com integridade no claviculário"
     }
-  ]
+  ],
+  "propertyHistory": {
+    "8713": [
+      {
+        "id": "hist-1793032417470-598",
+        "propertyId": "8713",
+        "tipo": "visita",
+        "titulo": "Visita Agendada (2026-10-18 às 14:30)",
+        "descricao": "Visita agendada para o cliente Pedro Santos (Tel: 11988887777). Corretor: Corretor de Plantão. Obs: Avisar portaria",
+        "autor": "Corretor de Plantão",
+        "detalhes": {
+          "visitId": "vis-1793032414446-659",
+          "clientName": "Pedro Santos",
+          "date": "2026-10-18",
+          "time": "14:30"
+        },
+        "createdAt": "2026-10-26T16:33:37.469Z"
+      },
+      {
+        "id": "hist-1793029664015-866",
+        "propertyId": "8713",
+        "tipo": "visita",
+        "titulo": "Visita Agendada (2026-10-18 às 14:30)",
+        "descricao": "Visita agendada para o cliente Pedro Santos (Tel: 11988887777). Corretor: Corretor de Plantão. Obs: Avisar portaria",
+        "autor": "Corretor de Plantão",
+        "detalhes": {
+          "visitId": "vis-1793029663530-581",
+          "clientName": "Pedro Santos",
+          "date": "2026-10-18",
+          "time": "14:30"
+        },
+        "createdAt": "2026-10-26T15:47:44.015Z"
+      }
+    ]
+  }
 }

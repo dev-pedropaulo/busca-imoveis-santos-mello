@@ -14,6 +14,7 @@
     crudSearch: '',
     crudType: 'all',
     crudStage: 'all',
+    crudSite: 'all',
     propertiesList: [],
     kanbanData: null,
     visitsList: [],
@@ -91,6 +92,7 @@
   const crudSearchInput = document.getElementById('crudSearchInput');
   const crudTypeFilter = document.getElementById('crudTypeFilter');
   const crudStageFilter = document.getElementById('crudStageFilter');
+  const crudSiteFilter = document.getElementById('crudSiteFilter');
   const crudTableBody = document.getElementById('crudTableBody');
   const crudPaginationText = document.getElementById('crudPaginationText');
   const crudPrevBtn = document.getElementById('crudPrevBtn');
@@ -121,6 +123,14 @@
     if (crudStageFilter) {
       crudStageFilter.addEventListener('change', () => {
         state.crudStage = crudStageFilter.value;
+        state.crudPage = 1;
+        loadCrudProperties();
+      });
+    }
+
+    if (crudSiteFilter) {
+      crudSiteFilter.addEventListener('change', () => {
+        state.crudSite = crudSiteFilter.value;
         state.crudPage = 1;
         loadCrudProperties();
       });
@@ -175,7 +185,7 @@
 
   async function loadCrudProperties() {
     if (!crudTableBody) return;
-    crudTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem;"><div class="loading-spinner" style="margin: 0 auto 0.5rem;"></div>Carregando imóveis da imobiliária...</td></tr>`;
+    crudTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem;"><div class="loading-spinner" style="margin: 0 auto 0.5rem;"></div>Carregando imóveis da imobiliária...</td></tr>`;
 
     try {
       const params = new URLSearchParams({
@@ -183,7 +193,8 @@
         limit: state.crudLimit,
         q: state.crudSearch,
         type: state.crudType,
-        kanbanStage: state.crudStage
+        kanbanStage: state.crudStage,
+        siteFilter: state.crudSite
       });
 
       const res = await fetch(`/api/imoveis?${params}`);
@@ -203,15 +214,25 @@
 
       if (crudNavBadge) crudNavBadge.textContent = total;
 
+      // Atualiza os contadores no select de filtro de site
+      if (json.counts && crudSiteFilter) {
+        const optAll = crudSiteFilter.querySelector('option[value="all"]');
+        const optSite = crudSiteFilter.querySelector('option[value="site"]');
+        const optHidden = crudSiteFilter.querySelector('option[value="hidden"]');
+        if (optAll) optAll.textContent = `🌐 Site: Todos (${json.counts.total.toLocaleString('pt-BR')})`;
+        if (optSite) optSite.textContent = `✅ No Site (${json.counts.site.toLocaleString('pt-BR')})`;
+        if (optHidden) optHidden.textContent = `👁️‍🗨️ Ocultos (${json.counts.hidden.toLocaleString('pt-BR')})`;
+      }
+
       renderCrudTable(state.propertiesList, json.stages);
     } catch (err) {
-      crudTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:2rem;">Erro: ${err.message}</td></tr>`;
+      crudTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ef4444; padding:2rem;">Erro: ${err.message}</td></tr>`;
     }
   }
 
   function renderCrudTable(list, stages) {
     if (!list || list.length === 0) {
-      crudTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2.5rem; color:var(--text-secondary);">Nenhum imóvel encontrado com os filtros selecionados.</td></tr>`;
+      crudTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2.5rem; color:var(--text-secondary);">Nenhum imóvel encontrado com os filtros selecionados.</td></tr>`;
       return;
     }
 
@@ -224,6 +245,18 @@
       const stageObj = (stages || []).find(s => s.id === stageKey) || { label: item.status || 'Disponível' };
       const photoCount = Array.isArray(item.images) && item.images.length > 0 ? item.images.length : (item.primaryImage ? 1 : 0);
       const photoBadge = photoCount > 1 ? `<span class="badge-photo-count" title="${photoCount} fotos cadastradas">📷 ${photoCount} fotos</span>` : '';
+      const isSiteActive = item.exibirSite !== false;
+
+      const siteToggleBtn = `
+        <button type="button" 
+                class="btn-toggle-site ${isSiteActive ? 'active' : 'hidden'}" 
+                data-id="${item.id}" 
+                data-site="${isSiteActive}"
+                title="${isSiteActive ? 'Imóvel ativo no site e portais. Clique para ocultar.' : 'Imóvel oculto no site. Clique para publicar no site.'}">
+          <span class="site-dot"></span>
+          <span>${isSiteActive ? 'No Site' : 'Oculto'}</span>
+        </button>
+      `;
 
       return `
         <tr data-id="${item.id}">
@@ -244,6 +277,9 @@
           </td>
           <td>
             <strong style="color:var(--text-primary); font-size:0.92rem;">${priceText}</strong>
+          </td>
+          <td style="text-align: center;">
+            ${siteToggleBtn}
           </td>
           <td>
             <select class="crud-select status-select-cell" data-id="${item.id}" style="font-size:0.78rem; padding:0.35rem 0.6rem;">
@@ -281,6 +317,31 @@
     crudTableBody.innerHTML = html;
 
     // Listeners na tabela
+    crudTableBody.querySelectorAll('.btn-toggle-site').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const currentActive = btn.dataset.site === 'true';
+        const newActive = !currentActive;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="loading-spinner" style="width:11px; height:11px; border-width:2px; display:inline-block; vertical-align:middle;"></span>`;
+        try {
+          const res = await fetch(`/api/imoveis/${encodeURIComponent(id)}/exibir-site`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ exibirSite: newActive })
+          });
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error || 'Falha ao atualizar visibilidade.');
+          showToast(`Imóvel #${id} ${newActive ? 'publicado no site e portais' : 'ocultado do site'} com sucesso!`);
+          await loadCrudProperties();
+        } catch (err) {
+          showToast('Erro: ' + err.message, 'error');
+          await loadCrudProperties();
+        }
+      });
+    });
+
     crudTableBody.querySelectorAll('.status-select-cell').forEach(sel => {
       sel.addEventListener('change', async (e) => {
         const id = e.target.dataset.id;
@@ -682,6 +743,8 @@
         if (cbPerm) cbPerm.checked = !!item.aceitaPermuta;
         const cbExcl = document.getElementById('formPropExclusive');
         if (cbExcl) cbExcl.checked = !!item.exclusivo;
+        const cbSite = document.getElementById('formPropExibirSite');
+        if (cbSite) cbSite.checked = item.exibirSite !== false;
 
         // Comodidades
         const featSet = new Set(item.features || []);
@@ -720,6 +783,8 @@
         if (cbPerm) cbPerm.checked = false;
         const cbExcl = document.getElementById('formPropExclusive');
         if (cbExcl) cbExcl.checked = false;
+        const cbSite = document.getElementById('formPropExibirSite');
+        if (cbSite) cbSite.checked = true;
       }
 
       renderPhotosGallery();
@@ -827,6 +892,7 @@
         aceitaFinanciamento: !!document.getElementById('formPropFinancing')?.checked,
         aceitaPermuta: !!document.getElementById('formPropPermuta')?.checked,
         exclusivo: !!document.getElementById('formPropExclusive')?.checked,
+        exibirSite: !!document.getElementById('formPropExibirSite')?.checked,
         location: {
           address: getVal('formPropAddress'),
           streetNumber: getVal('formPropNumber'),

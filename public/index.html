@@ -804,6 +804,11 @@
             <option value="analise_contrato">🔍 Análise / Contrato</option>
             <option value="concluido">🤝 Concluído</option>
           </select>
+          <select id="crudSiteFilter" class="crud-select" title="Filtrar por visibilidade no site e portais">
+            <option value="all">🌐 Site: Todos os Imóveis</option>
+            <option value="site">✅ No Site (Habilitados)</option>
+            <option value="hidden">👁️‍🗨️ Ocultos do Site</option>
+          </select>
         </div>
 
         <div class="crud-table-card">
@@ -815,6 +820,7 @@
                   <th>Código</th>
                   <th>Finalidade</th>
                   <th>Preço</th>
+                  <th style="text-align: center;">Site / Portais</th>
                   <th>Etapa na Jornada</th>
                   <th>Chaveiro</th>
                   <th style="text-align: right;">Ações</th>
@@ -1278,6 +1284,21 @@
             <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Playground"> 🛝 Playground</label>
             <label class="checkbox-feature-label"><input type="checkbox" class="feat-checkbox" value="Espaço Gourmet"> 🍳 Espaço Gourmet</label>
           </div>
+        </div>
+
+        <!-- VISIBILIDADE NO SITE E PORTAIS -->
+        <div class="form-group" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 0.85rem 1.1rem; margin-bottom: 1rem;">
+          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
+            <div style="padding-right: 1rem;">
+              <strong style="color: var(--text-primary); font-size: 0.92rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span>🌐</span> Exibir Imóvel no Site e Portais (VivaReal, Imovelweb)
+              </strong>
+              <div style="font-size: 0.77rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                Quando ativado, o imóvel é ofertado no site público e em propostas comerciais. Quando desativado, permanece no catálogo interno da imobiliária.
+              </div>
+            </div>
+            <input type="checkbox" id="formPropExibirSite" checked style="width: 20px; height: 20px; accent-color: var(--accent-primary); cursor: pointer;">
+          </label>
         </div>
 
         <div class="form-grid-2">

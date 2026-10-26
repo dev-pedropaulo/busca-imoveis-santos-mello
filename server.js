@@ -566,11 +566,14 @@ function normalizeString(str) {
 }
 
 app.get('/api/filter-options', (req, res) => {
+  const includeHidden = req.query.includeHidden === 'true' || req.query.all === 'true';
   const neighborhoodsSet = new Set();
   const propertyTypesSet = new Set();
   const citiesSet = new Set();
 
   for (const item of listingsList) {
+    if (!includeHidden && item.exibirSite === false) continue;
+
     if (item.location.city) {
       citiesSet.add(item.location.city.trim());
     }
@@ -666,8 +669,14 @@ app.get('/api/search', (req, res) => {
   const cityNorm = normalizeString(city);
   const propertyTypeNorm = normalizeString(propertyType);
   const requiredFeatures = featuresQuery ? featuresQuery.split(',').map(f => f.trim()).filter(Boolean) : [];
+  const includeHidden = req.query.includeHidden === 'true' || req.query.all === 'true';
 
   let filtered = listingsList.filter(item => {
+    // Catálogo de Oferta e Busca Pública: exibe somente os imóveis com exibirSite habilitado
+    if (!includeHidden && item.exibirSite === false) {
+      return false;
+    }
+
     // Filtro por termo livre (ID, título, bairro, cidade, endereço ou descrição)
     if (queryNorm) {
       const idNorm = normalizeString(item.id);
@@ -1036,6 +1045,9 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
   const matchedItems = [];
 
   for (const item of allProperties) {
+    // Oferta para Leads: somente imóveis habilitados para o site/oferta
+    if (item.exibirSite === false) continue;
+
     // 1. Filtro de Disponibilidade (somente imóveis disponíveis / não concluídos)
     const stage = item.kanbanStage || 'disponivel';
     if (onlyAvailable) {
@@ -2037,15 +2049,20 @@ app.post('/api/leads/schedule-visits', async (req, res) => {
 
 // --- ROTAS DO CRM & GESTÃO DE IMÓVEIS (CRUD) ---
 
-// Listar imóveis gerenciais com paginação e filtros
+// Listar imóveis gerenciais com paginação e filtros (CRUD de Gestão: lista todos por padrão)
 app.get('/api/imoveis', (req, res) => {
   const query = normalizeString(req.query.q || '');
   const typeFilter = normalizeString(req.query.type || '');
   const stageFilter = (req.query.kanbanStage || req.query.stage || '').trim();
+  const siteFilter = (req.query.siteFilter || req.query.exibirSite || 'all').trim().toLowerCase();
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
   let all = getAllPropertiesMerged();
+
+  const totalGeral = all.length;
+  const totalSite = all.filter(p => p.exibirSite !== false).length;
+  const totalHidden = all.filter(p => p.exibirSite === false).length;
 
   if (query) {
     all = all.filter(p => {
@@ -2066,6 +2083,12 @@ app.get('/api/imoveis', (req, res) => {
     all = all.filter(p => (p.kanbanStage || 'disponivel') === stageFilter);
   }
 
+  if (siteFilter === 'site' || siteFilter === 'true' || siteFilter === '1') {
+    all = all.filter(p => p.exibirSite !== false);
+  } else if (siteFilter === 'hidden' || siteFilter === 'false' || siteFilter === '0') {
+    all = all.filter(p => p.exibirSite === false);
+  }
+
   const total = all.length;
   const totalPages = Math.ceil(total / limit) || 1;
   const startIndex = (page - 1) * limit;
@@ -2080,8 +2103,35 @@ app.get('/api/imoveis', (req, res) => {
       limit,
       totalPages
     },
+    counts: {
+      total: totalGeral,
+      site: totalSite,
+      hidden: totalHidden
+    },
     stages: KANBAN_STAGES
   });
+});
+
+// Alternar status de visibilidade no site e portais
+app.patch('/api/imoveis/:id/exibir-site', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { exibirSite } = req.body;
+    const updated = await propertiesRepository.updateProperty(id, {
+      exibirSite: !!exibirSite,
+      autor: req.body.autor || 'Corretor / Administrador'
+    });
+    listingsMap = propertiesRepository.getPropertiesMap();
+    listingsList = propertiesRepository.getPropertiesList();
+
+    res.json({
+      success: true,
+      data: updated,
+      message: `Imóvel #${id} ${exibirSite ? 'habilitado no site' : 'ocultado do site'} com sucesso!`
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao alternar visibilidade: ' + err.message });
+  }
 });
 
 // Consulta do próximo código de imóvel sequencial disponível
