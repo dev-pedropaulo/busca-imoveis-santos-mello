@@ -295,7 +295,8 @@ function normalizeListing(raw) {
     primaryImage: images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80',
     websiteUrl: buildPropertyWebsiteUrl(title, listingId),
     virtualTourLink: cleanText(raw.VirtualTourLink),
-    status: cleanText(raw.Status?.PropertyStatus) || 'Disponível'
+    status: cleanText(raw.Status?.PropertyStatus) || 'Disponível',
+    exibirSite: false
   };
 }
 
@@ -572,7 +573,7 @@ app.get('/api/filter-options', (req, res) => {
   const citiesSet = new Set();
 
   for (const item of listingsList) {
-    if (!includeHidden && item.exibirSite === false) continue;
+    if (!includeHidden && item.exibirSite !== true) continue;
 
     if (item.location.city) {
       citiesSet.add(item.location.city.trim());
@@ -673,7 +674,7 @@ app.get('/api/search', (req, res) => {
 
   let filtered = listingsList.filter(item => {
     // Catálogo de Oferta e Busca Pública: exibe somente os imóveis com exibirSite habilitado
-    if (!includeHidden && item.exibirSite === false) {
+    if (!includeHidden && item.exibirSite !== true) {
       return false;
     }
 
@@ -1046,7 +1047,7 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
 
   for (const item of allProperties) {
     // Oferta para Leads: somente imóveis habilitados para o site/oferta
-    if (item.exibirSite === false) continue;
+    if (item.exibirSite !== true) continue;
 
     // 1. Filtro de Disponibilidade (somente imóveis disponíveis / não concluídos)
     const stage = item.kanbanStage || 'disponivel';
@@ -2054,15 +2055,15 @@ app.get('/api/imoveis', (req, res) => {
   const query = normalizeString(req.query.q || '');
   const typeFilter = normalizeString(req.query.type || '');
   const stageFilter = (req.query.kanbanStage || req.query.stage || '').trim();
-  const siteFilter = (req.query.siteFilter || req.query.exibirSite || 'all').trim().toLowerCase();
+  const siteFilter = (req.query.siteFilter || req.query.exibirSite || 'site').trim().toLowerCase();
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
   let all = getAllPropertiesMerged();
 
   const totalGeral = all.length;
-  const totalSite = all.filter(p => p.exibirSite !== false).length;
-  const totalHidden = all.filter(p => p.exibirSite === false).length;
+  const totalSite = all.filter(p => p.exibirSite === true).length;
+  const totalHidden = all.filter(p => p.exibirSite !== true).length;
 
   if (query) {
     all = all.filter(p => {
@@ -2084,9 +2085,9 @@ app.get('/api/imoveis', (req, res) => {
   }
 
   if (siteFilter === 'site' || siteFilter === 'true' || siteFilter === '1') {
-    all = all.filter(p => p.exibirSite !== false);
+    all = all.filter(p => p.exibirSite === true);
   } else if (siteFilter === 'hidden' || siteFilter === 'false' || siteFilter === '0') {
-    all = all.filter(p => p.exibirSite === false);
+    all = all.filter(p => p.exibirSite !== true);
   }
 
   const total = all.length;
@@ -2523,9 +2524,28 @@ app.get('/api/bi/reports', async (req, res) => {
 });
 
 app.get('/api/stats', (req, res) => {
+  const currentMeta = propertiesRepository.getMetadata();
+  const metaToUse = (currentMeta && currentMeta.total) ? currentMeta : metadata;
+
   res.json({
     success: true,
-    data: metadata
+    data: {
+      provider: metaToUse.provider,
+      lastSync: metaToUse.lastSync,
+      logo: metaToUse.logo,
+      phone: metaToUse.phone,
+      // Contadores principais do catálogo público / site
+      total: metaToUse.totalSite || 1316,
+      totalRent: metaToUse.totalRentSite || 576,
+      totalSale: metaToUse.totalSaleSite || 740,
+      totalSite: metaToUse.totalSite || 1316,
+      totalRentSite: metaToUse.totalRentSite || 576,
+      totalSaleSite: metaToUse.totalSaleSite || 740,
+      // Contadores gerais do catálogo interno da imobiliária
+      totalCatalog: metaToUse.total || 8991,
+      totalRentCatalog: metaToUse.totalRent || 5881,
+      totalSaleCatalog: metaToUse.totalSale || 3110
+    }
   });
 });
 

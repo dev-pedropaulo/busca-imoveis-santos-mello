@@ -762,16 +762,16 @@
 
       if (statsRes.ok) {
         const stats = await statsRes.json();
-        const total = stats.data?.total || 1202;
-        const totalRent = stats.data?.totalRent || 484;
-        const totalSale = stats.data?.totalSale || 718;
+        const total = stats.data?.total || stats.data?.totalSite || 1316;
+        const totalRent = stats.data?.totalRent || stats.data?.totalRentSite || 576;
+        const totalSale = stats.data?.totalSale || stats.data?.totalSaleSite || 740;
 
         feedStatusText.textContent = `${total.toLocaleString('pt-BR')} imóveis disponíveis (${totalRent} locação • ${totalSale} venda)`;
         if (tabBadgeAll) tabBadgeAll.textContent = total.toLocaleString('pt-BR');
         if (tabBadgeRent) tabBadgeRent.textContent = totalRent.toLocaleString('pt-BR');
         if (tabBadgeSale) tabBadgeSale.textContent = totalSale.toLocaleString('pt-BR');
       } else {
-        feedStatusText.textContent = '1.202 imóveis disponíveis';
+        feedStatusText.textContent = '1.316 imóveis disponíveis';
       }
 
       if (optionsRes.ok) {
@@ -794,7 +794,7 @@
       }
     } catch (err) {
       console.warn('Backend API fallback ativo:', err.message);
-      feedStatusText.textContent = '1.202 imóveis disponíveis';
+      feedStatusText.textContent = '1.316 imóveis disponíveis';
     }
   }
 

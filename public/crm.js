@@ -14,7 +14,7 @@
     crudSearch: '',
     crudType: 'all',
     crudStage: 'all',
-    crudSite: 'all',
+    crudSite: 'site',
     propertiesList: [],
     kanbanData: null,
     visitsList: [],
@@ -216,12 +216,12 @@
 
       // Atualiza os contadores no select de filtro de site
       if (json.counts && crudSiteFilter) {
-        const optAll = crudSiteFilter.querySelector('option[value="all"]');
         const optSite = crudSiteFilter.querySelector('option[value="site"]');
+        const optAll = crudSiteFilter.querySelector('option[value="all"]');
         const optHidden = crudSiteFilter.querySelector('option[value="hidden"]');
-        if (optAll) optAll.textContent = `🌐 Site: Todos (${json.counts.total.toLocaleString('pt-BR')})`;
         if (optSite) optSite.textContent = `✅ No Site (${json.counts.site.toLocaleString('pt-BR')})`;
-        if (optHidden) optHidden.textContent = `👁️‍🗨️ Ocultos (${json.counts.hidden.toLocaleString('pt-BR')})`;
+        if (optAll) optAll.textContent = `🌐 Catálogo Completo (${json.counts.total.toLocaleString('pt-BR')})`;
+        if (optHidden) optHidden.textContent = `👁️‍🗨️ Ocultos do Site (${json.counts.hidden.toLocaleString('pt-BR')})`;
       }
 
       renderCrudTable(state.propertiesList, json.stages);
@@ -245,7 +245,7 @@
       const stageObj = (stages || []).find(s => s.id === stageKey) || { label: item.status || 'Disponível' };
       const photoCount = Array.isArray(item.images) && item.images.length > 0 ? item.images.length : (item.primaryImage ? 1 : 0);
       const photoBadge = photoCount > 1 ? `<span class="badge-photo-count" title="${photoCount} fotos cadastradas">📷 ${photoCount} fotos</span>` : '';
-      const isSiteActive = item.exibirSite !== false;
+      const isSiteActive = item.exibirSite === true;
 
       const siteToggleBtn = `
         <button type="button" 
@@ -744,7 +744,7 @@
         const cbExcl = document.getElementById('formPropExclusive');
         if (cbExcl) cbExcl.checked = !!item.exclusivo;
         const cbSite = document.getElementById('formPropExibirSite');
-        if (cbSite) cbSite.checked = item.exibirSite !== false;
+        if (cbSite) cbSite.checked = item.exibirSite === true;
 
         // Comodidades
         const featSet = new Set(item.features || []);
