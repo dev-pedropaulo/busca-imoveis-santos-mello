@@ -147,6 +147,30 @@
         openPropertyModal();
       });
     }
+
+    const btnSyncProperties = document.getElementById('btnSyncProperties');
+    if (btnSyncProperties) {
+      btnSyncProperties.addEventListener('click', async () => {
+        btnSyncProperties.disabled = true;
+        const originalContent = btnSyncProperties.innerHTML;
+        btnSyncProperties.innerHTML = `
+          <div class="loading-spinner" style="width:14px; height:14px; border-width:2px; display:inline-block; margin-right:0.4rem; vertical-align:middle;"></div>
+          <span>Sincronizando...</span>
+        `;
+        try {
+          const res = await fetch('/api/sync');
+          const json = await res.json();
+          if (!json.success && json.error) throw new Error(json.error);
+          showToast('✅ Catálogo sincronizado com sucesso do Supabase!');
+          await loadCrudProperties();
+        } catch (err) {
+          showToast('Erro ao sincronizar: ' + err.message, 'error');
+        } finally {
+          btnSyncProperties.disabled = false;
+          btnSyncProperties.innerHTML = originalContent;
+        }
+      });
+    }
   }
 
   async function loadCrudProperties() {
@@ -236,6 +260,9 @@
           </td>
           <td>
             <div class="table-actions">
+              <button type="button" class="btn-icon-action btn-history-prop" data-id="${item.id}" title="📜 Histórico & Auditoria">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>
+              </button>
               <button type="button" class="btn-icon-action btn-view-prop" data-id="${item.id}" title="Ver Ficha Completa">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               </button>
@@ -259,6 +286,13 @@
         const id = e.target.dataset.id;
         const newStage = e.target.value;
         await updatePropertyStage(id, newStage);
+      });
+    });
+
+    crudTableBody.querySelectorAll('.btn-history-prop').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        openPropertyHistoryModal(id);
       });
     });
 
@@ -602,19 +636,31 @@
 
         setVal('formPropId', item.id);
         const elId = document.getElementById('formPropId');
-        if (elId) elId.disabled = true;
+        if (elId) {
+          elId.value = item.id;
+          elId.disabled = true;
+        }
+        const badgeAuto = document.getElementById('badgeAutoCode');
+        if (badgeAuto) badgeAuto.style.display = 'none';
+        const hintEl = document.getElementById('formPropIdHint');
+        if (hintEl) hintEl.textContent = 'Código oficial do imóvel cadastrado.';
 
         setVal('formPropTitle', item.title);
         setVal('formPropTransaction', item.transactionType || 'Locação');
         setVal('formPropCategory', item.propertyType || 'Apartment');
         setVal('formPropUsage', item.usageType || 'Residencial');
         setVal('formPropStage', item.kanbanStage || 'disponivel');
-        setVal('formPropKeyTag', item.keyTag || `CLAV-${item.id}`);
+        setVal('formPropKeyLocation', item.localChave || 'Imobiliária');
+        setVal('formPropKeyTag', item.keyTag || item.codigoChave || `CLAV-${item.id}`);
+        setVal('formPropCondoName', item.nomeCondominio || item.edificio || '');
+        setVal('formPropFloor', item.andar || '');
+        setVal('formPropBlock', item.bloco || '');
         setVal('formPropPriceSale', item.price);
         setVal('formPropPriceRent', item.rentalPrice);
         setVal('formPropCondo', item.condo);
         setVal('formPropIptu', item.iptu);
         setVal('formPropArea', item.livingArea);
+        setVal('formPropLotArea', item.lotArea || item.constructedArea || '');
         setVal('formPropBeds', item.bedrooms);
         setVal('formPropSuites', item.suites);
         setVal('formPropBaths', item.bathrooms);
@@ -628,6 +674,14 @@
         setVal('formPropImage', '');
         setVal('formPropTour', item.virtualTourLink);
         setVal('formPropDesc', item.description);
+        setVal('formPropInternalNotes', item.anotacoesInternas || '');
+
+        const cbFin = document.getElementById('formPropFinancing');
+        if (cbFin) cbFin.checked = !!item.aceitaFinanciamento;
+        const cbPerm = document.getElementById('formPropPermuta');
+        if (cbPerm) cbPerm.checked = !!item.aceitaPermuta;
+        const cbExcl = document.getElementById('formPropExclusive');
+        if (cbExcl) cbExcl.checked = !!item.exclusivo;
 
         // Comodidades
         const featSet = new Set(item.features || []);
@@ -637,16 +691,35 @@
       } else {
         state.modalPhotos = [];
         state.modalPrimaryIndex = 0;
-        const newCode = `SM-${Math.floor(1000 + Math.random() * 9000)}`;
+        
         const elId = document.getElementById('formPropId');
         if (elId) {
-          elId.value = newCode;
-          elId.disabled = false;
+          elId.value = 'Automático (gerado ao salvar)';
+          elId.disabled = true;
         }
+        const badgeAuto = document.getElementById('badgeAutoCode');
+        if (badgeAuto) badgeAuto.style.display = 'inline-block';
+        const hintEl = document.getElementById('formPropIdHint');
+        if (hintEl) hintEl.textContent = 'Código sequencial gerado atomicamente ao salvar para evitar duplicidades.';
+
+        setVal('formPropTitle', '');
         setVal('formPropCity', 'Santo André');
         setVal('formPropStage', 'disponivel');
-        setVal('formPropKeyTag', `CLAV-${Math.floor(10 + Math.random() * 90)}`);
+        setVal('formPropKeyLocation', 'Imobiliária');
+        setVal('formPropKeyTag', '');
+        setVal('formPropCondoName', '');
+        setVal('formPropFloor', '');
+        setVal('formPropBlock', '');
+        setVal('formPropLotArea', '');
         setVal('formPropImage', '');
+        setVal('formPropInternalNotes', '');
+
+        const cbFin = document.getElementById('formPropFinancing');
+        if (cbFin) cbFin.checked = false;
+        const cbPerm = document.getElementById('formPropPermuta');
+        if (cbPerm) cbPerm.checked = false;
+        const cbExcl = document.getElementById('formPropExclusive');
+        if (cbExcl) cbExcl.checked = false;
       }
 
       renderPhotosGallery();
@@ -684,12 +757,8 @@
         return isNaN(n) ? def : n;
       };
 
-      let id = getVal('formPropId');
-      if (!id) {
-        id = `SM-${Math.floor(1000 + Math.random() * 9000)}`;
-        const elId = document.getElementById('formPropId');
-        if (elId) elId.value = id;
-      }
+      // Se for novo imóvel, envia id nulo para o backend gerar atomicamente
+      let id = isEditing ? state.editingPropertyId : null;
 
       const title = getVal('formPropTitle');
       if (!title) {
@@ -740,16 +809,24 @@
         propertyType: getVal('formPropCategory', 'Apartment'),
         usageType: getVal('formPropUsage', 'Residencial'),
         kanbanStage: getVal('formPropStage', 'disponivel'),
-        keyTag: getVal('formPropKeyTag') || `CLAV-${id}`,
+        localChave: getVal('formPropKeyLocation', 'Imobiliária'),
+        keyTag: getVal('formPropKeyTag') || (id ? `CLAV-${id}` : ''),
+        nomeCondominio: getVal('formPropCondoName'),
+        andar: getVal('formPropFloor'),
+        bloco: getVal('formPropBlock'),
         price: getNum('formPropPriceSale'),
         rentalPrice: getNum('formPropPriceRent'),
         condo: getNum('formPropCondo'),
         iptu: getNum('formPropIptu'),
         livingArea: getNum('formPropArea'),
+        lotArea: getNum('formPropLotArea'),
         bedrooms: getInt('formPropBeds'),
         suites: getInt('formPropSuites'),
         bathrooms: getInt('formPropBaths'),
         garage: getInt('formPropGarage'),
+        aceitaFinanciamento: !!document.getElementById('formPropFinancing')?.checked,
+        aceitaPermuta: !!document.getElementById('formPropPermuta')?.checked,
+        exclusivo: !!document.getElementById('formPropExclusive')?.checked,
         location: {
           address: getVal('formPropAddress'),
           streetNumber: getVal('formPropNumber'),
@@ -763,6 +840,7 @@
         images: images,
         virtualTourLink: getVal('formPropTour'),
         description: getVal('formPropDesc'),
+        anotacoesInternas: getVal('formPropInternalNotes'),
         features: features
       };
 
@@ -1438,11 +1516,247 @@
     }
   }
 
+  // --- MÓDULO DE HISTÓRICO & AUDITORIA DO IMÓVEL (TIMELINE) ---
+  const propHistoryModalOverlay = document.getElementById('propHistoryModalOverlay');
+  const historyModalTitle = document.getElementById('historyModalTitle');
+  const historyModalSubtitle = document.getElementById('historyModalSubtitle');
+  const historyModalClose = document.getElementById('historyModalClose');
+  const historyModalCloseBtn = document.getElementById('historyModalCloseBtn');
+  const historyPropertySummary = document.getElementById('historyPropertySummary');
+  const historyFilterPills = document.getElementById('historyFilterPills');
+  const btnToggleAddNote = document.getElementById('btnToggleAddNote');
+  const historyAddNoteBox = document.getElementById('historyAddNoteBox');
+  const historyNoteTitle = document.getElementById('historyNoteTitle');
+  const historyNoteDesc = document.getElementById('historyNoteDesc');
+  const btnSaveNote = document.getElementById('btnSaveNote');
+  const btnCancelNote = document.getElementById('btnCancelNote');
+  const historyTimelineContainer = document.getElementById('historyTimelineContainer');
+
+  state.activeHistoryEvents = [];
+  state.currentHistoryPropId = null;
+  state.currentHistoryFilter = 'all';
+
+  function initHistoryEvents() {
+    if (historyModalClose) historyModalClose.addEventListener('click', closePropertyHistoryModal);
+    if (historyModalCloseBtn) historyModalCloseBtn.addEventListener('click', closePropertyHistoryModal);
+
+    if (btnToggleAddNote) {
+      btnToggleAddNote.addEventListener('click', () => {
+        if (!historyAddNoteBox) return;
+        const isHidden = historyAddNoteBox.style.display === 'none';
+        historyAddNoteBox.style.display = isHidden ? 'block' : 'none';
+        if (isHidden && historyNoteTitle) historyNoteTitle.focus();
+      });
+    }
+
+    if (btnCancelNote) {
+      btnCancelNote.addEventListener('click', () => {
+        if (historyAddNoteBox) historyAddNoteBox.style.display = 'none';
+        if (historyNoteTitle) historyNoteTitle.value = '';
+        if (historyNoteDesc) historyNoteDesc.value = '';
+      });
+    }
+
+    if (btnSaveNote) {
+      btnSaveNote.addEventListener('click', async () => {
+        await saveManualHistoryNote();
+      });
+    }
+
+    if (historyFilterPills) {
+      historyFilterPills.querySelectorAll('.history-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          historyFilterPills.querySelectorAll('.history-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          state.currentHistoryFilter = pill.dataset.type || 'all';
+          renderHistoryTimeline();
+        });
+      });
+    }
+  }
+
+  function closePropertyHistoryModal() {
+    if (propHistoryModalOverlay) propHistoryModalOverlay.classList.remove('active');
+  }
+
+  async function openPropertyHistoryModal(propertyId) {
+    if (!propertyId) return;
+    state.currentHistoryPropId = propertyId;
+    state.currentHistoryFilter = 'all';
+
+    if (historyFilterPills) {
+      historyFilterPills.querySelectorAll('.history-pill').forEach((p, idx) => {
+        p.classList.toggle('active', idx === 0);
+      });
+    }
+    if (historyAddNoteBox) historyAddNoteBox.style.display = 'none';
+    if (historyNoteTitle) historyNoteTitle.value = '';
+    if (historyNoteDesc) historyNoteDesc.value = '';
+
+    let prop = (state.crudProperties || []).find(p => String(p.id).toLowerCase() === String(propertyId).toLowerCase());
+    if (!prop && state.catalogData && state.catalogData.listings) {
+      prop = state.catalogData.listings.find(p => String(p.id).toLowerCase() === String(propertyId).toLowerCase());
+    }
+
+    if (historyModalTitle) {
+      historyModalTitle.innerHTML = `📜 Histórico & Auditoria • Imóvel <strong style="color:var(--accent-primary);">#${propertyId}</strong>`;
+    }
+
+    if (historyPropertySummary) {
+      const title = prop ? prop.title : `Imóvel #${propertyId}`;
+      const thumb = prop?.primaryImage || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=120';
+      const neighborhood = prop?.location?.neighborhood || prop?.bairro || 'Santo André';
+      const type = prop?.transactionType || 'Locação';
+      const priceFmt = prop?.rentalPrice
+        ? `R$ ${prop.rentalPrice.toLocaleString('pt-BR')}/mês`
+        : (prop?.price ? `R$ ${prop.price.toLocaleString('pt-BR')}` : 'Sob consulta');
+      const statusLabel = prop?.status || 'Disponível';
+
+      historyPropertySummary.innerHTML = `
+        <img src="${thumb}" class="history-prop-thumb" alt="${title}" onerror="this.src='logo.png'" />
+        <div class="history-prop-info">
+          <div class="history-prop-title" title="${title}">${title}</div>
+          <div class="history-prop-meta">
+            <span>📍 ${neighborhood}</span>
+            <span class="badge ${type.includes('Locação') ? 'badge-rent' : 'badge-sale'}" style="font-size:0.72rem; padding:0.15rem 0.5rem;">${type}</span>
+            <strong>${priceFmt}</strong>
+            <span class="key-tag-pill" style="font-size:0.72rem;">🔑 ${prop?.keyTag || `CLAV-${propertyId}`}</span>
+            <span class="status-badge status-disponivel" style="font-size:0.72rem; padding:0.15rem 0.5rem;">${statusLabel}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (historyTimelineContainer) {
+      historyTimelineContainer.innerHTML = `
+        <div style="padding: 2.5rem; text-align: center; color: var(--text-secondary);">
+          <div class="loading-spinner" style="margin: 0 auto 0.75rem;"></div>
+          Carregando linha do tempo e auditoria do imóvel #${propertyId}...
+        </div>
+      `;
+    }
+
+    if (propHistoryModalOverlay) {
+      propHistoryModalOverlay.classList.add('active');
+    }
+
+    try {
+      const res = await fetch(`/api/imoveis/${propertyId}/historico`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Erro ao carregar histórico');
+      state.activeHistoryEvents = json.data || [];
+      renderHistoryTimeline();
+    } catch (err) {
+      if (historyTimelineContainer) {
+        historyTimelineContainer.innerHTML = `
+          <div style="padding: 2rem; text-align: center; color: #ef4444;">
+            Erro ao carregar histórico: ${err.message}
+          </div>
+        `;
+      }
+    }
+  }
+
+  function renderHistoryTimeline() {
+    if (!historyTimelineContainer) return;
+    const all = state.activeHistoryEvents || [];
+    const filter = state.currentHistoryFilter || 'all';
+
+    const filtered = filter === 'all'
+      ? all
+      : all.filter(e => (e.tipo || '').toLowerCase() === filter.toLowerCase());
+
+    if (filtered.length === 0) {
+      historyTimelineContainer.innerHTML = `
+        <div style="padding: 3rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📭</div>
+          Nenhum evento registrado ${filter !== 'all' ? 'nesta categoria' : 'no histórico deste imóvel ainda'}.
+        </div>
+      `;
+      return;
+    }
+
+    const typeIcons = {
+      visita: '📅',
+      chave: '🔑',
+      alteracao: '📝',
+      criacao: '🟢',
+      status: '🏷️',
+      anotacao: '📌',
+      proposta: '🤝',
+      oferta: '📤'
+    };
+
+    const html = filtered.map(item => {
+      const icon = typeIcons[item.tipo] || '📌';
+      const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('pt-BR') : '';
+      return `
+        <div class="timeline-item">
+          <div class="timeline-icon tipo-${item.tipo || 'anotacao'}" title="${item.tipo}">
+            ${icon}
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-card-header">
+              <span class="timeline-card-title">${item.titulo || 'Registro'}</span>
+              <span class="timeline-card-date">${dateStr}</span>
+            </div>
+            <div class="timeline-card-author">
+              <span>👤 ${item.autor || 'Sistema'}</span>
+              <span style="opacity:0.4;">•</span>
+              <span style="text-transform: capitalize; font-size: 0.72rem; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,0.06);">${item.tipo}</span>
+            </div>
+            ${item.descricao ? `<div class="timeline-card-desc">${item.descricao}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    historyTimelineContainer.innerHTML = html;
+  }
+
+  async function saveManualHistoryNote() {
+    const title = historyNoteTitle ? historyNoteTitle.value.trim() : '';
+    const desc = historyNoteDesc ? historyNoteDesc.value.trim() : '';
+    if (!title && !desc) {
+      showToast('Digite um título ou descrição para a anotação.', 'error');
+      return;
+    }
+
+    if (btnSaveNote) btnSaveNote.disabled = true;
+    try {
+      const res = await fetch(`/api/imoveis/${state.currentHistoryPropId}/historico`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'anotacao',
+          titulo: title || 'Anotação Interna',
+          descricao: desc,
+          autor: 'Corretor'
+        })
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Erro ao salvar');
+
+      showToast('Anotação registrada com sucesso no histórico!');
+      if (historyAddNoteBox) historyAddNoteBox.style.display = 'none';
+      if (historyNoteTitle) historyNoteTitle.value = '';
+      if (historyNoteDesc) historyNoteDesc.value = '';
+
+      state.activeHistoryEvents.unshift(json.data);
+      renderHistoryTimeline();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      if (btnSaveNote) btnSaveNote.disabled = false;
+    }
+  }
+
   // --- Inicialização Geral do CRM ---
   document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initCrudEvents();
     initPropModal();
+    initHistoryEvents();
     initKanbanEvents();
     initVisitsEvents();
     initKeysEvents();

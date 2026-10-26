@@ -19,6 +19,8 @@ const { crmStore, KANBAN_STAGES } = require('./lib/crm-store');
 const { getOperationalPropertyData } = require('./lib/imoview-api');
 const { propertiesRepository } = require('./lib/repositories/properties-repository');
 const { crmRepository } = require('./lib/repositories/crm-repository');
+const { xmlFeedGenerator } = require('./lib/xml-feed-generator');
+const { openNaventFeedGenerator } = require('./lib/opennavent-feed-generator');
 const PORT = process.env.PORT || 3333;
 const XML_URL = 'https://universal-ftp2.s3.us-west-2.amazonaws.com/vr/santosemello-vivareal-8835-ambos.xml';
 
@@ -49,6 +51,90 @@ app.get(['/visitas', '/agendar-visitas', '/visitas.html'], (req, res) => {
 // Interface Dedicada para Ficha de Visita & Proposta de Locação (PDF / Helena CRM)
 app.get(['/proposta', '/ficha-visita', '/proposta.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'proposta.html'));
+});
+
+// Feed XML Oficial no padrão VivaReal / VRSync 1.0 (Compatível com Imoview e Portais)
+app.get(['/feed.xml', '/feed/vivareal.xml', '/api/feed.xml', '/api/feed'], async (req, res) => {
+  try {
+    const force = req.query.force === 'true' || req.query.force === '1';
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
+    const id = req.query.id ? String(req.query.id).trim() : null;
+    const situacao = req.query.situacao || '1';
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800'); // 30 minutos
+
+    const xml = await xmlFeedGenerator.getFeedXml({ force, limit, id, situacao });
+    res.send(xml);
+  } catch (err) {
+    console.error('❌ Erro ao gerar feed XML:', err.message);
+    res.status(500).setHeader('Content-Type', 'application/xml; charset=utf-8').send(
+      `<?xml version="1.0" encoding="utf-8"?><Error><Message>${err.message}</Message></Error>`
+    );
+  }
+});
+
+// Feed XML Oficial no padrão OpenNavent / XML ON / Imovelweb
+app.get([
+  '/feed/imovelweb.xml',
+  '/feed/imovelweb-teste.xml',
+  '/feed/opennavent.xml',
+  '/api/feed/imovelweb.xml',
+  '/api/feed/imovelweb',
+  '/api/feed/opennavent'
+], async (req, res) => {
+  try {
+    const force = req.query.force === 'true' || req.query.force === '1';
+    const isTest = req.path.includes('teste') || req.query.test === 'true' || req.query.teste === 'true';
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : (isTest ? 15 : null);
+    const id = req.query.id ? String(req.query.id).trim() : null;
+    const sucursal = req.query.sucursal ? String(req.query.sucursal).trim() : null;
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800'); // 30 minutos
+
+    const xml = await openNaventFeedGenerator.getFeedXml({ force, limit, id, sucursal, isTest });
+    res.send(xml);
+  } catch (err) {
+    console.error('❌ Erro ao gerar feed OpenNavent (Imovelweb):', err.message);
+    res.status(500).setHeader('Content-Type', 'application/xml; charset=utf-8').send(
+      `<?xml version="1.0" encoding="utf-8"?><Error><Message>${err.message}</Message></Error>`
+    );
+  }
+});
+
+// Webhook para recepção de Leads do Imovelweb / Navent
+app.post(['/api/leads/imovelweb', '/webhook/imovelweb'], async (req, res) => {
+  try {
+    const payload = req.body || {};
+    console.log('📥 [Lead Imovelweb] Notificação recebida:', JSON.stringify(payload));
+
+    const lead = {
+      id: payload.leadId || payload.id || `lead-${Date.now()}`,
+      nome: payload.clientName || payload.nome || payload.name || payload.contactName || 'Interessado Imovelweb',
+      email: payload.clientEmail || payload.email || payload.mail || '',
+      telefone: payload.clientPhone || payload.telefone || payload.phone || payload.celular || '',
+      mensagem: payload.message || payload.mensagem || payload.comments || '',
+      codigoImovel: payload.propertyId || payload.codigoReferencia || payload.idAviso || payload.codigo_imovel || payload.codigo || '',
+      origem: payload.origin || payload.portal || 'Imovelweb',
+      sucursal: payload.branchCode || payload.codigoImobiliaria || payload.sucursal || '',
+      data: payload.date || payload.data || new Date().toISOString()
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: 'Lead recebido com sucesso no Taime Pro',
+      leadId: lead.id,
+      lead
+    });
+  } catch (err) {
+    console.error('❌ Erro ao processar lead do Imovelweb:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro interno ao processar lead',
+      details: err.message
+    });
+  }
 });
 
 // Estado em memória dos imóveis
@@ -312,11 +398,13 @@ function enrichProperty(item) {
 }
 
 function getAllPropertiesMerged() {
+  const currentList = propertiesRepository.getPropertiesList();
+  const listToUse = (currentList && currentList.length > 0) ? currentList : listingsList;
   const customList = crmStore.getCustomProperties().map(p => enrichProperty(p)).filter(Boolean);
   const customIds = new Set(customList.map(p => String(p.id).toLowerCase()));
 
   const merged = [...customList];
-  for (const item of listingsList) {
+  for (const item of listToUse) {
     if (!customIds.has(String(item.id).toLowerCase())) {
       const enriched = enrichProperty(item);
       if (enriched) merged.push(enriched);
@@ -1577,9 +1665,9 @@ app.get('/api/proposta/dados', async (req, res) => {
       }
     }
 
-    // Complementa com visitas registradas localmente no crmStore para este lead ou sessão
+    // Complementa com visitas registradas no banco de dados Supabase / crmRepository
     try {
-      const localVisits = crmStore.getVisits({ contactId, sessionId });
+      const localVisits = await crmRepository.getVisits({ contactId, sessionId });
       localVisits.forEach(lv => {
         const lvId = String(lv.propertyId || '').toUpperCase();
         if (lvId && !visitasAgendadas.some(v => String(v.propertyId || '').toUpperCase() === lvId)) {
@@ -1850,12 +1938,12 @@ app.post('/api/leads/schedule-visits', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Nenhuma visita informada para agendamento.' });
     }
 
-    // 1. Salva cada visita no crmStore
+    // 1. Salva cada visita no crmRepository (persistindo no Supabase e em memória local)
     const savedCrmVisits = [];
-    visitList.forEach(v => {
+    for (const v of visitList) {
       if (v.propertyId && v.date && v.time) {
         try {
-          const created = crmStore.createVisit({
+          const created = await crmRepository.addVisit({
             propertyId: String(v.propertyId),
             propertyTitle: v.propertyTitle || `Imóvel #${v.propertyId}`,
             clientName: clientName || v.clientName || 'Lead Helena CRM',
@@ -1869,10 +1957,10 @@ app.post('/api/leads/schedule-visits', async (req, res) => {
           });
           savedCrmVisits.push(created);
         } catch (crmErr) {
-          console.warn('Aviso ao salvar visita no crmStore:', crmErr.message);
+          console.warn('Aviso ao salvar visita no crmRepository:', crmErr.message);
         }
       }
-    });
+    }
 
     // 2. Enriquece visitas com dados operacionais e de catálogo para gerar o melhor resumo e anexos
     const enrichedVisits = await Promise.all(visitList.map(async v => {
@@ -1996,40 +2084,69 @@ app.get('/api/imoveis', (req, res) => {
   });
 });
 
-// Criar novo imóvel
-app.post('/api/imoveis', (req, res) => {
+// Consulta do próximo código de imóvel sequencial disponível
+app.get('/api/imoveis/proximo-codigo', async (req, res) => {
+  try {
+    const nextCode = await propertiesRepository.getNextPropertyCode();
+    res.json({ success: true, nextCode });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao consultar próximo código: ' + err.message });
+  }
+});
+
+// Criar novo imóvel (persistência direta no Supabase e Storage)
+app.post('/api/imoveis', async (req, res) => {
   try {
     const data = req.body;
     if (!data.title) {
       return res.status(400).json({ error: 'O título do imóvel é obrigatório.' });
     }
 
-    const created = crmStore.createProperty(data);
-    res.status(201).json({ success: true, data: created, message: 'Imóvel cadastrado com sucesso!' });
+    const created = await propertiesRepository.createProperty(data);
+    listingsMap = propertiesRepository.getPropertiesMap();
+    listingsList = propertiesRepository.getPropertiesList();
+
+    res.status(201).json({
+      success: true,
+      data: created,
+      message: `Imóvel #${created.id} cadastrado com sucesso no banco de dados!`
+    });
   } catch (err) {
+    console.error('❌ Erro ao criar imóvel:', err.message);
     res.status(500).json({ error: 'Erro ao criar imóvel: ' + err.message });
   }
 });
 
 // Atualizar imóvel existente
-app.put('/api/imoveis/:id', (req, res) => {
+app.put('/api/imoveis/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const updated = crmStore.updateProperty(id, req.body);
+    const updated = await propertiesRepository.updateProperty(id, req.body);
     if (!updated) {
       return res.status(404).json({ error: 'Imóvel não encontrado para atualização.' });
     }
-    res.json({ success: true, data: updated, message: 'Imóvel atualizado com sucesso!' });
+    listingsMap = propertiesRepository.getPropertiesMap();
+    listingsList = propertiesRepository.getPropertiesList();
+
+    res.json({
+      success: true,
+      data: updated,
+      message: `Imóvel #${id} atualizado com sucesso no banco de dados!`
+    });
   } catch (err) {
+    console.error('❌ Erro ao atualizar imóvel:', err.message);
     res.status(500).json({ error: 'Erro ao atualizar imóvel: ' + err.message });
   }
 });
 
-// Excluir imóvel
-app.delete('/api/imoveis/:id', (req, res) => {
+// Excluir imóvel (soft delete no banco)
+app.delete('/api/imoveis/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    crmStore.deleteProperty(id);
+    await propertiesRepository.deleteProperty(id);
+    listingsMap = propertiesRepository.getPropertiesMap();
+    listingsList = propertiesRepository.getPropertiesList();
+
     res.json({ success: true, message: `Imóvel #${id} excluído com sucesso.` });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao excluir imóvel: ' + err.message });
@@ -2051,9 +2168,56 @@ app.patch('/api/imoveis/:id/status', (req, res) => {
       ...(keyTag ? { keyTag } : {})
     });
 
+    // Registra alteração de etapa no Histórico do Imóvel
+    crmRepository.recordPropertyHistory({
+      propertyId: id,
+      tipo: 'status',
+      titulo: `Etapa da Jornada: ${finalStatus}`,
+      descricao: `O imóvel #${id} foi alterado para "${finalStatus}" no funil comercial.`,
+      autor: req.body.broker || 'Corretor / Sistema',
+      detalhes: { kanbanStage, status: finalStatus, keyTag }
+    }).catch(e => console.warn('Aviso histórico status:', e.message));
+
     res.json({ success: true, data: updated, message: 'Status do imóvel atualizado!' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar status: ' + err.message });
+  }
+});
+
+// --- HISTÓRICO, LINHA DO TEMPO & AUDITORIA DO IMÓVEL ---
+app.get('/api/imoveis/:id/historico', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const history = await crmRepository.getPropertyHistory(id);
+    res.json({
+      success: true,
+      propertyId: id,
+      total: history.length,
+      data: history
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao consultar histórico do imóvel: ' + err.message });
+  }
+});
+
+app.post('/api/imoveis/:id/historico', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { tipo, titulo, descricao, autor, detalhes } = req.body;
+    if (!titulo && !descricao) {
+      return res.status(400).json({ error: 'Informe ao menos o título ou a descrição do evento.' });
+    }
+    const event = await crmRepository.recordPropertyHistory({
+      propertyId: id,
+      tipo: tipo || 'anotacao',
+      titulo: titulo || 'Anotação Registrada',
+      descricao: descricao || '',
+      autor: autor || 'Corretor',
+      detalhes: detalhes || null
+    });
+    res.status(201).json({ success: true, data: event, message: 'Evento registrado no histórico do imóvel!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao registrar evento no histórico: ' + err.message });
   }
 });
 
@@ -2107,31 +2271,35 @@ app.get('/api/kanban', (req, res) => {
 });
 
 // --- ROTAS DE AGENDAMENTO DE VISITAS ---
-app.get('/api/visits', (req, res) => {
-  const visits = crmStore.getVisits({
-    status: req.query.status,
-    propertyId: req.query.propertyId
-  });
-  res.json({ success: true, data: visits });
+app.get('/api/visits', async (req, res) => {
+  try {
+    const visits = await crmRepository.getVisits({
+      status: req.query.status,
+      propertyId: req.query.propertyId
+    });
+    res.json({ success: true, data: visits });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao consultar visitas: ' + err.message });
+  }
 });
 
-app.post('/api/visits', (req, res) => {
+app.post('/api/visits', async (req, res) => {
   try {
     const data = req.body;
     if (!data.propertyId || !data.clientName || !data.date || !data.time) {
       return res.status(400).json({ error: 'Preencha o imóvel, cliente, data e horário da visita.' });
     }
 
-    const created = crmStore.createVisit(data);
+    const created = await crmRepository.addVisit(data);
     res.status(201).json({ success: true, data: created, message: 'Visita agendada com sucesso!' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao agendar visita: ' + err.message });
   }
 });
 
-app.patch('/api/visits/:id', (req, res) => {
+app.patch('/api/visits/:id', async (req, res) => {
   try {
-    const updated = crmStore.updateVisit(req.params.id, req.body);
+    const updated = await crmRepository.updateVisit(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ error: 'Visita não encontrada.' });
     }
@@ -2141,9 +2309,9 @@ app.patch('/api/visits/:id', (req, res) => {
   }
 });
 
-app.delete('/api/visits/:id', (req, res) => {
+app.delete('/api/visits/:id', async (req, res) => {
   try {
-    crmStore.deleteVisit(req.params.id);
+    await crmRepository.deleteVisit(req.params.id);
     res.json({ success: true, message: 'Visita cancelada/removida com sucesso.' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao remover visita: ' + err.message });
@@ -2151,31 +2319,35 @@ app.delete('/api/visits/:id', (req, res) => {
 });
 
 // --- ROTAS DE CONTROLE DE CHAVES (CLAVICULÁRIO) ---
-app.get('/api/keys', (req, res) => {
-  const movements = crmStore.getKeyMovements({
-    status: req.query.status,
-    propertyId: req.query.propertyId
-  });
-  res.json({ success: true, data: movements });
+app.get('/api/keys', async (req, res) => {
+  try {
+    const movements = await crmRepository.getKeyMovements({
+      status: req.query.status,
+      propertyId: req.query.propertyId
+    });
+    res.json({ success: true, data: movements });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao consultar chaves: ' + err.message });
+  }
 });
 
-app.post('/api/keys/checkout', (req, res) => {
+app.post('/api/keys/checkout', async (req, res) => {
   try {
     const data = req.body;
     if (!data.propertyId || !data.takenBy) {
       return res.status(400).json({ error: 'Informe o imóvel e o responsável pela retirada da chave.' });
     }
 
-    const created = crmStore.checkoutKey(data);
+    const created = await crmRepository.checkoutKey(data);
     res.status(201).json({ success: true, data: created, message: 'Saída de chave registrada!' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao registrar saída de chave: ' + err.message });
   }
 });
 
-app.post('/api/keys/:id/return', (req, res) => {
+app.post('/api/keys/:id/return', async (req, res) => {
   try {
-    const updated = crmStore.returnKey(req.params.id, req.body.notes);
+    const updated = await crmRepository.returnKey(req.params.id, req.body.notes);
     if (!updated) {
       return res.status(404).json({ error: 'Registro de chave não encontrado.' });
     }
@@ -2186,10 +2358,10 @@ app.post('/api/keys/:id/return', (req, res) => {
 });
 
 // --- ROTA DE RELATÓRIOS & BI IMOBILIÁRIO ---
-app.get('/api/bi/reports', (req, res) => {
+app.get('/api/bi/reports', async (req, res) => {
   const all = getAllPropertiesMerged();
-  const visits = crmStore.getVisits();
-  const keys = crmStore.getKeyMovements();
+  const visits = await crmRepository.getVisits();
+  const keys = await crmRepository.getKeyMovements();
 
   let countRent = 0;
   let countSale = 0;
@@ -2307,10 +2479,10 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-app.post('/api/sync', async (req, res) => {
+app.all(['/api/sync', '/api/properties/sync'], async (req, res) => {
   try {
     const result = await syncFeed();
-    res.json(result);
+    res.json({ success: true, ...result, message: 'Catálogo sincronizado com sucesso do Supabase!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
