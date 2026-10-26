@@ -2488,17 +2488,19 @@ app.all(['/api/sync', '/api/properties/sync'], async (req, res) => {
   }
 });
 
-// Configuração de sincronização periódica automática a cada 6 horas
-const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const syncCron = setInterval(async () => {
-  console.log('⏰ [Cron] Executando sincronização periódica do feed XML...');
-  try {
-    await syncFeed();
-  } catch (err) {
-    console.error('⚠️ [Cron] Falha na sincronização periódica:', err.message);
-  }
-}, SYNC_INTERVAL_MS);
-if (syncCron && syncCron.unref) syncCron.unref();
+// Configuração de sincronização periódica automática a cada 6 horas (apenas em servidores persistentes)
+if (!process.env.VERCEL) {
+  const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  const syncCron = setInterval(async () => {
+    console.log('⏰ [Cron] Executando sincronização periódica do feed XML...');
+    try {
+      await syncFeed();
+    } catch (err) {
+      console.error('⚠️ [Cron] Falha na sincronização periódica:', err.message);
+    }
+  }, SYNC_INTERVAL_MS);
+  if (syncCron && syncCron.unref) syncCron.unref();
+}
 
 // Inicialização (apenas se executado diretamente, não quando importado por testes)
 if (require.main === module && (!process.env.VERCEL || process.env.NODE_ENV !== 'production')) {
