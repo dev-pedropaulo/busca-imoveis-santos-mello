@@ -80,7 +80,106 @@
   const resetFiltersBtn = document.getElementById('resetFiltersBtn');
   const selectedFeatures = new Set();
   const selectedNeighborhoods = new Set();
-  let allNeighborhoods = [];
+    // Lista oficial canônica de 95 bairros registrados
+  const OFFICIAL_NEIGHBORHOODS = [
+  "Bangú",
+  "Boqueirão",
+  "Campestre",
+  "Casa Branca",
+  "Cata Preta",
+  "Centreville",
+  "Centro",
+  "Cidade São Jorge",
+  "Condomínio Maracanã",
+  "Gonzaga",
+  "Jardim",
+  "Jardim Alvorada",
+  "Jardim Alzira Franco",
+  "Jardim Ana Maria",
+  "Jardim Bela Vista",
+  "Jardim Bom Pastor",
+  "Jardim Cipreste",
+  "Jardim Clube de Campo",
+  "Jardim Cristiane",
+  "Jardim das Maravilhas",
+  "Jardim do Estádio",
+  "Jardim Guarará",
+  "Jardim Ipanema",
+  "Jardim Irene",
+  "Jardim Itapoan",
+  "Jardim Jamaica",
+  "Jardim Joaquim Eugênio de Lima",
+  "Jardim Las Vegas",
+  "Jardim Marek",
+  "Jardim Rina",
+  "Jardim Santa Cristina",
+  "Jardim Santo Alberto",
+  "Jardim Santo André",
+  "Jardim Santo Antônio",
+  "Jardim Stella",
+  "Jardim Telles de Menezes",
+  "Jardim Utinga",
+  "Jardim Vila Rica",
+  "Miami Riviera",
+  "Novo Homero Thon",
+  "Paraíso",
+  "Paranapiacaba",
+  "Parque América",
+  "Parque Capuava",
+  "Parque das Nações",
+  "Parque do Pedroso",
+  "Parque Erasmo Assunção",
+  "Parque Gerassi",
+  "Parque Jaçatuba",
+  "Parque João Ramalho",
+  "Parque Marajoara",
+  "Parque Novo Oratório",
+  "Parque Oratório",
+  "Parque Represa Billings III",
+  "Pinheirinho",
+  "Recreio da Borda do Campo",
+  "Santa Maria",
+  "Santa Terezinha",
+  "Silveira",
+  "Sítio dos Vianas",
+  "Vila Alice",
+  "Vila Alpina",
+  "Vila Alzira",
+  "Vila América",
+  "Vila Aquilino",
+  "Vila Assunção",
+  "Vila Bastos",
+  "Vila Camilópolis",
+  "Vila Curuçá",
+  "Vila Floresta",
+  "Vila Francisco Matarazzo",
+  "Vila Gilda",
+  "Vila Guaraciaba",
+  "Vila Guarani",
+  "Vila Guiomar",
+  "Vila Helena",
+  "Vila Homero Thon",
+  "Vila Humaitá",
+  "Vila João Ramalho",
+  "Vila Junqueira",
+  "Vila Linda",
+  "Vila Lucinda",
+  "Vila Lutécia",
+  "Vila Luzita",
+  "Vila Metalúrgica",
+  "Vila Palmares",
+  "Vila Pires",
+  "Vila Príncipe de Gales",
+  "Vila Progresso",
+  "Vila Sacadura Cabral",
+  "Vila Scarpelli",
+  "Vila Suíça",
+  "Vila Tibiriçá",
+  "Vila Valparaíso",
+  "Vila Vitória"
+];
+  let allNeighborhoods = [...OFFICIAL_NEIGHBORHOODS];
+
 
   // Estados de visualização
   const initialState = document.getElementById('initialState');
@@ -608,6 +707,7 @@
 
   setupPriceInput(filterMinPrice);
   setupPriceInput(filterMaxPrice);
+  renderNeighborhoodOptions();
   renderPropertyTypeOptions();
 
   // --- Multi-Select de Bairros ---
@@ -677,6 +777,7 @@
 
   if (neighborhoodInput) {
     neighborhoodInput.addEventListener('focus', openNeighborhoodDropdown);
+    neighborhoodInput.addEventListener('click', openNeighborhoodDropdown);
     neighborhoodInput.addEventListener('input', () => {
       openNeighborhoodDropdown();
     });
@@ -799,6 +900,7 @@
 
   if (propertyTypeInput) {
     propertyTypeInput.addEventListener('focus', openPropertyTypeDropdown);
+    propertyTypeInput.addEventListener('click', openPropertyTypeDropdown);
     propertyTypeInput.addEventListener('input', () => {
       openPropertyTypeDropdown();
     });
@@ -851,6 +953,24 @@
       if (propertyTypeInput) propertyTypeInput.value = '';
       countActiveFilters();
       searchProperties();
+    });
+  }
+
+  if (neighborhoodMultiSelect) {
+    neighborhoodMultiSelect.addEventListener('click', (e) => {
+      if (!e.target.closest('.neighborhood-tag-remove') && !e.target.closest('.multi-select-option') && !e.target.closest('.clear-sub-btn')) {
+        if (neighborhoodInput) neighborhoodInput.focus();
+        openNeighborhoodDropdown();
+      }
+    });
+  }
+
+  if (propertyTypeMultiSelect) {
+    propertyTypeMultiSelect.addEventListener('click', (e) => {
+      if (!e.target.closest('.multi-select-tag-remove') && !e.target.closest('.multi-select-option') && !e.target.closest('.clear-sub-btn')) {
+        if (propertyTypeInput) propertyTypeInput.focus();
+        openPropertyTypeDropdown();
+      }
     });
   }
 
@@ -929,7 +1049,7 @@
         const json = await optionsRes.json();
         const cities = json.data?.cities || [];
         const neighborhoods = json.data?.neighborhoods || [];
-        allNeighborhoods = neighborhoods;
+        allNeighborhoods = Array.from(new Set([...OFFICIAL_NEIGHBORHOODS, ...neighborhoods])).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         if (filterCity) {
           filterCity.innerHTML = '<option value="all">Todas as cidades</option>';
