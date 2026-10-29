@@ -573,7 +573,8 @@ function matchPropertyType(itemPropertyType, itemTitle, targetTypeNorm) {
   const targets = targetTypeNorm.split(',').map(t => t.trim()).filter(Boolean);
 
   return targets.some(target => {
-    if (itemTypeNorm.includes(target)) return true;
+    if (target === itemTypeNorm) return true;
+
     if (target.includes('apartamento s/ condominio') || target.includes('apartamento sem condominio')) {
       return itemTypeNorm.includes('apartamento') || itemTitleNorm.includes('sem condominio');
     }
@@ -581,13 +582,13 @@ function matchPropertyType(itemPropertyType, itemTitle, targetTypeNorm) {
       return itemTypeNorm.includes('apartment') || itemTypeNorm.includes('apartamento') || itemTypeNorm.includes('flat') || itemTypeNorm.includes('studio') || itemTypeNorm.includes('duplex');
     }
     if (target === 'casa' || target === 'home') {
-      return itemTypeNorm.includes('home') || itemTypeNorm.includes('casa');
+      return itemTypeNorm === 'casa' || itemTypeNorm.includes('home') || itemTypeNorm.includes('casa');
     }
     if (target === 'sobrado') {
       return itemTypeNorm.includes('sobrado');
     }
     if (target === 'assobradada') {
-      return itemTypeNorm.includes('casa') || itemTypeNorm.includes('sobrado');
+      return itemTypeNorm.includes('sobrado') || itemTypeNorm.includes('casa');
     }
     if (target === 'cobertura' || target === 'penthouse') {
       return itemTypeNorm.includes('cobertura') || itemTypeNorm.includes('penthouse');
@@ -596,16 +597,17 @@ function matchPropertyType(itemPropertyType, itemTitle, targetTypeNorm) {
       return itemTypeNorm.includes('kitnet') || itemTypeNorm.includes('studio');
     }
     if (target === 'sala comercial' || target === 'sala' || target === 'office') {
-      return itemTypeNorm.includes('sala') || itemTypeNorm.includes('office') || itemTypeNorm.includes('andar corporativo');
+      if (itemTypeNorm.includes('salao')) return false; // Salão é outro tipo oficial!
+      return itemTypeNorm === 'sala' || itemTypeNorm.includes('sala comercial') || itemTypeNorm.includes('office') || itemTypeNorm.includes('andar corporativo');
     }
     if (target === 'salao') {
-      return itemTypeNorm.includes('salao') || itemTypeNorm.includes('loja');
+      return itemTypeNorm.includes('salao');
     }
     if (target === 'loja') {
-      return itemTypeNorm.includes('loja') || itemTypeNorm.includes('salao');
+      return itemTypeNorm.includes('loja');
     }
     if (target === 'sobreloja') {
-      return itemTypeNorm.includes('loja') || itemTypeNorm.includes('salao') || itemTypeNorm.includes('sala');
+      return itemTypeNorm.includes('sobreloja');
     }
     if (target === 'galpao' || target === 'industrial') {
       return itemTypeNorm.includes('galpao') || itemTypeNorm.includes('industrial');
@@ -614,9 +616,9 @@ function matchPropertyType(itemPropertyType, itemTitle, targetTypeNorm) {
       return itemTypeNorm.includes('terreno') || itemTypeNorm.includes('lote') || itemTypeNorm.includes('land');
     }
     if (target === 'comercial' || target === 'commercial') {
-      return itemTypeNorm.includes('commercial') || itemTypeNorm.includes('comercial') || itemTypeNorm.includes('sala') || itemTypeNorm.includes('salao') || itemTypeNorm.includes('loja') || itemTypeNorm.includes('predio') || itemTypeNorm.includes('andar corporativo');
+      return itemTypeNorm.includes('commercial') || itemTypeNorm.includes('comercial') || itemTypeNorm.includes('sala') || itemTypeNorm.includes('loja') || itemTypeNorm.includes('predio') || itemTypeNorm.includes('andar corporativo');
     }
-    return false;
+    return itemTypeNorm.includes(target);
   });
 }
 
@@ -696,7 +698,7 @@ app.get('/api/search', (req, res) => {
 
   const minPrice = parseFloat(req.query.minPrice) || 0;
   const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
-  const minBedrooms = parseInt(req.query.minBedrooms) || 0;
+  const minBedrooms = parseInt(req.query.minBedrooms || req.query.bedrooms || req.query.quartos || req.query.minBeds) || 0;
   const minSuites = parseInt(req.query.minSuites) || 0;
   const minBathrooms = parseInt(req.query.minBathrooms) || 0;
   const minGarage = parseInt(req.query.minGarage) || 0;
