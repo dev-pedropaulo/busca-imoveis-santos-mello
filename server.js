@@ -808,14 +808,15 @@ app.get('/api/search', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 40, 100);
   const offset = parseInt(req.query.offset) || 0;
 
-  // Limpa o termo de busca (remove # se presente)
+  // Limpa o termo de busca
+  const isExplicitIdSearch = rawQuery.startsWith('#');
   const cleanQueryStr = rawQuery.replace(/#/g, '').trim();
 
-  // Se o termo de busca for exatamente um código conhecido e nenhum outro filtro complexo foi aplicado, retorna direto
-  if (cleanQueryStr && (!transactionType || transactionType === 'all') && (!statusParam || statusParam === 'all' || statusParam === 'disponivel') && (!usageType || usageType === 'all') && (!propertyType || propertyType === 'all') && (!city || city === 'all') && selectedNeighborhoods.length === 0 && minPrice === 0 && maxPrice === Infinity && minBedrooms === 0 && minSuites === 0 && minBathrooms === 0 && minGarage === 0 && minArea === 0 && !hasTour && !featuresQuery) {
+  // Se o usuário digitou explicitamente com '#' (ex: #192), busca diretamente por código exato
+  if (isExplicitIdSearch && cleanQueryStr) {
     const cleanId = cleanQueryStr.toLowerCase();
     const exact = listingsMap.get(cleanId);
-    if (exact) {
+    if (exact && (!includeHidden && exact.exibirSite !== true ? false : true)) {
       return res.json({ success: true, results: [exact], total: 1, isExactId: true });
     }
   }
@@ -832,26 +833,51 @@ app.get('/api/search', (req, res) => {
       return false;
     }
 
-    // Filtro por termo livre (ID, título, bairro, cidade, endereço ou descrição)
+    // Filtro por termo livre (ID, título, rua, número da casa, complemento/apto, bairro, cidade, endereço completo ou descrição)
     if (queryNorm) {
       const idNorm = normalizeString(item.id);
       const titleNorm = normalizeString(item.title);
-      const itemNeighNorm = normalizeString(item.location.neighborhood);
+      const itemNeighNorm = normalizeString(item.location?.neighborhood);
       const itemPropNorm = normalizeString(item.propertyType);
-      const itemCityNorm = normalizeString(item.location.city);
-      const itemAddressNorm = normalizeString(item.location.address);
+      const itemCityNorm = normalizeString(item.location?.city);
       const itemDescNorm = normalizeString(item.description);
 
-      const matchesText = idNorm === queryNorm ||
+      const streetNorm = normalizeString(item.location?.address);
+      const streetNumNorm = normalizeString(item.location?.streetNumber);
+      const compNorm = normalizeString(item.location?.complement);
+      const fullAddressNorm = normalizeString(item.location?.enderecoCompleto || `${streetNorm} ${streetNumNorm} ${compNorm} ${itemNeighNorm}`);
+
+      // 1. Match direto em qualquer um dos campos individuais
+      const matchesDirect = idNorm === queryNorm ||
         idNorm.includes(queryNorm) ||
         titleNorm.includes(queryNorm) ||
         itemNeighNorm.includes(queryNorm) ||
         itemPropNorm.includes(queryNorm) ||
         itemCityNorm.includes(queryNorm) ||
-        itemAddressNorm.includes(queryNorm) ||
+        streetNorm.includes(queryNorm) ||
+        streetNumNorm === queryNorm ||
+        streetNumNorm.includes(queryNorm) ||
+        compNorm.includes(queryNorm) ||
+        fullAddressNorm.includes(queryNorm) ||
         itemDescNorm.includes(queryNorm);
 
-      if (!matchesText) return false;
+      if (!matchesDirect) {
+        // 2. Match multi-palavras para busca composta (ex: "Monções 1268", "Calábria 192", "Rua das Monções, 1268 Casa 10")
+        const queryWords = queryNorm.split(/[\s,.-]+/).filter(w => w.length > 0);
+        if (queryWords.length > 1) {
+          const searchableContext = `${idNorm} ${titleNorm} ${fullAddressNorm} ${streetNorm} ${streetNumNorm} ${compNorm} ${itemNeighNorm} ${itemPropNorm} ${itemCityNorm} ${itemDescNorm}`;
+          const matchesAllWords = queryWords.every(word => {
+            if (word.length <= 2) {
+              const regex = new RegExp(`\\b${word}\\b`, 'i');
+              return regex.test(searchableContext);
+            }
+            return searchableContext.includes(word);
+          });
+          if (!matchesAllWords) return false;
+        } else {
+          return false;
+        }
+      }
     }
 
     // Filtro por Tipo de Transação (Venda / Locação)
@@ -980,6 +1006,21 @@ app.get('/api/search', (req, res) => {
     filtered.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0));
   } else if (sortBy === 'suites_desc') {
     filtered.sort((a, b) => (b.suites || 0) - (a.suites || 0));
+  }
+
+  // Ordenação por Relevância quando há termo de busca
+  if (queryNorm && (!sortBy || sortBy === 'relevance')) {
+    filtered.sort((a, b) => {
+      const aIdExact = normalizeString(a.id) === queryNorm ? 2 : 0;
+      const bIdExact = normalizeString(b.id) === queryNorm ? 2 : 0;
+      if (aIdExact !== bIdExact) return bIdExact - aIdExact;
+
+      const aNumExact = normalizeString(a.location?.streetNumber) === queryNorm ? 1 : 0;
+      const bNumExact = normalizeString(b.location?.streetNumber) === queryNorm ? 1 : 0;
+      if (aNumExact !== bNumExact) return bNumExact - aNumExact;
+
+      return 0;
+    });
   }
 
   const paginated = filtered.slice(offset, offset + limit);
