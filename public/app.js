@@ -1872,17 +1872,26 @@
       } else if (kNorm.includes('bairro') || kNorm.includes('regiao')) {
         if (!crit.ativo) params.set('ignoreBairros', 'true');
         else if (crit.valorAtual) params.set('regiao', crit.valorAtual);
-      } else if (kNorm.includes('morador') || kNorm.includes('quarto')) {
+      } else if (kNorm.includes('quarto') && !kNorm.includes('morador')) {
         if (!crit.ativo) {
-          params.set('ignoreMoradores', 'true');
           params.set('ignoreQuartos', 'true');
         } else if (crit.valorAtual) {
           const m = String(crit.valorAtual).match(/\d+/);
-          if (m) {
-            const num = parseInt(m[0], 10);
-            const bedrooms = num >= 4 ? 3 : (num === 3 ? 2 : (num >= 1 ? 1 : 0));
-            params.set('quartos', bedrooms);
-          }
+          if (m) params.set('quartos', m[0]);
+        }
+      } else if (kNorm.includes('morador')) {
+        if (!crit.ativo) {
+          params.set('ignoreMoradores', 'true');
+        } else if (crit.valorAtual) {
+          const m = String(crit.valorAtual).match(/\d+/);
+          if (m) params.set('moradores', m[0]);
+        }
+      } else if (kNorm.includes('suite') || kNorm.includes('sute')) {
+        if (!crit.ativo) {
+          params.set('ignoreSuites', 'true');
+        } else if (crit.valorAtual) {
+          const m = String(crit.valorAtual).match(/\d+/);
+          if (m) params.set('suites', m[0]);
         }
       } else if (kNorm.includes('pet')) {
         if (!crit.ativo) params.set('ignorePet', 'true');

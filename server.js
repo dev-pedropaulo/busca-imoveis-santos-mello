@@ -1313,11 +1313,21 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
       } else if (rawNeighborhoods) {
         valorEfetivo = rawNeighborhoods;
       }
-    } else if (kNorm.includes('morador') || kNorm.includes('quarto')) {
-      if (isIgnored('ignoreQuartos') || isIgnored('ignoreMoradores')) {
+    } else if (kNorm.includes('quarto')) {
+      if (isIgnored('ignoreQuartos')) {
         ativo = false;
       } else if (rawBedrooms > 0) {
         valorEfetivo = `${rawBedrooms} quartos`;
+      }
+    } else if (kNorm.includes('morador')) {
+      if (isIgnored('ignoreMoradores')) {
+        ativo = false;
+      }
+    } else if (kNorm.includes('suite') || kNorm.includes('sute')) {
+      if (isIgnored('ignoreSuites')) {
+        ativo = false;
+      } else if (rawSuites > 0) {
+        valorEfetivo = `${rawSuites} suíte(s)`;
       }
     } else if (kNorm.includes('pet')) {
       if (isIgnored('ignorePet')) {
@@ -1373,6 +1383,7 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
       orcamentoMin: rawMinPrice || null,
       quartosMin: rawBedrooms || null,
       suitesMin: rawSuites || null,
+      aceitaPet: criteriaFromContact.aceitaPet !== undefined ? criteriaFromContact.aceitaPet : null,
       banheirosMin: rawBathrooms || null,
       vagasMin: rawGarage || null,
       regiao: rawNeighborhoods || 'Qualquer',
