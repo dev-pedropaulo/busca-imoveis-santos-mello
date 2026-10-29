@@ -225,25 +225,34 @@
                 </select>
               </div>
 
-              <!-- Tipo de Imóvel -->
-              <div class="filter-item">
-                <label class="filter-label">Tipo de Imóvel</label>
-                <select id="filterPropertyType" class="filter-select">
-                  <option value="all">Todos os tipos</option>
-                  <option value="Casa">Casa</option>
-                  <option value="Sobrado">Sobrado</option>
-                  <option value="Assobradada">Assobradada</option>
-                  <option value="Apartamento">Apartamento</option>
-                  <option value="Apartamento S/ Condominio">Apartamento S/ Condomínio</option>
-                  <option value="Cobertura">Cobertura</option>
-                  <option value="Kitnet">Kitnet</option>
-                  <option value="Salão">Salão</option>
-                  <option value="Sala Comercial">Sala Comercial</option>
-                  <option value="Galpão">Galpão</option>
-                  <option value="Loja">Loja</option>
-                  <option value="Sobreloja">Sobreloja</option>
-                  <option value="Terreno">Terreno</option>
-                </select>
+              <!-- Tipo de Imóvel com Múltipla Seleção -->
+              <div class="filter-item filter-item-wide" id="propertyTypeFilterWrapper">
+                <div class="filter-label-row">
+                  <label class="filter-label" for="propertyTypeInput">Tipo de Imóvel (Selecione múltiplos)</label>
+                  <button type="button" id="clearPropertyTypesBtn" class="clear-sub-btn" style="display: none;">Limpar tipos</button>
+                </div>
+                <div class="multi-select-box" id="propertyTypeMultiSelect">
+                  <div class="multi-select-tags" id="propertyTypeTags"></div>
+                  <div class="multi-select-input-wrap">
+                    <input 
+                      type="text" 
+                      id="propertyTypeInput" 
+                      class="multi-select-input" 
+                      placeholder="Buscar tipo e selecionar..." 
+                      autocomplete="off"
+                    />
+                    <span class="multi-select-arrow" id="togglePropertyTypeDropdown">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m6 9 6 6 6-6"/>
+                      </svg>
+                    </span>
+                  </div>
+                  <div class="multi-select-dropdown" id="propertyTypeDropdown" style="display: none;">
+                    <div class="multi-select-list" id="propertyTypeOptionsList">
+                      <!-- Opções oficiais inseridas dinamicamente via JS -->
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Cidade -->

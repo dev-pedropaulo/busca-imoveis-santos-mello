@@ -30,6 +30,31 @@
   const filterPropertyType = document.getElementById('filterPropertyType');
   const filterCity = document.getElementById('filterCity');
   
+  // Multi-Select Tipos de Imóvel (Seleção múltipla oficial)
+  const OFFICIAL_PROPERTY_TYPES = [
+    'Casa',
+    'Sobrado',
+    'Assobradada',
+    'Apartamento',
+    'Apartamento S/ Condominio',
+    'Cobertura',
+    'Kitnet',
+    'Salão',
+    'Sala Comercial',
+    'Galpão',
+    'Loja',
+    'Sobreloja',
+    'Terreno'
+  ];
+  const propertyTypeMultiSelect = document.getElementById('propertyTypeMultiSelect');
+  const propertyTypeInput = document.getElementById('propertyTypeInput');
+  const propertyTypeDropdown = document.getElementById('propertyTypeDropdown');
+  const propertyTypeOptionsList = document.getElementById('propertyTypeOptionsList');
+  const propertyTypeTags = document.getElementById('propertyTypeTags');
+  const clearPropertyTypesBtn = document.getElementById('clearPropertyTypesBtn');
+  const togglePropertyTypeDropdown = document.getElementById('togglePropertyTypeDropdown');
+  const selectedPropertyTypes = new Set();
+  
   // Multi-Select Bairros
   const neighborhoodMultiSelect = document.getElementById('neighborhoodMultiSelect');
   const neighborhoodInput = document.getElementById('neighborhoodInput');
@@ -583,6 +608,7 @@
 
   setupPriceInput(filterMinPrice);
   setupPriceInput(filterMaxPrice);
+  renderPropertyTypeOptions();
 
   // --- Multi-Select de Bairros ---
   function renderNeighborhoodTags() {
@@ -706,9 +732,134 @@
     });
   }
 
+  // --- Multi-Select de Tipo de Imóvel ---
+  function renderPropertyTypeTags() {
+    if (!propertyTypeTags) return;
+    propertyTypeTags.innerHTML = '';
+    if (selectedPropertyTypes.size === 0) {
+      if (clearPropertyTypesBtn) clearPropertyTypesBtn.style.display = 'none';
+      return;
+    }
+    if (clearPropertyTypesBtn) clearPropertyTypesBtn.style.display = 'inline-block';
+    selectedPropertyTypes.forEach(tipo => {
+      const tag = document.createElement('span');
+      tag.className = 'multi-select-tag';
+      tag.innerHTML = `<span>${tipo}</span><button type="button" class="multi-select-tag-remove" data-tipo="${tipo}" title="Remover tipo">×</button>`;
+      propertyTypeTags.appendChild(tag);
+    });
+  }
+
+  function renderPropertyTypeOptions(query = '') {
+    if (!propertyTypeOptionsList) return;
+    propertyTypeOptionsList.innerHTML = '';
+    const qNorm = normalizeStr(query);
+    const filtered = OFFICIAL_PROPERTY_TYPES.filter(tipo => {
+      if (!qNorm) return true;
+      return normalizeStr(tipo).includes(qNorm);
+    });
+
+    if (filtered.length === 0) {
+      propertyTypeOptionsList.innerHTML = '<div class="multi-select-empty">Nenhum tipo encontrado</div>';
+      return;
+    }
+
+    filtered.forEach(tipo => {
+      const isSelected = selectedPropertyTypes.has(tipo);
+      const opt = document.createElement('div');
+      opt.className = `multi-select-option ${isSelected ? 'selected' : ''}`;
+      opt.innerHTML = `<span>${tipo}</span>${isSelected ? '<span style="color:var(--accent-primary);font-weight:700;">✓</span>' : ''}`;
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (selectedPropertyTypes.has(tipo)) {
+          selectedPropertyTypes.delete(tipo);
+        } else {
+          selectedPropertyTypes.add(tipo);
+        }
+        renderPropertyTypeTags();
+        renderPropertyTypeOptions(propertyTypeInput ? propertyTypeInput.value.trim() : '');
+        countActiveFilters();
+        searchProperties();
+      });
+      propertyTypeOptionsList.appendChild(opt);
+    });
+  }
+
+  function openPropertyTypeDropdown() {
+    if (!propertyTypeDropdown) return;
+    renderPropertyTypeOptions(propertyTypeInput ? propertyTypeInput.value.trim() : '');
+    propertyTypeDropdown.style.display = 'block';
+    if (togglePropertyTypeDropdown) togglePropertyTypeDropdown.classList.add('open');
+  }
+
+  function closePropertyTypeDropdown() {
+    if (!propertyTypeDropdown) return;
+    propertyTypeDropdown.style.display = 'none';
+    if (togglePropertyTypeDropdown) togglePropertyTypeDropdown.classList.remove('open');
+  }
+
+  if (propertyTypeInput) {
+    propertyTypeInput.addEventListener('focus', openPropertyTypeDropdown);
+    propertyTypeInput.addEventListener('input', () => {
+      openPropertyTypeDropdown();
+    });
+    propertyTypeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const firstOpt = propertyTypeOptionsList ? propertyTypeOptionsList.querySelector('.multi-select-option') : null;
+        if (firstOpt) {
+          firstOpt.click();
+          propertyTypeInput.value = '';
+        }
+      } else if (e.key === 'Escape') {
+        closePropertyTypeDropdown();
+      }
+    });
+  }
+
+  if (togglePropertyTypeDropdown) {
+    togglePropertyTypeDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (propertyTypeDropdown && propertyTypeDropdown.style.display === 'block') {
+        closePropertyTypeDropdown();
+      } else {
+        if (propertyTypeInput) propertyTypeInput.focus();
+        openPropertyTypeDropdown();
+      }
+    });
+  }
+
+  if (propertyTypeTags) {
+    propertyTypeTags.addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('.multi-select-tag-remove');
+      if (!removeBtn) return;
+      const tipo = removeBtn.dataset.tipo;
+      if (tipo) {
+        selectedPropertyTypes.delete(tipo);
+        renderPropertyTypeTags();
+        renderPropertyTypeOptions(propertyTypeInput ? propertyTypeInput.value.trim() : '');
+        countActiveFilters();
+        searchProperties();
+      }
+    });
+  }
+
+  if (clearPropertyTypesBtn) {
+    clearPropertyTypesBtn.addEventListener('click', () => {
+      selectedPropertyTypes.clear();
+      renderPropertyTypeTags();
+      renderPropertyTypeOptions();
+      if (propertyTypeInput) propertyTypeInput.value = '';
+      countActiveFilters();
+      searchProperties();
+    });
+  }
+
   document.addEventListener('click', (e) => {
     if (neighborhoodMultiSelect && !neighborhoodMultiSelect.contains(e.target) && clearNeighborhoodsBtn && !clearNeighborhoodsBtn.contains(e.target)) {
       closeNeighborhoodDropdown();
+    }
+    if (propertyTypeMultiSelect && !propertyTypeMultiSelect.contains(e.target) && clearPropertyTypesBtn && !clearPropertyTypesBtn.contains(e.target)) {
+      closePropertyTypeDropdown();
     }
   });
 
@@ -791,6 +942,7 @@
         }
 
         renderNeighborhoodOptions();
+        renderPropertyTypeOptions();
       }
     } catch (err) {
       console.warn('Backend API fallback ativo:', err.message);
@@ -804,7 +956,7 @@
     if (filterType && filterType.value !== 'all') count++;
     if (filterStatus && filterStatus.value !== 'all' && filterStatus.value !== 'disponivel') count++;
     if (filterUsageType && filterUsageType.value !== 'all') count++;
-    if (filterPropertyType && filterPropertyType.value !== 'all') count++;
+    count += selectedPropertyTypes.size;
     if (filterCity && filterCity.value !== 'all') count++;
     count += selectedNeighborhoods.size;
     if (filterMinPrice && parsePriceInput(filterMinPrice.value) > 0) count++;
@@ -840,6 +992,11 @@
     if (filterUsageType) filterUsageType.value = 'all';
     if (filterPropertyType) filterPropertyType.value = 'all';
     if (filterCity) filterCity.value = 'all';
+
+    selectedPropertyTypes.clear();
+    renderPropertyTypeTags();
+    renderPropertyTypeOptions();
+    if (propertyTypeInput) propertyTypeInput.value = '';
     
     selectedNeighborhoods.clear();
     renderNeighborhoodTags();
@@ -920,9 +1077,8 @@
       tags.push(`Situação: ${filterStatus.options[filterStatus.selectedIndex]?.text || filterStatus.value}`);
     }
     if (filterUsageType && filterUsageType.value !== 'all') tags.push(`Uso: ${filterUsageType.value}`);
-    if (filterPropertyType && filterPropertyType.value !== 'all') {
-      const optText = filterPropertyType.options[filterPropertyType.selectedIndex]?.text || filterPropertyType.value;
-      tags.push(optText);
+    if (selectedPropertyTypes.size > 0) {
+      selectedPropertyTypes.forEach(t => tags.push(`🏢 ${t}`));
     }
     if (filterCity && filterCity.value !== 'all') tags.push(`📍 ${filterCity.value}`);
     if (selectedNeighborhoods.size > 0) {
@@ -980,7 +1136,9 @@
       params.append('status', filterStatus.value);
     }
     if (filterUsageType && filterUsageType.value !== 'all') params.append('usageType', filterUsageType.value);
-    if (filterPropertyType && filterPropertyType.value !== 'all') params.append('propertyType', filterPropertyType.value);
+    if (selectedPropertyTypes.size > 0) {
+      params.append('propertyType', Array.from(selectedPropertyTypes).join(','));
+    }
     if (filterCity && filterCity.value !== 'all') params.append('city', filterCity.value);
     
     if (selectedNeighborhoods.size > 0) {
@@ -1862,26 +2020,24 @@
       }
       renderNeighborhoodTags();
 
-      // (c) Tipo do Imóvel (Casa, Sobrado, Assobradada, Apartamento, etc.)
-      if (filterPropertyType) {
-        const rawTipo = leadProf.tipo && leadProf.tipo !== 'Qualquer' ? String(leadProf.tipo).trim() : '';
-        if (rawTipo) {
-          let found = false;
-          for (let i = 0; i < filterPropertyType.options.length; i++) {
-            if (filterPropertyType.options[i].value.toLowerCase() === rawTipo.toLowerCase()) {
-              filterPropertyType.selectedIndex = i;
-              found = true;
-              break;
-            }
+      // (c) Tipo do Imóvel (Múltipla Seleção oficial: cada valor separado por vírgula marca automaticamente)
+      selectedPropertyTypes.clear();
+      const rawTipo = leadProf.tipo && leadProf.tipo !== 'Qualquer' ? String(leadProf.tipo).trim() : '';
+      if (rawTipo) {
+        const tList = rawTipo.split(',').map(t => t.trim()).filter(Boolean);
+        tList.forEach(t => {
+          const tNorm = normalizeStr(t);
+          const matched = OFFICIAL_PROPERTY_TYPES.find(opt => normalizeStr(opt) === tNorm) ||
+                          OFFICIAL_PROPERTY_TYPES.find(opt => normalizeStr(opt).includes(tNorm) || tNorm.includes(normalizeStr(opt)));
+          if (matched) {
+            selectedPropertyTypes.add(matched);
+          } else {
+            selectedPropertyTypes.add(t);
           }
-          if (!found) {
-            const newOpt = new Option(rawTipo, rawTipo, true, true);
-            filterPropertyType.add(newOpt);
-          }
-        } else {
-          filterPropertyType.value = 'all';
-        }
+        });
       }
+      renderPropertyTypeTags();
+      renderPropertyTypeOptions();
 
       // (d) Orçamento (Teto máximo em números inteiros)
       if (filterMaxPrice) {

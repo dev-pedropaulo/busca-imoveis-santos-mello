@@ -542,6 +542,7 @@ body {
   display: none;
 }
 
+.multi-select-tag,
 .neighborhood-tag {
   display: inline-flex;
   align-items: center;
@@ -556,6 +557,7 @@ body {
   animation: fadeIn 0.15s ease;
 }
 
+.multi-select-tag-remove,
 .neighborhood-tag-remove {
   background: none;
   border: none;
@@ -571,6 +573,7 @@ body {
   transition: color var(--transition-fast);
 }
 
+.multi-select-tag-remove:hover,
 .neighborhood-tag-remove:hover {
   color: #ef4444;
 }
