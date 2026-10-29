@@ -80,6 +80,7 @@
   const resetFiltersBtn = document.getElementById('resetFiltersBtn');
   const selectedFeatures = new Set();
   const selectedNeighborhoods = new Set();
+  let searchAbortController = null;
     // Lista oficial canônica de 95 bairros registrados
   const OFFICIAL_NEIGHBORHOODS = [
   "Bangú",
@@ -1282,8 +1283,15 @@
     params.append('limit', PAGE_SIZE);
     clearBtn.style.display = rawQuery ? 'flex' : 'none';
 
+    if (searchAbortController) {
+      searchAbortController.abort();
+    }
+    searchAbortController = new AbortController();
+
     try {
-      const res = await fetch(`${API_BASE}/api/search?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/api/search?${params.toString()}`, {
+        signal: searchAbortController.signal
+      });
       if (!res.ok) throw new Error('Falha na resposta da API.');
 
       const data = await res.json();
@@ -2249,9 +2257,9 @@
     searchProperties();
     loadFilterOptions();
   } else {
-    loadFilterOptions().then(() => {
-      searchProperties();
-    });
+    // Executa busca e carregamento de opções em paralelo para abertura instantânea
+    searchProperties();
+    loadFilterOptions();
   }
 
 })();

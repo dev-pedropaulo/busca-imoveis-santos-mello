@@ -1,3 +1,4 @@
+const compression = require('compression');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -27,6 +28,7 @@ const XML_URL = 'https://universal-ftp2.s3.us-west-2.amazonaws.com/vr/santosemel
 const app = express();
 
 app.use(cors());
+app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -137,16 +139,10 @@ app.post(['/api/leads/imovelweb', '/webhook/imovelweb'], async (req, res) => {
   }
 });
 
-// Estado em memória dos imóveis
-let listingsMap = new Map();
-let listingsList = [];
-let metadata = {
-  provider: 'Santos & Mello',
-  lastSync: null,
-  total: 0,
-  logo: 'https://cdn.imoview.com.br/santosemello/logo-1771518225.png',
-  phone: '1144692121'
-};
+// Estado em memória dos imóveis (inicializado imediatamente a partir do cache persistente em disco)
+let listingsMap = propertiesRepository.getPropertiesMap();
+let listingsList = propertiesRepository.getPropertiesList();
+let metadata = propertiesRepository.getMetadata();
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -721,6 +717,7 @@ const OFFICIAL_NEIGHBORHOODS = [
 ];
 
 app.get('/api/filter-options', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   const includeHidden = req.query.includeHidden === 'true' || req.query.all === 'true';
   const neighborhoodsSet = new Set(OFFICIAL_NEIGHBORHOODS);
   const propertyTypesSet = new Set();
@@ -779,6 +776,7 @@ app.get('/api/filter-options', (req, res) => {
 });
 
 app.get('/api/search', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
   const rawQuery = (req.query.q || '').trim();
   const transactionType = (req.query.type || '').trim();
   const statusParam = (req.query.status || req.query.situacao || '').trim();
