@@ -1713,256 +1713,50 @@
     if (!criteriosConsideradosGrid) return;
     criteriosConsideradosGrid.innerHTML = '';
 
-    const activeCount = leadSimulationState.criteria.filter(c => c.ativo).length;
-    const totalCount = leadSimulationState.criteria.length;
+    // Filtra apenas campos preenchidos e válidos da qualificação
+    const validFields = (leadSimulationState.criteria || []).filter(c => {
+      const val = String(c.valorOriginal || c.valorAtual || '').trim();
+      return val && val !== '-' && val !== '0' && val !== 'null' && val !== 'undefined';
+    });
 
-    const toolbarActiveFiltersBadge = document.getElementById('toolbarActiveFiltersBadge');
-    if (toolbarActiveFiltersBadge) {
-      toolbarActiveFiltersBadge.textContent = `Filtros Ativos: ${activeCount}/${totalCount}`;
-    }
-
-    const criteriosCountBadge = document.getElementById('criteriosCountBadge');
-    if (criteriosCountBadge) {
-      criteriosCountBadge.textContent = `${activeCount}/${totalCount}`;
-    }
-
-    if (leadSimulationState.criteria.length === 0) {
+    if (validFields.length === 0) {
       criteriosConsideradosGrid.innerHTML = `
-        <div style="font-size: 0.82rem; color: var(--text-secondary); padding: 0.4rem;">
-          Nenhum critério específico preenchido no Perfil de Qualificação. Exibindo catálogo geral de disponíveis.
+        <div style="font-size: 0.82rem; color: #64748b; padding: 0.5rem 0.2rem; font-style: italic;">
+          Nenhum dado específico preenchido na qualificação deste lead.
         </div>
       `;
       return;
     }
 
-    leadSimulationState.criteria.forEach((crit, index) => {
+    validFields.forEach(crit => {
       const cardEl = document.createElement('div');
-      const isEdited = String(crit.valorAtual).trim() !== String(crit.valorOriginal).trim();
-      cardEl.className = `criterio-card ${!crit.ativo ? 'desativado' : ''} ${isEdited ? 'editado' : ''}`;
+      cardEl.className = 'lead-ficha-card';
 
       const icon = crit.icone || getFieldIcon(crit.campo);
+      const displayVal = crit.valorOriginal || crit.valorAtual || '-';
 
-      // Topo do card com Switch, Label e Botão de Edição
-      const headerEl = document.createElement('div');
-      headerEl.className = 'criterio-card-top';
-      headerEl.innerHTML = `
-        <div class="criterio-header-controls">
-          <label class="criterio-toggle-switch" title="${crit.ativo ? 'Clique para desativar este filtro da busca' : 'Clique para ativar este filtro na busca'}">
-            <input type="checkbox" ${crit.ativo ? 'checked' : ''} data-index="${index}">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="criterio-label">${escapeHtml(crit.campo)}</span>
-          ${isEdited ? '<span class="criterio-badge-editado" title="Valor alterado localmente neste painel">✏️ Editado</span>' : ''}
-        </div>
-        <div class="criterio-header-right" style="display: flex; align-items: center; gap: 0.35rem;">
-          <span class="criterio-icon">${icon}</span>
-          ${!crit.isEditing ? `<button type="button" class="criterio-edit-btn" data-edit="${index}" title="Editar valor deste filtro">✏️</button>` : ''}
+      cardEl.innerHTML = `
+        <div class="lead-ficha-card-icon">${icon}</div>
+        <div class="lead-ficha-card-content">
+          <span class="lead-ficha-card-label">${escapeHtml(crit.campo)}</span>
+          <span class="lead-ficha-card-val" title="${escapeHtml(displayVal)}">${escapeHtml(displayVal)}</span>
         </div>
       `;
 
-      // Corpo do card
-      const bodyEl = document.createElement('div');
-      if (crit.isEditing) {
-        bodyEl.className = 'criterio-inline-edit';
-        bodyEl.innerHTML = `
-          <input type="text" class="criterio-input" id="critInput_${index}" value="${escapeHtml(crit.valorAtual)}">
-          <div class="criterio-inline-actions">
-            <button type="button" class="btn-inline-cancel" data-cancel="${index}">Cancelar</button>
-            <button type="button" class="btn-inline-save" data-save="${index}">Salvar</button>
-          </div>
-        `;
-      } else {
-        const displayVal = crit.valorAtual || '-';
-        const impactText = crit.ativo ? (crit.impacto || 'Considerado na afinidade') : 'Ignorado na busca (desativado)';
-        bodyEl.innerHTML = `
-          <div class="criterio-value" title="${escapeHtml(displayVal)}">${escapeHtml(displayVal)}</div>
-          <div class="criterio-impact">${crit.ativo ? '✓ ' + escapeHtml(impactText) : '✕ ' + escapeHtml(impactText)}</div>
-        `;
-      }
-
-      cardEl.appendChild(headerEl);
-      cardEl.appendChild(bodyEl);
       criteriosConsideradosGrid.appendChild(cardEl);
     });
-
-    // Eventos dos switches
-    criteriosConsideradosGrid.querySelectorAll('.criterio-toggle-switch input').forEach(input => {
-      input.addEventListener('change', (e) => {
-        const idx = parseInt(e.target.dataset.index, 10);
-        if (leadSimulationState.criteria[idx]) {
-          leadSimulationState.criteria[idx].ativo = e.target.checked;
-          renderLeadCriteriaCards();
-          recalculateLeadMatch();
-        }
-      });
-    });
-
-    // Eventos de edição
-    criteriosConsideradosGrid.querySelectorAll('[data-edit]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const idx = parseInt(btn.dataset.edit, 10);
-        leadSimulationState.criteria.forEach((c, i) => c.isEditing = (i === idx));
-        renderLeadCriteriaCards();
-        const inp = document.getElementById(`critInput_${idx}`);
-        if (inp) {
-          inp.focus();
-          inp.select();
-        }
-      });
-    });
-
-    // Eventos de salvar edição inline
-    criteriosConsideradosGrid.querySelectorAll('[data-save]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const idx = parseInt(btn.dataset.save, 10);
-        const inp = document.getElementById(`critInput_${idx}`);
-        if (inp && leadSimulationState.criteria[idx]) {
-          leadSimulationState.criteria[idx].valorAtual = inp.value.trim();
-          leadSimulationState.criteria[idx].isEditing = false;
-          leadSimulationState.criteria[idx].ativo = true;
-          renderLeadCriteriaCards();
-          recalculateLeadMatch();
-        }
-      });
-    });
-
-    // Eventos de cancelar edição inline
-    criteriosConsideradosGrid.querySelectorAll('[data-cancel]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const idx = parseInt(btn.dataset.cancel, 10);
-        if (leadSimulationState.criteria[idx]) {
-          leadSimulationState.criteria[idx].isEditing = false;
-          renderLeadCriteriaCards();
-        }
-      });
-    });
-  }
-
-  async function recalculateLeadMatch() {
-    if (!leadSimulationState.contactId) return;
-
-    const btnRecalc = document.getElementById('btnRecalcMatch');
-    if (btnRecalc) {
-      btnRecalc.classList.add('loading');
-      btnRecalc.textContent = '⏳ Recalculando...';
-    }
-
-    const contactId = leadSimulationState.contactId;
-    const pageParams = new URLSearchParams(window.location.search);
-    const tokenInQuery = pageParams.get('token') || pageParams.get('helenaToken') || '';
-
-    const params = new URLSearchParams();
-    params.set('contactId', contactId);
-    if (tokenInQuery) params.set('token', tokenInQuery);
-    params.set('minScore', '60'); // Regra: sempre >= 60%
-
-    // Mapeamento dos critérios ativos e editados
-    leadSimulationState.criteria.forEach(crit => {
-      const kNorm = (crit.campoOriginal || crit.campo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-
-      if (kNorm.includes('destina') || kNorm.includes('finalidade')) {
-        if (!crit.ativo) params.set('ignoreFinalidade', 'true');
-        else if (crit.valorAtual) params.set('finalidade', crit.valorAtual);
-      } else if (kNorm.includes('tipo')) {
-        if (!crit.ativo) params.set('ignoreTipo', 'true');
-        else if (crit.valorAtual) params.set('tipo', crit.valorAtual);
-      } else if (kNorm.includes('orcam') || kNorm.includes('oram') || kNorm.includes('preco')) {
-        if (!crit.ativo) params.set('ignoreOrcamento', 'true');
-        else if (crit.valorAtual) params.set('orcamentoMax', crit.valorAtual);
-      } else if (kNorm.includes('bairro') || kNorm.includes('regiao')) {
-        if (!crit.ativo) params.set('ignoreBairros', 'true');
-        else if (crit.valorAtual) params.set('regiao', crit.valorAtual);
-      } else if (kNorm.includes('quarto') && !kNorm.includes('morador')) {
-        if (!crit.ativo) {
-          params.set('ignoreQuartos', 'true');
-        } else if (crit.valorAtual) {
-          const m = String(crit.valorAtual).match(/\d+/);
-          if (m) params.set('quartos', m[0]);
-        }
-      } else if (kNorm.includes('morador')) {
-        if (!crit.ativo) {
-          params.set('ignoreMoradores', 'true');
-        } else if (crit.valorAtual) {
-          const m = String(crit.valorAtual).match(/\d+/);
-          if (m) params.set('moradores', m[0]);
-        }
-      } else if (kNorm.includes('suite') || kNorm.includes('sute')) {
-        if (!crit.ativo) {
-          params.set('ignoreSuites', 'true');
-        } else if (crit.valorAtual) {
-          const m = String(crit.valorAtual).match(/\d+/);
-          if (m) params.set('suites', m[0]);
-        }
-      } else if (kNorm.includes('pet')) {
-        if (!crit.ativo) params.set('ignorePet', 'true');
-        else if (crit.valorAtual) params.set('pet', crit.valorAtual);
-      } else if (kNorm.includes('particularidade') || kNorm.includes('comodidade')) {
-        if (!crit.ativo) params.set('ignoreParticularidades', 'true');
-        else if (crit.valorAtual) params.set('caracteristicas', crit.valorAtual);
-      } else if (kNorm.includes('motivo')) {
-        if (!crit.ativo) params.set('ignoreMotivo', 'true');
-      } else if (kNorm.includes('tempo') || kNorm.includes('prazo')) {
-        if (!crit.ativo) params.set('ignoreTempo', 'true');
-      } else if (kNorm.includes('garantia')) {
-        if (!crit.ativo) params.set('ignoreGarantia', 'true');
-      }
-    });
-
-    try {
-      showState('loading');
-      feedStatusText.textContent = `Recalculando imóveis compatíveis...`;
-
-      const res = await fetch(`${API_BASE}/api/leads/match?${params.toString()}`);
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao recalcular match.');
-      }
-
-      const results = (data.results || []).filter(r => (r.matchScore || 0) >= 60);
-      results.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-      const total = data.totalMatches || results.length;
-
-      const contactName = (leadSimulationState.contactData && leadSimulationState.contactData.name) || `Lead #${contactId}`;
-      feedStatusText.textContent = `🎯 Perfil recalculado: ${contactName} • ${total} imóveis compatíveis`;
-
-      if (results.length === 0) {
-        notFoundTitle.textContent = `Nenhum imóvel compatível com os filtros atuais`;
-        notFoundMsg.textContent = 'Tente desativar restrições rígidas (ex: Bairros ou Tipo) ou aumentar o Orçamento.';
-        showState('notFound');
-        return;
-      }
-
-      loadedPropertiesList = results;
-      lastSearchResults = loadedPropertiesList;
-      renderGrid(results, total, false);
-      showState('grid');
-
-      if (resultsCountText) {
-        resultsCountText.textContent = `🎯 ${total} imóveis compatíveis para ${contactName}`;
-      }
-      showToast(`🎯 Recalculado: ${total} imóveis compatíveis!`);
-    } catch (err) {
-      console.error('Erro ao recalcular:', err);
-      showToast('⚠️ Erro ao recalcular match de imóveis.');
-      showState('grid');
-    } finally {
-      if (btnRecalc) {
-        btnRecalc.classList.remove('loading');
-        btnRecalc.textContent = '🔄 Recalcular Match';
-      }
-    }
   }
 
   // --- Busca por Perfil de Lead (Helena CRM / Menu Personalizado) ---
   async function searchLeadProperties(contactId) {
     setSimplifiedMode(true);
     showState('loading');
-    feedStatusText.textContent = `Consultando perfil do lead #${contactId}...`;
+    feedStatusText.textContent = `Consultando ficha do lead #${contactId}...`;
 
     const leadProfileBanner = document.getElementById('leadProfileBanner');
     const leadProfileName = document.getElementById('leadProfileName');
     const leadProfileContact = document.getElementById('leadProfileContact');
+    const leadProfileTags = document.getElementById('leadProfileTags');
     const leadProfileWhatsAppBtn = document.getElementById('leadProfileWhatsAppBtn');
     const leadProfileAnnotation = document.getElementById('leadProfileAnnotation');
     const leadProfileAnnotationText = document.getElementById('leadProfileAnnotationText');
@@ -1975,44 +1769,41 @@
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Falha ao buscar imóveis para o lead.');
+        throw new Error(data.error || 'Falha ao buscar dados do lead.');
       }
 
-      const results = (data.results || []).filter(r => (r.matchScore || 0) >= 60);
-      results.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-      const total = data.totalMatches || results.length;
-      const contact = data.contact;
-      const contactName = contact && contact.name ? contact.name : `Lead #${contactId}`;
-      const contactPhone = contact && contact.phoneNumber ? contact.phoneNumber : '';
+      const contact = data.contact || {};
+      const contactName = contact.name ? contact.name : `Lead #${contactId}`;
+      const contactPhone = contact.phoneNumber || '';
+      const leadProf = data.leadProfile || {};
 
-      // Preenche o Banner de Perfil
+      // 1. Exibe a Ficha do Lead no topo (apenas leitura, campos preenchidos)
       if (leadProfileBanner) {
         leadProfileBanner.style.display = 'block';
         if (leadProfileName) leadProfileName.textContent = contactName;
         if (leadProfileContact) {
           const contactParts = [];
           if (contactPhone) contactParts.push(`📱 ${contactPhone}`);
-          if (contact && contact.email) contactParts.push(`✉️ ${contact.email}`);
-          leadProfileContact.textContent = contactParts.join(' • ') || '';
+          if (contact.email) contactParts.push(`✉️ ${contact.email}`);
+          leadProfileContact.textContent = contactParts.join(' • ') || 'Sem telefone/e-mail informado';
+        }
+        if (leadProfileTags) {
+          const tagsList = contact.tags || contact.tagNames || [];
+          leadProfileTags.innerHTML = tagsList.map(t => `<span class="lead-tag-pill">${escapeHtml(t)}</span>`).join('');
         }
         if (leadProfileWhatsAppBtn) {
           if (contactPhone) {
             const cleanPhone = contactPhone.replace(/\D/g, '');
             const firstName = contactName.split(' ')[0] || '';
-            const topMatch = results[0];
-            let initialMsg = `Olá${firstName ? `, ${firstName}` : ''}! Sou da Santos & Mello. Vi seu interesse em imóveis e separei opções sob medida.`;
-            if (topMatch) {
-              const topData = getPropertyShareData(topMatch);
-              initialMsg += `\n\nPor exemplo, este ${topData.cleanType} (Cód. #${topMatch.id}) em ${topData.fullAddress || topData.neighborhood}:\n${topData.linkImovel}\n\nPodemos conversar a respeito?`;
-            }
-            leadProfileWhatsAppBtn.href = `https://api.whatsapp.com/send?phone=55${cleanPhone}&text=${encodeURIComponent(initialMsg)}`;
+            const msg = `Olá${firstName ? `, ${firstName}` : ''}! Sou da Santos & Mello. Vi seu interesse em imóveis e separei ótimas opções para você. Como posso te ajudar?`;
+            leadProfileWhatsAppBtn.href = `https://api.whatsapp.com/send?phone=55${cleanPhone}&text=${encodeURIComponent(msg)}`;
             leadProfileWhatsAppBtn.style.display = 'inline-flex';
           } else {
             leadProfileWhatsAppBtn.style.display = 'none';
           }
         }
         if (leadProfileAnnotation && leadProfileAnnotationText) {
-          if (contact && contact.annotation) {
+          if (contact.annotation) {
             leadProfileAnnotationText.textContent = contact.annotation;
             leadProfileAnnotation.style.display = 'flex';
           } else {
@@ -2021,62 +1812,115 @@
         }
       }
 
-      // Conecta botões da toolbar de simulação de filtros
-      const btnResetLeadFilters = document.getElementById('btnResetLeadFilters');
-      if (btnResetLeadFilters) {
-        btnResetLeadFilters.onclick = () => {
-          leadSimulationState.criteria.forEach(c => {
-            c.valorAtual = c.valorOriginal;
-            c.ativo = true;
-            c.isEditing = false;
-          });
-          renderLeadCriteriaCards();
-          recalculateLeadMatch();
-          showToast('↩️ Filtros restaurados para os critérios originais.');
-        };
-      }
-
-      const btnRecalcMatch = document.getElementById('btnRecalcMatch');
-      if (btnRecalcMatch) {
-        btnRecalcMatch.onclick = () => {
-          recalculateLeadMatch();
-        };
-      }
-
-      // Popula o estado de simulação e renderiza os cards (excluindo Motivo, Tempo, Anotação e Pets conforme solicitado)
+      // 2. Preenche a Ficha do Lead com todos os critérios considerados preenchidos
       leadSimulationState.contactId = contactId;
       leadSimulationState.contactData = contact;
-      leadSimulationState.criteria = (data.criteriosConsiderados || [])
-        .filter(c => {
-          const kNorm = (c.campoOriginal || c.campo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-          return !kNorm.includes('motivo') && !kNorm.includes('tempo') && !kNorm.includes('prazo') && !kNorm.includes('anotacao') && !kNorm.includes('pet') && !kNorm.includes('animal');
-        })
-        .map(c => ({
-          campo: c.campo,
-          campoOriginal: c.campoOriginal || c.campo,
-          icone: c.icone || getFieldIcon(c.campo),
-          valorOriginal: c.valorOriginal || '',
-          valorAtual: c.valorEfetivo || c.valorOriginal || '',
-          ativo: c.ativo !== undefined ? c.ativo : true,
-          isEditing: false,
-          impacto: c.impacto || ''
-        }));
+      leadSimulationState.criteria = (data.criteriosConsiderados || []).map(c => ({
+        campo: c.campo,
+        campoOriginal: c.campoOriginal || c.campo,
+        icone: c.icone || getFieldIcon(c.campo),
+        valorOriginal: c.valorOriginal || '',
+        valorAtual: c.valorEfetivo || c.valorOriginal || ''
+      }));
 
       renderLeadCriteriaCards();
 
-      feedStatusText.textContent = `🎯 Perfil carregado: ${contactName} • ${total} imóveis compatíveis`;
-
-      if (results.length === 0) {
-        notFoundTitle.textContent = `Nenhum imóvel compatível para ${contactName}`;
-        notFoundMsg.textContent = 'Não encontramos imóveis compatíveis no momento. Experimente desativar o filtro de Bairros no painel.';
-        showState('notFound');
-        return;
+      // 3. Preenche a interface de filtros do "Catálogo & Busca" de acordo com os 5 campos autorizados
+      // (a) Destinação: Residencial ou Comercial (e finalidade: Locação ou Venda)
+      if (filterUsageType) {
+        const usoLower = (leadProf.uso || '').toLowerCase();
+        if (usoLower.includes('comerc')) filterUsageType.value = 'Comercial';
+        else if (usoLower.includes('resid')) filterUsageType.value = 'Residencial';
+        else filterUsageType.value = 'all';
       }
 
-      loadedPropertiesList = results;
-      lastSearchResults = loadedPropertiesList;
-      renderGrid(results, total, false);
-      showState('grid');
+      if (filterType) {
+        const finLower = (leadProf.finalidade || '').toLowerCase();
+        if (finLower.includes('loca') || finLower.includes('alug')) {
+          filterType.value = 'Locação';
+          if (tabRent) {
+            document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+            tabRent.classList.add('active');
+          }
+        } else if (finLower.includes('venda')) {
+          filterType.value = 'Venda';
+          if (tabSale) {
+            document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+            tabSale.classList.add('active');
+          }
+        } else {
+          filterType.value = 'all';
+        }
+      }
+
+      // (b) Bairros (Separados por vírgula, sem espaço)
+      selectedNeighborhoods.clear();
+      const rawBairros = leadProf.regiao && leadProf.regiao !== 'Qualquer' ? leadProf.regiao : '';
+      if (rawBairros) {
+        const bList = rawBairros.split(',').map(b => b.trim()).filter(Boolean);
+        bList.forEach(b => selectedNeighborhoods.add(b));
+      }
+      renderNeighborhoodTags();
+
+      // (c) Tipo do Imóvel (Casa, Sobrado, Assobradada, Apartamento, etc.)
+      if (filterPropertyType) {
+        const rawTipo = leadProf.tipo && leadProf.tipo !== 'Qualquer' ? String(leadProf.tipo).trim() : '';
+        if (rawTipo) {
+          let found = false;
+          for (let i = 0; i < filterPropertyType.options.length; i++) {
+            if (filterPropertyType.options[i].value.toLowerCase() === rawTipo.toLowerCase()) {
+              filterPropertyType.selectedIndex = i;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            const newOpt = new Option(rawTipo, rawTipo, true, true);
+            filterPropertyType.add(newOpt);
+          }
+        } else {
+          filterPropertyType.value = 'all';
+        }
+      }
+
+      // (d) Orçamento (Teto máximo em números inteiros)
+      if (filterMaxPrice) {
+        if (leadProf.orcamentoMax && leadProf.orcamentoMax > 0) {
+          filterMaxPrice.value = Math.floor(leadProf.orcamentoMax).toString();
+        } else {
+          filterMaxPrice.value = '';
+        }
+      }
+
+      // (e) N° Quartos (Mínimo de quartos exigido)
+      if (filterBeds) {
+        if (leadProf.quartosMin && leadProf.quartosMin > 0) {
+          filterBeds.value = String(leadProf.quartosMin);
+        } else {
+          filterBeds.value = '0';
+        }
+      }
+
+      // Limpa os campos não listados para garantir que não interfiram no filtro
+      if (filterMinPrice) filterMinPrice.value = '';
+      if (filterMinArea) filterMinArea.value = '0';
+      if (filterSuites) filterSuites.value = '0';
+      if (filterBathrooms) filterBathrooms.value = '0';
+      if (filterGarage) filterGarage.value = '0';
+      selectedFeatures.clear();
+      if (featuresChipsList) {
+        featuresChipsList.querySelectorAll('.feature-chip').forEach(c => c.classList.remove('active'));
+      }
+      if (filterHasTour) filterHasTour.checked = false;
+
+      // Abre o painel de filtros para que o corretor veja e possa ajustar livremente
+      isFiltersOpen = true;
+      if (filtersPanel) filtersPanel.style.display = 'block';
+      countActiveFilters();
+      updateActiveFilterTags();
+
+      // 4. Executa a busca padrão com os filtros pré-preenchidos do lead
+      await searchProperties();
 
       // Consulta session metadata para identificar imóveis já enviados previamente nesta conversa
       (async () => {

@@ -566,6 +566,60 @@ function normalizeString(str) {
     .trim();
 }
 
+function matchPropertyType(itemPropertyType, itemTitle, targetTypeNorm) {
+  if (!targetTypeNorm || targetTypeNorm === 'all') return true;
+  const itemTypeNorm = normalizeString(itemPropertyType || '');
+  const itemTitleNorm = normalizeString(itemTitle || '');
+  const targets = targetTypeNorm.split(',').map(t => t.trim()).filter(Boolean);
+
+  return targets.some(target => {
+    if (itemTypeNorm.includes(target)) return true;
+    if (target.includes('apartamento s/ condominio') || target.includes('apartamento sem condominio')) {
+      return itemTypeNorm.includes('apartamento') || itemTitleNorm.includes('sem condominio');
+    }
+    if (target === 'apartamento' || target === 'apartment' || target === 'apto') {
+      return itemTypeNorm.includes('apartment') || itemTypeNorm.includes('apartamento') || itemTypeNorm.includes('flat') || itemTypeNorm.includes('studio') || itemTypeNorm.includes('duplex');
+    }
+    if (target === 'casa' || target === 'home') {
+      return itemTypeNorm.includes('home') || itemTypeNorm.includes('casa');
+    }
+    if (target === 'sobrado') {
+      return itemTypeNorm.includes('sobrado');
+    }
+    if (target === 'assobradada') {
+      return itemTypeNorm.includes('casa') || itemTypeNorm.includes('sobrado');
+    }
+    if (target === 'cobertura' || target === 'penthouse') {
+      return itemTypeNorm.includes('cobertura') || itemTypeNorm.includes('penthouse');
+    }
+    if (target === 'kitnet' || target === 'studio') {
+      return itemTypeNorm.includes('kitnet') || itemTypeNorm.includes('studio');
+    }
+    if (target === 'sala comercial' || target === 'sala' || target === 'office') {
+      return itemTypeNorm.includes('sala') || itemTypeNorm.includes('office') || itemTypeNorm.includes('andar corporativo');
+    }
+    if (target === 'salao') {
+      return itemTypeNorm.includes('salao') || itemTypeNorm.includes('loja');
+    }
+    if (target === 'loja') {
+      return itemTypeNorm.includes('loja') || itemTypeNorm.includes('salao');
+    }
+    if (target === 'sobreloja') {
+      return itemTypeNorm.includes('loja') || itemTypeNorm.includes('salao') || itemTypeNorm.includes('sala');
+    }
+    if (target === 'galpao' || target === 'industrial') {
+      return itemTypeNorm.includes('galpao') || itemTypeNorm.includes('industrial');
+    }
+    if (target === 'terreno' || target === 'land lot' || target === 'lote') {
+      return itemTypeNorm.includes('terreno') || itemTypeNorm.includes('lote') || itemTypeNorm.includes('land');
+    }
+    if (target === 'comercial' || target === 'commercial') {
+      return itemTypeNorm.includes('commercial') || itemTypeNorm.includes('comercial') || itemTypeNorm.includes('sala') || itemTypeNorm.includes('salao') || itemTypeNorm.includes('loja') || itemTypeNorm.includes('predio') || itemTypeNorm.includes('andar corporativo');
+    }
+    return false;
+  });
+}
+
 app.get('/api/filter-options', (req, res) => {
   const includeHidden = req.query.includeHidden === 'true' || req.query.all === 'true';
   const neighborhoodsSet = new Set();
@@ -726,28 +780,11 @@ app.get('/api/search', (req, res) => {
       }
     }
 
-    // Filtro por Tipo de Imóvel com suporte a sinônimos
+    // Filtro por Tipo de Imóvel com suporte à lista oficial e múltiplos tipos separados por vírgula
     if (propertyTypeNorm && propertyType !== 'all') {
-      const itemTypeNorm = normalizeString(item.propertyType);
-      let matchesType = itemTypeNorm.includes(propertyTypeNorm);
-
-      if (!matchesType) {
-        if (propertyTypeNorm === 'apartment' || propertyTypeNorm === 'apartamento') {
-          matchesType = itemTypeNorm.includes('apartment') || itemTypeNorm.includes('apartamento') || itemTypeNorm.includes('flat') || itemTypeNorm.includes('studio');
-        } else if (propertyTypeNorm === 'home' || propertyTypeNorm === 'casa') {
-          matchesType = itemTypeNorm.includes('home') || itemTypeNorm.includes('casa') || itemTypeNorm.includes('sobrado');
-        } else if (propertyTypeNorm === 'commercial' || propertyTypeNorm === 'comercial') {
-          matchesType = itemTypeNorm.includes('commercial') || itemTypeNorm.includes('comercial') || itemTypeNorm.includes('business') || itemTypeNorm.includes('office') || itemTypeNorm.includes('edificio') || itemTypeNorm.includes('floor');
-        } else if (propertyTypeNorm === 'land lot' || propertyTypeNorm === 'terreno') {
-          matchesType = itemTypeNorm.includes('land') || itemTypeNorm.includes('terreno') || itemTypeNorm.includes('lote');
-        } else if (propertyTypeNorm === 'penthouse' || propertyTypeNorm === 'cobertura') {
-          matchesType = itemTypeNorm.includes('penthouse') || itemTypeNorm.includes('cobertura');
-        } else if (propertyTypeNorm === 'industrial' || propertyTypeNorm === 'galpao') {
-          matchesType = itemTypeNorm.includes('industrial') || itemTypeNorm.includes('galpao');
-        }
+      if (!matchPropertyType(item.propertyType, item.title, propertyTypeNorm)) {
+        return false;
       }
-
-      if (!matchesType) return false;
     }
 
     // Filtro por Bairro (suporte a múltiplos bairros)
@@ -934,24 +971,21 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
     else rawMinPrice = parseFloat(criteriaFromContact.orcamentoMin) || 0;
   }
 
-  // 6. Quartos / Moradores
+  // 6. Quartos (Moradores é informativo, apenas Quartos filtra)
   let rawBedrooms = 0;
-  if (!isIgnored('ignoreQuartos') && !isIgnored('ignoreMoradores') && !isIgnored('ignoreDormitorios')) {
+  if (!isIgnored('ignoreQuartos') && !isIgnored('ignoreDormitorios')) {
     if (req.query.quartos !== undefined && req.query.quartos !== '') rawBedrooms = parseInt(req.query.quartos, 10) || 0;
     else if (req.query.minBedrooms !== undefined && req.query.minBedrooms !== '') rawBedrooms = parseInt(req.query.minBedrooms, 10) || 0;
     else if (req.query.dormitorios !== undefined && req.query.dormitorios !== '') rawBedrooms = parseInt(req.query.dormitorios, 10) || 0;
-    else if (req.query.moradores !== undefined && req.query.moradores !== '') {
-      const m = parseInt(req.query.moradores, 10) || 0;
-      rawBedrooms = m >= 4 ? 3 : (m === 3 ? 2 : (m >= 1 ? 1 : 0));
-    } else {
+    else {
       rawBedrooms = parseInt(criteriaFromContact.quartos, 10) || 0;
     }
   }
 
-  // 7. Suítes / Banheiros / Vagas
-  let rawSuites = isIgnored('ignoreSuites') ? 0 : (req.query.suites !== undefined && req.query.suites !== '' ? parseInt(req.query.suites, 10) || 0 : (criteriaFromContact.suites || 0));
-  let rawBathrooms = isIgnored('ignoreBanheiros') ? 0 : (req.query.banheiros !== undefined && req.query.banheiros !== '' ? parseInt(req.query.banheiros, 10) || 0 : (criteriaFromContact.banheiros || 0));
-  let rawGarage = (isIgnored('ignoreVagas') || isIgnored('ignoreGaragem')) ? 0 : (req.query.vagas !== undefined && req.query.vagas !== '' ? parseInt(req.query.vagas, 10) || 0 : (criteriaFromContact.vagas || 0));
+  // 7. Suítes / Banheiros / Vagas (apenas filtram se informados na query)
+  let rawSuites = isIgnored('ignoreSuites') ? 0 : (req.query.suites !== undefined && req.query.suites !== '' ? parseInt(req.query.suites, 10) || 0 : 0);
+  let rawBathrooms = isIgnored('ignoreBanheiros') ? 0 : (req.query.banheiros !== undefined && req.query.banheiros !== '' ? parseInt(req.query.banheiros, 10) || 0 : 0);
+  let rawGarage = (isIgnored('ignoreVagas') || isIgnored('ignoreGaragem')) ? 0 : (req.query.vagas !== undefined && req.query.vagas !== '' ? parseInt(req.query.vagas, 10) || 0 : 0);
 
   // 8. Bairros / Região
   let rawNeighborhoods = '';
@@ -973,13 +1007,12 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
   }
   rawCity = rawCity.trim();
 
-  // 10. Características / Pet / Particularidades
+  // 10. Características / Comodidades (informativo no lead, só filtra se passado na query)
   let rawFeatures = '';
   if (!isIgnored('ignoreCaracteristicas') && !isIgnored('ignoreComodidades') && !isIgnored('ignoreParticularidades')) {
     if (req.query.caracteristicas !== undefined) rawFeatures = req.query.caracteristicas;
     else if (req.query.features !== undefined) rawFeatures = req.query.features;
     else if (req.query.comodidades !== undefined) rawFeatures = req.query.comodidades;
-    else rawFeatures = criteriaFromContact.caracteristicas || '';
   }
   if (isIgnored('ignorePet') && rawFeatures) {
     rawFeatures = rawFeatures.split(',').map(f => f.trim()).filter(f => !f.toLowerCase().includes('pet')).join(', ');
@@ -1077,30 +1110,11 @@ app.get(['/api/leads/match', '/api/imoveis/lead-search'], async (req, res) => {
       if (!itemUsageNorm.includes(usageTypeNorm)) continue;
     }
 
-    // 4. Filtro por Tipo de Imóvel com sinônimos imobiliários
+    // 4. Filtro por Tipo de Imóvel com suporte à lista oficial e múltiplos tipos separados por vírgula
     if (propTypeNorm && propTypeNorm !== 'all') {
-      const itemTypeNorm = normalizeString(item.propertyType);
-      let matchType = itemTypeNorm.includes(propTypeNorm);
-
-      if (!matchType) {
-        if (propTypeNorm.includes('apto') || propTypeNorm.includes('apartamento') || propTypeNorm.includes('apartment')) {
-          matchType = itemTypeNorm.includes('apartment') || itemTypeNorm.includes('apartamento') || itemTypeNorm.includes('flat') || itemTypeNorm.includes('studio') || itemTypeNorm.includes('cobertura') || itemTypeNorm.includes('penthouse');
-        } else if (propTypeNorm.includes('casa') || propTypeNorm.includes('home')) {
-          matchType = itemTypeNorm.includes('home') || itemTypeNorm.includes('casa') || itemTypeNorm.includes('sobrado');
-        } else if (propTypeNorm.includes('sobrado')) {
-          matchType = itemTypeNorm.includes('sobrado') || itemTypeNorm.includes('casa');
-        } else if (propTypeNorm.includes('cobertura') || propTypeNorm.includes('penthouse')) {
-          matchType = itemTypeNorm.includes('penthouse') || itemTypeNorm.includes('cobertura');
-        } else if (propTypeNorm.includes('comercial') || propTypeNorm.includes('sala') || propTypeNorm.includes('office')) {
-          matchType = itemTypeNorm.includes('commercial') || itemTypeNorm.includes('comercial') || itemTypeNorm.includes('office') || itemTypeNorm.includes('business') || itemTypeNorm.includes('sala') || itemTypeNorm.includes('edificio');
-        } else if (propTypeNorm.includes('terreno') || propTypeNorm.includes('lote') || propTypeNorm.includes('land')) {
-          matchType = itemTypeNorm.includes('land') || itemTypeNorm.includes('terreno') || itemTypeNorm.includes('lote');
-        } else if (propTypeNorm.includes('galpao') || propTypeNorm.includes('industrial') || propTypeNorm.includes('deposito')) {
-          matchType = itemTypeNorm.includes('industrial') || itemTypeNorm.includes('galpao') || itemTypeNorm.includes('deposito');
-        }
+      if (!matchPropertyType(item.propertyType, item.title, propTypeNorm)) {
+        continue;
       }
-
-      if (!matchType) continue;
     }
 
     // 5. Filtro de Orçamento

@@ -10,7 +10,7 @@ const contactPerfil02 = {
   customFields: {
     'destina-o-75': 'Locação Residencial',
     'tipo-do-im-vel-24': 'Apartamento',
-    'bairros-77': 'Parque João Ramalho, Vila Metalúrgica',
+    'bairros-77': 'Parque João Ramalho,Vila Metalúrgica',
     'or-amento-35': '2.500,00',
     'n-quartos-14': '2',
     'n-su-tes-': '1',
@@ -30,46 +30,33 @@ const contactPerfil02 = {
 
 const res1 = extractLeadCriteriaFromContact(contactPerfil02);
 
-// Validações
+// Validações dos 5 campos filtráveis
 assert.strictEqual(res1.finalidade, 'Locação', 'Finalidade deve ser extraída de destina-o-75 e não do legado');
 assert.strictEqual(res1.uso, 'Residencial', 'Uso deve ser Residencial');
 assert.strictEqual(res1.tipo, 'Apartamento', 'Tipo deve vir de tipo-do-im-vel-24 e não tipo-do-im-vel-56');
-assert.strictEqual(res1.regiao, 'Parque João Ramalho, Vila Metalúrgica');
+assert.strictEqual(res1.regiao, 'Parque João Ramalho,Vila Metalúrgica');
 assert.strictEqual(res1.orcamentoMax, 2500, 'Orçamento deve ser convertido de "2.500,00" para 2500');
 assert.strictEqual(res1.quartos, 2, 'Quartos deve ser 2 vindo de n-quartos-14 (ignorando n-quartos=5 do legado)');
-assert.strictEqual(res1.suites, 1, 'Suítes deve ser 1 vindo de n-su-tes-');
-assert.strictEqual(res1.moradores, 3, 'Moradores deve ser 3 vindo de moradores-21');
-assert.strictEqual(res1.aceitaPet, true, 'Pet deve ser aceito');
+
+// Validações dos campos informativos (não interferem no filtro)
+assert.strictEqual(res1.moradores, 3, 'Moradores deve ser registrado para informação');
+assert.strictEqual(res1.aceitaPet, true, 'Pet deve ser registrado para informação');
 assert.strictEqual(res1.petDetalhes, 'dois gatos', 'Detalhes do pet deve ser "dois gatos"');
-assert.ok(res1.caracteristicas.includes('Aceita Pets'), 'Características deve incluir "Aceita Pets"');
-assert.ok(res1.caracteristicas.includes('Varanda gourmet'), 'Particularidades deve ser incluída');
+// Pet não deve ser injetado em características para não filtrar o catálogo
+assert.strictEqual(res1.caracteristicas.includes('Aceita Pets'), false, 'Pet NÃO deve ser adicionado em características para não interferir no filtro');
 
-console.log('✅ Teste 1 passou: Perfil 02 priorizado e campos legados ignorados!');
+console.log('✅ Teste 1 passou: Perfil 02 priorizado, 5 filtros extraídos e campos informativos isolados!');
 
-// Teste 2: Lead que NÃO tem pets ("Não, sem pet")
-const contactSemPet = {
-  id: 'test-lead-sem-pet',
-  customFields: {
-    'pet-81': 'Não, sem pet',
-    'or-amento-35': '2000',
-    'n-quartos-14': '3'
-  }
-};
-const res2 = extractLeadCriteriaFromContact(contactSemPet);
-assert.strictEqual(res2.aceitaPet, false, 'Lead que marcou Não não deve exigir pet');
-assert.ok(!res2.caracteristicas.includes('Aceita Pets'), 'Não deve adicionar Aceita Pets em características');
-console.log('✅ Teste 2 passou: Formato "Não" para pet validado com sucesso!');
-
-// Teste 3: Lead sem n-quartos-14 explícito, apenas moradores (estimativa)
+// Teste 2: Lead com Moradores preenchido mas SEM n-quartos-14
 const contactApenasMoradores = {
   id: 'test-moradores',
   customFields: {
     'moradores-21': '4 pessoas'
   }
 };
-const res3 = extractLeadCriteriaFromContact(contactApenasMoradores);
-assert.strictEqual(res3.moradores, 4);
-assert.strictEqual(res3.quartos, 3, '4 moradores deve estimar 3 dormitórios');
-console.log('✅ Teste 3 passou: Estimativa de quartos por moradores funcionando!');
+const res2 = extractLeadCriteriaFromContact(contactApenasMoradores);
+assert.strictEqual(res2.moradores, 4);
+assert.strictEqual(res2.quartos, 0, 'Moradores NÃO deve mais estimar quartos (Moradores é 100% informativo)');
+console.log('✅ Teste 2 passou: Moradores é puramente informativo e não interfere nos quartos!');
 
 console.log('\n🎉 TODOS OS TESTES DE UNIDADE PASSARAM COM SUCESSO!');

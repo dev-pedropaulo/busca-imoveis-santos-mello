@@ -90,47 +90,34 @@
     <!-- Main Content Area -->
     <main class="main-content">
       
-      <!-- Banner Dinâmico: Perfil de Qualificação do Lead (Helena CRM) -->
-      <section id="leadProfileBanner" class="lead-profile-banner" style="display: none;">
+      <!-- Ficha do Lead (Helena CRM) -->
+      <section id="leadProfileBanner" class="lead-profile-banner lead-ficha-container" style="display: none;">
         <div class="lead-profile-header">
           <div class="lead-profile-header-main">
             <div class="lead-avatar-icon" id="leadAvatarIcon">👤</div>
             <div class="lead-profile-info">
-              <h2 id="leadProfileName" class="lead-profile-name">Nome do Cliente</h2>
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <h2 id="leadProfileName" class="lead-profile-name">Nome do Cliente</h2>
+                <div id="leadProfileTags" class="lead-tags-container"></div>
+              </div>
               <div class="lead-profile-meta">
                 <span id="leadProfileContact" class="lead-profile-sub">Telefone / WhatsApp</span>
               </div>
             </div>
           </div>
           <div class="lead-profile-actions">
-            <button type="button" id="btnToggleProfileDetails" class="criterios-toggle-btn" title="Exibir/Ocultar campos considerados">
-              <span>Campos Considerados</span>
-              <span id="criteriosCountBadge" class="criterios-count-pill">0</span>
-              <span id="criteriosArrow">▾</span>
-            </button>
+            <a id="leadProfileWhatsAppBtn" href="#" target="_blank" class="btn-lead-whatsapp" style="display: none;">
+              <span>💬 Iniciar WhatsApp</span>
+            </a>
           </div>
         </div>
 
-        <!-- Barra de Simulação e Controle de Filtros do Painel -->
-        <div class="lead-filters-toolbar" id="leadFiltersToolbar">
-          <div class="toolbar-left">
-            <span class="toolbar-pill pill-active" id="toolbarActiveFiltersBadge">Filtros Ativos: 0</span>
-            <span class="toolbar-pill pill-session-saved" id="toolbarSessionSavedBadge" style="display: none;" title="Imóveis registrados no atendimento para integração com visitas">📤 0 salvos no atendimento</span>
-            <span class="toolbar-note">💡 Simule habilitando/desabilitando ou editando os filtros</span>
+        <!-- Grade da Ficha do Lead (Apenas campos preenchidos, sem botões de edição ou switches) -->
+        <div class="lead-ficha-body">
+          <div class="lead-ficha-subtitle">📋 Ficha de Qualificação do Lead (Helena CRM)</div>
+          <div id="criteriosConsideradosGrid" class="lead-ficha-grid">
+            <!-- Campos preenchidos gerados dinamicamente via JS -->
           </div>
-          <div class="toolbar-actions">
-            <button type="button" class="btn-toolbar btn-reset-filters" id="btnResetLeadFilters" title="Restaurar critérios originais">
-              ↩️ Restaurar Originais
-            </button>
-            <button type="button" class="btn-toolbar btn-recalc-match" id="btnRecalcMatch" title="Recalcular imóveis compatíveis com os filtros selecionados">
-              🔄 Recalcular Match
-            </button>
-          </div>
-        </div>
-
-        <!-- Grade de Campos Considerados (Perfil de Qualificação) -->
-        <div id="criteriosConsideradosGrid" class="criterios-grid" style="display: flex;">
-          <!-- Itens gerados dinamicamente via JS -->
         </div>
 
         <div id="leadProfileAnnotation" class="lead-profile-annotation" style="display: none;">
@@ -243,15 +230,19 @@
                 <label class="filter-label">Tipo de Imóvel</label>
                 <select id="filterPropertyType" class="filter-select">
                   <option value="all">Todos os tipos</option>
-                  <option value="Apartment">Apartamento</option>
+                  <option value="Casa">Casa</option>
                   <option value="Sobrado">Sobrado</option>
-                  <option value="Home">Casa</option>
-                  <option value="Penthouse">Cobertura</option>
-                  <option value="Kitnet">Kitnet / Studio</option>
-                  <option value="Land Lot">Terreno</option>
-                  <option value="Office">Sala / Conjunto Comercial</option>
-                  <option value="Business">Ponto / Prédio Comercial</option>
-                  <option value="Industrial">Galpão / Industrial</option>
+                  <option value="Assobradada">Assobradada</option>
+                  <option value="Apartamento">Apartamento</option>
+                  <option value="Apartamento S/ Condominio">Apartamento S/ Condomínio</option>
+                  <option value="Cobertura">Cobertura</option>
+                  <option value="Kitnet">Kitnet</option>
+                  <option value="Salão">Salão</option>
+                  <option value="Sala Comercial">Sala Comercial</option>
+                  <option value="Galpão">Galpão</option>
+                  <option value="Loja">Loja</option>
+                  <option value="Sobreloja">Sobreloja</option>
+                  <option value="Terreno">Terreno</option>
                 </select>
               </div>
 

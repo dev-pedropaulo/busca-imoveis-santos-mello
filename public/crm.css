@@ -1643,7 +1643,8 @@ body.helena-embedded .main-nav-container {
 
 body.simplified-view .search-section,
 body.helena-embedded .search-section {
-  display: none !important;
+  display: block !important;
+  margin-top: 0.5rem;
 }
 
 body.simplified-view .app-container,
@@ -2882,3 +2883,106 @@ body.simplified-view .btn-card-quick-view:hover {
 }
 
 
+
+/* --- Ficha do Lead Estilizada (Somente Leitura) --- */
+.lead-ficha-container {
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 0.85rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-top: 3.5px solid #4f46e5;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+}
+
+.lead-tags-container {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.lead-tag-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.lead-ficha-body {
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+}
+
+.lead-ficha-subtitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lead-ficha-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.55rem;
+}
+
+.lead-ficha-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  transition: all 0.15s ease;
+}
+
+.lead-ficha-card:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.lead-ficha-card-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.lead-ficha-card-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.lead-ficha-card-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.lead-ficha-card-val {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-top: 0.15rem;
+  word-break: break-word;
+  line-height: 1.3;
+}
